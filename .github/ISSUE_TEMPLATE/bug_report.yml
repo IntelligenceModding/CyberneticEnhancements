@@ -1,0 +1,149 @@
+name: Bug Report
+description: Report a reproducible problem with Cybernetic Enhancements
+title: "[Bug] "
+labels:
+  - bug
+
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thank you for reporting a problem with Cybernetic Enhancements.
+
+        This mod is in alpha. Gameplay and world/save compatibility may change between releases.
+        Please report game-breaking behavior and save problems as well as ordinary bugs.
+        Use a backup or disposable world when reproducing destructive problems.
+
+  - type: input
+    id: minecraft-version
+    attributes:
+      label: Minecraft Version
+      description: Which Minecraft version are you using?
+      placeholder: "Example: 1.21.1"
+    validations:
+      required: true
+
+  - type: input
+    id: mod-version
+    attributes:
+      label: Cybernetic Enhancements Version
+      description: Which version of Cybernetic Enhancements are you using?
+      placeholder: "Example: 0.1a"
+    validations:
+      required: true
+
+  - type: input
+    id: loader
+    attributes:
+      label: Mod Loader
+      description: Which mod loader and version are you using?
+      placeholder: "Example: NeoForge 21.1.228"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: environment
+    attributes:
+      label: Where does this happen?
+      options:
+        - Singleplayer
+        - Dedicated server
+        - LAN world
+        - Data generation or development build
+    validations:
+      required: true
+
+  - type: dropdown
+    id: system
+    attributes:
+      label: Affected system
+      options:
+        - Cyberware or abilities
+        - Cyberstrain or cyberpsychosis
+        - NPCs or dialogue
+        - Quests or contracts
+        - Relic cache or hacking puzzle
+        - Banking or payments
+        - Stations or recipes
+        - HUD, archive, or rendering
+        - World loading or saved data
+        - Installation or startup
+        - Build or data generation
+        - Other
+    validations:
+      required: true
+
+  - type: textarea
+    id: save-impact
+    attributes:
+      label: World or player-data impact
+      description: For save problems, state the previous mod version, whether this is a fresh world or an upgraded save, and what data was affected. Do not upload a private world publicly.
+      placeholder: "Example: upgraded from an earlier alpha; installed cyberware disappeared after respawning."
+
+  - type: textarea
+    id: description
+    attributes:
+      label: What happened?
+      description: Describe the problem clearly.
+      placeholder: Include affected implant names, NPC type, contract type, or cache tier where relevant.
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected Behavior
+      description: What did you expect to happen instead?
+      placeholder: Explain what you expected.
+    validations:
+      required: true
+
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Steps to Reproduce
+      description: Provide clear steps that can be used to reproduce the issue.
+      placeholder: |
+        1. Launch the game with ...
+        2. Place/use ...
+        3. ...
+        4. The issue occurs.
+    validations:
+      required: true
+
+  - type: textarea
+    id: other-mods
+    attributes:
+      label: Other Installed Mods
+      description: List other mods that may be relevant. If the issue may be compatibility-related, provide the full mod list if possible.
+      placeholder: |
+        Example:
+        - JEI 19.22.0.315
+        - Example Mod 1.2.3
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs / Crash Report
+      description: Attach or paste relevant logs or crash reports. Use a file attachment or code block for long logs.
+      render: shell
+
+  - type: textarea
+    id: additional
+    attributes:
+      label: Additional Information
+      description: Add screenshots, videos, world information, or anything else that may help.
+
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Before Submitting
+      options:
+        - label: I searched existing issues and did not find the same problem.
+          required: true
+        - label: I am using a Cybernetic Enhancements version intended for my Minecraft version.
+          required: true
+        - label: I am using compatible versions of the required dependencies.
+          required: true
+        - label: I provided reproduction steps or explained why reproduction is unsafe or not possible.
+          required: true
