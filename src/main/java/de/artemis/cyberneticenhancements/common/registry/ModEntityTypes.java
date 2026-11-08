@@ -10,7 +10,6 @@ import de.artemis.cyberneticenhancements.common.entity.TechieEntity;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.MobCategory;
-import net.minecraft.world.entity.ai.attributes.AttributeSupplier;
 import net.neoforged.bus.api.IEventBus;
 import net.neoforged.neoforge.event.entity.EntityAttributeCreationEvent;
 import net.neoforged.neoforge.registries.DeferredHolder;

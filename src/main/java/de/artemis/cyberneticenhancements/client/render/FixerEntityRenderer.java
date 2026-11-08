@@ -16,10 +16,15 @@ import java.util.List;
 
 public final class FixerEntityRenderer extends HumanoidMobRenderer<AbstractCityNpcEntity, PlayerModel<AbstractCityNpcEntity>> {
     private static final ResourceLocation FALLBACK_TEXTURE =
-            ResourceLocation.withDefaultNamespace("textures/entity/wandering_trader.png");
+            ResourceLocation.withDefaultNamespace("textures/entity/player/wide/steve.png");
+
+    private final PlayerModel<AbstractCityNpcEntity> wideModel;
+    private final PlayerModel<AbstractCityNpcEntity> slimModel;
 
     public FixerEntityRenderer(EntityRendererProvider.Context context) {
         super(context, new PlayerModel<>(context.bakeLayer(ModelLayers.PLAYER), false), 0.5F);
+        this.wideModel = this.model;
+        this.slimModel = new PlayerModel<>(context.bakeLayer(ModelLayers.PLAYER_SLIM), true);
         this.model.setAllVisible(true);
     }
 
@@ -28,6 +33,7 @@ public final class FixerEntityRenderer extends HumanoidMobRenderer<AbstractCityN
         if (!entity.hasResolvedIdentity()) {
             return;
         }
+        model = NpcSkinModels.isSlim(getTextureLocation(entity)) ? slimModel : wideModel;
         model.setAllVisible(true);
         super.render(entity, entityYaw, partialTick, poseStack, buffer, packedLight);
     }
@@ -36,7 +42,7 @@ public final class FixerEntityRenderer extends HumanoidMobRenderer<AbstractCityN
     public ResourceLocation getTextureLocation(AbstractCityNpcEntity entity) {
         if (!entity.appearanceOverride().isBlank()) {
             ResourceLocation override = ResourceLocation.tryParse(entity.appearanceOverride());
-            if (override != null) {
+            if (override != null && Minecraft.getInstance().getResourceManager().getResource(override).isPresent()) {
                 return override;
             }
         }

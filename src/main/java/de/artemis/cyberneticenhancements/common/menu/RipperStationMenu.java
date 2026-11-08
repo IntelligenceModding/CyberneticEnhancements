@@ -341,6 +341,9 @@ public final class RipperStationMenu extends AbstractBaseMenu implements NamedBl
 
     @Override
     public ItemStack quickMoveStack(Player player, int index) {
+        if (index < 0 || index >= this.slots.size()) {
+            return ItemStack.EMPTY;
+        }
         Slot sourceSlot = this.slots.get(index);
         if (sourceSlot == null || !sourceSlot.hasItem()) {
             return ItemStack.EMPTY;
@@ -621,7 +624,7 @@ public final class RipperStationMenu extends AbstractBaseMenu implements NamedBl
 
     public CyberwareTier getNextSupportedTier(CyberwareSlot slot) {
         CyberwareTier current = getSupportedTier(slot);
-        return current == CyberwareTier.TIER_5 ? CyberwareTier.TIER_5 : CyberwareTier.values()[current.ordinal() + 1];
+        return current.next();
     }
 
     public boolean canUpgradeSupportedTier(CyberwareSlot slot) {
@@ -675,7 +678,7 @@ public final class RipperStationMenu extends AbstractBaseMenu implements NamedBl
 
     public CyberwareTier getNextChipSupportedTier(int handlerIndex, int slot) {
         CyberwareTier current = getChipSupportedTier(handlerIndex, slot);
-        return current == CyberwareTier.TIER_5 ? CyberwareTier.TIER_5 : CyberwareTier.values()[current.ordinal() + 1];
+        return current.next();
     }
 
     public boolean canUpgradeChipSupportedTier(int handlerIndex, int slot) {
@@ -711,7 +714,7 @@ public final class RipperStationMenu extends AbstractBaseMenu implements NamedBl
 
     public CyberwareTier getNextArmModuleSupportedTier(int slot) {
         CyberwareTier current = getArmModuleSupportedTier(slot);
-        return current == CyberwareTier.TIER_5 ? CyberwareTier.TIER_5 : CyberwareTier.values()[current.ordinal() + 1];
+        return current.next();
     }
 
     public boolean canUpgradeArmModuleSupportedTier(int slot) {
@@ -747,7 +750,7 @@ public final class RipperStationMenu extends AbstractBaseMenu implements NamedBl
 
     public CyberwareTier getNextLegModuleSupportedTier(int slot) {
         CyberwareTier current = getLegModuleSupportedTier(slot);
-        return current == CyberwareTier.TIER_5 ? CyberwareTier.TIER_5 : CyberwareTier.values()[current.ordinal() + 1];
+        return current.next();
     }
 
     public boolean canUpgradeLegModuleSupportedTier(int slot) {

@@ -70,6 +70,10 @@ public final class ModModelProvider implements DataProvider {
         futures.add(saveSimpleBlockstate(output, "recycler_station"));
         futures.add(saveBlockItemDefinition(output, "recycler_station"));
 
+        for (String npcType : List.of("fixer", "ripperdoc", "techie", "netrunner", "merc")) {
+            futures.add(saveAliasedItemModel(output, npcType + "_spawn_egg", "minecraft:item/template_spawn_egg"));
+        }
+
         Map<String, String> materials = Map.ofEntries(
                 Map.entry("copper_wiring", "minecraft:item/copper_ingot"),
                 Map.entry("conductive_paste", "minecraft:item/redstone"),
@@ -88,12 +92,6 @@ public final class ModModelProvider implements DataProvider {
         for (Map.Entry<String, String> material : materials.entrySet()) {
             futures.add(saveAliasedItemModel(output, material.getKey(), material.getValue()));
         }
-        futures.add(saveAliasedFlatItemModel(
-                output,
-                "whos_ready_for_tomorrow_music_disc",
-                "minecraft:item/music_disc_pigstep",
-                "minecraft:item/template_music_disc"
-        ));
 
         for (CyberConsumableDefinition definition : CyberConsumableCatalog.definitions()) {
             futures.add(saveAliasedItemModel(
@@ -147,12 +145,6 @@ public final class ModModelProvider implements DataProvider {
         return DataProvider.saveStable(output, json, blockModelPathProvider.json(id(modelName)));
     }
 
-    private CompletableFuture<?> saveAliasedBlockModel(CachedOutput output, String modelName, String parent) {
-        JsonObject json = new JsonObject();
-        json.addProperty("parent", parent);
-        return DataProvider.saveStable(output, json, blockModelPathProvider.json(id(modelName)));
-    }
-
     private CompletableFuture<?> saveRelicCacheModel(CachedOutput output, String modelName, String frameTexture, String panelTexture, String accentTexture, String trimTexture) {
         JsonObject json = new JsonObject();
         json.addProperty("parent", "minecraft:block/block");
@@ -165,19 +157,11 @@ public final class ModModelProvider implements DataProvider {
         json.add("textures", textures);
 
         JsonArray elements = new JsonArray();
-        elements.add(element(0, 0, 0, 16, 2, 16, "#frame"));
-        elements.add(element(0, 14, 0, 16, 16, 16, "#frame"));
-        elements.add(element(0, 2, 0, 2, 14, 2, "#trim"));
-        elements.add(element(14, 2, 0, 16, 14, 2, "#trim"));
-        elements.add(element(0, 2, 14, 2, 14, 16, "#trim"));
-        elements.add(element(14, 2, 14, 16, 14, 16, "#trim"));
-        elements.add(element(3, 2, 3, 13, 14, 13, "#panel"));
-        elements.add(element(4, 2, 4, 12, 3, 12, "#accent"));
-        elements.add(element(4, 13, 4, 12, 14, 12, "#accent"));
-        elements.add(element(7, 3, 0, 9, 13, 1, "#accent"));
-        elements.add(element(7, 3, 15, 9, 13, 16, "#accent"));
-        elements.add(element(0, 3, 7, 1, 13, 9, "#accent"));
-        elements.add(element(15, 3, 7, 16, 13, 9, "#accent"));
+        elements.add(element(1, 1, 1, 15, 15, 15, "#frame"));
+        elements.add(element(1, 0, 1, 15, 1, 15, "#trim"));
+        elements.add(element(1, 15, 1, 15, 16, 15, "#trim"));
+        elements.add(element(4, 5, 0.5F, 12, 11, 1, "#panel"));
+        elements.add(element(7, 7, 0, 9, 9, 0.5F, "#accent"));
         json.add("elements", elements);
 
         return DataProvider.saveStable(output, json, blockModelPathProvider.json(id(modelName)));
@@ -212,18 +196,7 @@ public final class ModModelProvider implements DataProvider {
 
     private CompletableFuture<?> saveAliasedItemModel(CachedOutput output, String itemName, String parent) {
         JsonObject json = new JsonObject();
-        json.addProperty("parent", parent);
-        return DataProvider.saveStable(output, json, itemModelPathProvider.json(id(itemName)));
-    }
-
-    private CompletableFuture<?> saveAliasedFlatItemModel(CachedOutput output, String itemName, String texturePath, String parent) {
-        JsonObject json = new JsonObject();
-        json.addProperty("parent", parent);
-
-        JsonObject textures = new JsonObject();
-        textures.addProperty("layer0", texturePath);
-        json.add("textures", textures);
-
+        json.addProperty("parent", visibleItemModelParent(parent));
         return DataProvider.saveStable(output, json, itemModelPathProvider.json(id(itemName)));
     }
 
@@ -248,9 +221,14 @@ public final class ModModelProvider implements DataProvider {
         return current;
     }
 
-    private static String texturePath(net.minecraft.world.item.Item item) {
-        ResourceLocation key = BuiltInRegistries.ITEM.getKey(item);
-        return key.getNamespace() + ":item/" + key.getPath();
+    static String visibleItemModelParent(String parent) {
+
+        return switch (parent) {
+            case "minecraft:item/shield" -> "minecraft:item/iron_chestplate";
+            case "minecraft:item/chest", "minecraft:item/ender_chest" -> "minecraft:item/barrel";
+            case "minecraft:item/player_head" -> "minecraft:item/carved_pumpkin";
+            default -> parent;
+        };
     }
 
     private static String modelPath(net.minecraft.world.item.Item item) {

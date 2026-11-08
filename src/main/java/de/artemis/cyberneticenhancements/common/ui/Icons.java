@@ -6,19 +6,6 @@ import net.minecraft.network.chat.MutableComponent;
 import net.minecraft.network.chat.Style;
 import net.minecraft.resources.ResourceLocation;
 
-/**
- * Shared icon text system backed by the custom bitmap font at {@code cyberneticenhancements:icons}.
- *
- * <p>Each enum entry maps one private-use Unicode glyph to an ASCII fallback token. The glyphs are
- * rendered through the mod font resource, so they stay stable across client fonts and resource packs.
- *
- * <p>To add a new icon later:
- * <ol>
- *     <li>Add the pixel art to {@code assets/cyberneticenhancements/textures/font/icons.png}.</li>
- *     <li>Append the matching private-use character in {@code assets/cyberneticenhancements/font/icons.json}.</li>
- *     <li>Add the enum constant here with its codepoint and ASCII fallback.</li>
- * </ol>
- */
 public enum Icons {
     SHOP('\uE000', "[SHOP]"),
     DIALOGUE('\uE001', "[TALK]"),

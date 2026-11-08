@@ -33,7 +33,7 @@ public abstract class UpgradeableStationBlockEntity extends BlockEntity {
 
     public CyberwareTier getNextSupportedTier(int slotIndex) {
         CyberwareTier current = getSupportedTier(slotIndex);
-        return current == CyberwareTier.TIER_5 ? CyberwareTier.TIER_5 : CyberwareTier.values()[current.ordinal() + 1];
+        return current.next();
     }
 
     public boolean canUpgradeSupportedTier(int slotIndex) {

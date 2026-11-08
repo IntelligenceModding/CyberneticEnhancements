@@ -312,8 +312,8 @@ public final class RelicCacheHackPuzzle {
                 0, 1, 0, 2, 0,
                 2, 2, 0, 2, 0,
                 2, 3, 4, 2, 0,
-                0, 0, 2, 5, 2,
-                2, 0, 2, 6, 0
+                0, 0, 5, 6, 2,
+                2, 0, 2, 2, 0
         };
         System.arraycopy(fallbackGrid, 0, gridTokens, 0, fallbackGrid.length);
         targetLengths[0] = 3;
@@ -326,6 +326,19 @@ public final class RelicCacheHackPuzzle {
         targetTokens[7] = 6;
 
         return new RelicCacheHackPuzzle(2, 5, 60 * 20, 2, gridTokens, targetLengths, targetTokens);
+    }
+
+    public static boolean repairLegacyFallback(int size, int[] grid, int[] lengths, int[] targets) {
+        int[] legacy = {0, 1, 0, 2, 0, 2, 2, 0, 2, 0, 2, 3, 4, 2, 0, 0, 0, 2, 5, 2, 2, 0, 2, 6, 0};
+        if (size != 5 || grid.length < legacy.length || lengths.length < 2 || targets.length < 8
+                || lengths[0] != 3 || lengths[1] != 3
+                || targets[0] != 1 || targets[1] != 3 || targets[2] != 4
+                || targets[5] != 4 || targets[6] != 5 || targets[7] != 6) return false;
+        for (int i = 0; i < legacy.length; i++) if (grid[i] != legacy[i]) return false;
+        grid[17] = 5;
+        grid[18] = 6;
+        grid[23] = 2;
+        return true;
     }
 
     public int difficulty() {

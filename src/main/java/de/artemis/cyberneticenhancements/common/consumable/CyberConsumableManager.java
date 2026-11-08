@@ -1,5 +1,8 @@
 package de.artemis.cyberneticenhancements.common.consumable;
 
+import static de.artemis.cyberneticenhancements.common.util.PersistentDataHelper.copyInt;
+import static de.artemis.cyberneticenhancements.common.util.PersistentDataHelper.copyLong;
+
 import de.artemis.cyberneticenhancements.common.item.CyberConsumableItem;
 import de.artemis.cyberneticenhancements.common.registry.ModItems;
 import net.minecraft.ChatFormatting;
@@ -155,22 +158,6 @@ public final class CyberConsumableManager {
         if (persistentData.contains(OVERDOSE_DECAY_UNTIL_KEY) && persistentData.getLong(OVERDOSE_DECAY_UNTIL_KEY) <= gameTime) {
             persistentData.remove(OVERDOSE_POINTS_KEY);
             persistentData.remove(OVERDOSE_DECAY_UNTIL_KEY);
-        }
-    }
-
-    private static void copyInt(CompoundTag fromData, CompoundTag toData, String key) {
-        if (fromData.contains(key)) {
-            toData.putInt(key, fromData.getInt(key));
-        } else {
-            toData.remove(key);
-        }
-    }
-
-    private static void copyLong(CompoundTag fromData, CompoundTag toData, String key) {
-        if (fromData.contains(key)) {
-            toData.putLong(key, fromData.getLong(key));
-        } else {
-            toData.remove(key);
         }
     }
 

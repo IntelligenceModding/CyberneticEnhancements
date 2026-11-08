@@ -117,3 +117,7 @@ server/
 
 **/src/generated/**/.cache/
 repo/
+
+/tmp/
+/.tmp*/
+/logs/

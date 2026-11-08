@@ -56,6 +56,7 @@ public final class QuestContract {
     private final int targetIndex;
     private final int targetCount;
     private int progress;
+    private int huntSpawnedCount;
     private boolean destinationReached;
     private String dimensionId;
     private @Nullable BlockPos targetPos;
@@ -263,6 +264,14 @@ public final class QuestContract {
         return BuiltInRegistries.ENTITY_TYPE.get(id);
     }
 
+    public int huntSpawnedCount() {
+        return huntSpawnedCount;
+    }
+
+    public void recordHuntSpawn() {
+        huntSpawnedCount++;
+    }
+
     public CompoundTag toTag() {
         CompoundTag tag = new CompoundTag();
         tag.putString(ID_TAG, id);
@@ -275,6 +284,7 @@ public final class QuestContract {
         tag.putInt(TARGET_INDEX_TAG, targetIndex);
         tag.putInt(TARGET_COUNT_TAG, targetCount);
         tag.putInt(PROGRESS_TAG, progress);
+        tag.putInt("HuntSpawnedCount", huntSpawnedCount);
         tag.putBoolean(DESTINATION_REACHED_TAG, destinationReached);
         tag.putString(DIMENSION_ID_TAG, dimensionId);
         if (targetPos != null) {
@@ -300,7 +310,7 @@ public final class QuestContract {
         if (issuerType.isBlank()) {
             issuerType = "fixer";
         }
-        return new QuestContract(
+        QuestContract contract = new QuestContract(
                 tag.getString(ID_TAG),
                 readIssuerUuid(tag),
                 readIssuerName(tag),
@@ -322,6 +332,8 @@ public final class QuestContract {
                 tag.getLong(GENERATED_DAY_TAG),
                 tag.getLong(RESOLVED_DAY_TAG)
         );
+        contract.huntSpawnedCount = Math.max(0, tag.getInt("HuntSpawnedCount"));
+        return contract;
     }
 
     public static Component typeLabel(QuestType type) {
@@ -336,6 +348,9 @@ public final class QuestContract {
     }
 
     public Component title() {
+        if (!issuerType.isBlank()) {
+            return Component.translatable("quest.cyberneticenhancements.title." + issuerType + "." + type.id());
+        }
         return titleForType(type);
     }
 

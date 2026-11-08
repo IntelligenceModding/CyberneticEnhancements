@@ -2,10 +2,7 @@ package de.artemis.cyberneticenhancements.common.cyberware;
 
 import de.artemis.cyberneticenhancements.common.consumable.CyberConsumableDefinition;
 import de.artemis.cyberneticenhancements.common.cyberware.CyberwareModuleDefinition;
-import de.artemis.cyberneticenhancements.common.item.ChipwareItem;
-import de.artemis.cyberneticenhancements.common.item.CyberConsumableItem;
 import de.artemis.cyberneticenhancements.common.item.CyberwareItem;
-import de.artemis.cyberneticenhancements.common.item.CyberwareModuleItem;
 import de.artemis.cyberneticenhancements.common.registry.ModItems;
 import de.artemis.cyberneticenhancements.common.registry.ModRecipeTypes;
 import net.minecraft.world.item.ItemStack;

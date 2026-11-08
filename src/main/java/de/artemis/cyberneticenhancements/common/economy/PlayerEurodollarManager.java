@@ -1,5 +1,6 @@
 package de.artemis.cyberneticenhancements.common.economy;
 
+import de.artemis.cyberneticenhancements.common.util.BalanceMath;
 import net.minecraft.Util;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
@@ -27,7 +28,6 @@ public final class PlayerEurodollarManager {
     private static final String LEDGER_KEY = "cyberneticenhancements.eurodollar_ledger";
     private static final String REQUESTS_KEY = "cyberneticenhancements.eurodollar_requests";
     private static final String SEQUENCE_KEY = "cyberneticenhancements.eurodollar_sequence";
-    private static final int MAX_BALANCE = 999_999_999;
     private static final int MAX_LEDGER_ENTRIES = 120;
     private static final int MAX_PENDING_REQUESTS = 24;
 
@@ -75,7 +75,7 @@ public final class PlayerEurodollarManager {
             return balance(player);
         }
         int previous = balance(player);
-        int updated = clampBalance(previous + amount);
+        int updated = BalanceMath.adjust(previous, amount);
         setStoredBalance(player.getPersistentData(), updated);
         int delta = updated - previous;
         if (delta != 0) {
@@ -127,7 +127,7 @@ public final class PlayerEurodollarManager {
         if (delta > 0) {
             return add(player, delta, typeId, note, counterpartyId, counterpartyName);
         }
-        return remove(player, -delta, typeId, note, counterpartyId, counterpartyName);
+        return remove(player, (int) Math.min(-(long) delta, Integer.MAX_VALUE), typeId, note, counterpartyId, counterpartyName);
     }
 
     public static boolean canAfford(Player player, int amount) {
@@ -162,6 +162,9 @@ public final class PlayerEurodollarManager {
         }
         if (from.getUUID().equals(to.getUUID())) {
             return TransferResult.SELF_TARGET;
+        }
+        if (!BalanceMath.canReceive(balance(to), amount)) {
+            return TransferResult.INVALID_AMOUNT;
         }
         if (!tryWithdraw(from, amount, "player_sent", "Sent funds", to.getUUID(), to.getGameProfile().getName())) {
             return TransferResult.INSUFFICIENT_FUNDS;
@@ -198,13 +201,14 @@ public final class PlayerEurodollarManager {
             appendTransaction(onlineTarget, "request_received", 0, "Incoming payment request", from.getUUID(), from.getGameProfile().getName());
             return TransferResult.OK;
         }
-        if (!offlinePlayerDataExists(from.server, toPlayerId)) {
+        if (!updateOfflinePlayerData(from.server, toPlayerId, data -> {
+            appendRequest(data, request);
+            appendTransaction(data, currentDay(from), "request_received", 0, "Incoming payment request", from.getUUID(), from.getGameProfile().getName());
+        })) {
             return TransferResult.TARGET_NOT_FOUND;
         }
         appendRequest(from, request);
         appendTransaction(from, "request_sent", 0, "Requested funds", toPlayerId, toPlayerName);
-        appendRequestOffline(from.server, toPlayerId, request);
-        appendTransactionOffline(from.server, toPlayerId, "request_received", 0, "Incoming payment request", from.getUUID(), from.getGameProfile().getName());
         return TransferResult.OK;
     }
 
@@ -216,46 +220,37 @@ public final class PlayerEurodollarManager {
         if (!request.toPlayerId().equals(approver.getUUID())) {
             return TransferResult.REQUEST_NOT_INCOMING;
         }
-        ServerPlayer requester = approver.server.getPlayerList().getPlayer(request.fromPlayerId());
-        if (requester == null && !offlinePlayerDataExists(approver.server, request.fromPlayerId())) {
-            return TransferResult.TARGET_NOT_FOUND;
+        if (request.amount() <= 0 || request.fromPlayerId().equals(approver.getUUID())) {
+            return TransferResult.INVALID_AMOUNT;
         }
-        if (!tryWithdraw(
-                approver,
-                request.amount(),
-                "request_paid",
-                "Paid requested funds",
-                request.fromPlayerId(),
-                request.fromPlayerName()
-        )) {
+        if (!canAfford(approver, request.amount())) {
             return TransferResult.INSUFFICIENT_FUNDS;
         }
+        ServerPlayer requester = approver.server.getPlayerList().getPlayer(request.fromPlayerId());
         if (requester != null) {
-            add(
-                    requester,
-                    request.amount(),
-                    "request_received_paid",
-                    "Request payment received",
-                    approver.getUUID(),
-                    approver.getGameProfile().getName()
-            );
-        } else if (!changeOfflineBalance(
-                approver.server,
-                request.fromPlayerId(),
-                request.amount(),
-                "request_received_paid",
-                "Request payment received",
-                approver.getUUID(),
-                approver.getGameProfile().getName()
-        )) {
-            return TransferResult.TARGET_NOT_FOUND;
-        }
-        removeRequest(approver, requestId);
-        if (requester != null) {
+            if (!BalanceMath.canReceive(balance(requester), request.amount())) {
+                return TransferResult.INVALID_AMOUNT;
+            }
+            add(requester, request.amount(), "request_received_paid", "Request payment received", approver.getUUID(), approver.getGameProfile().getName());
             removeRequest(requester, requestId);
         } else {
-            removeRequestOffline(approver.server, request.fromPlayerId(), requestId);
+            OfflinePlayerData data = loadOfflinePlayerData(approver.server, request.fromPlayerId());
+            if (data == null) {
+                return TransferResult.TARGET_NOT_FOUND;
+            }
+            if (!BalanceMath.canReceive(balance(data.persistentData()), request.amount())) {
+                return TransferResult.INVALID_AMOUNT;
+            }
+            setStoredBalance(data.persistentData(), BalanceMath.adjust(balance(data.persistentData()), request.amount()));
+            appendTransaction(data.persistentData(), currentDay(approver), "request_received_paid", request.amount(), "Request payment received", approver.getUUID(), approver.getGameProfile().getName());
+            removeRequest(data.persistentData(), requestId);
+            if (!saveOfflinePlayerData(data)) {
+                return TransferResult.TARGET_NOT_FOUND;
+            }
         }
+
+        remove(approver, request.amount(), "request_paid", "Paid requested funds", request.fromPlayerId(), request.fromPlayerName());
+        removeRequest(approver, requestId);
         return TransferResult.OK;
     }
 
@@ -270,14 +265,17 @@ public final class PlayerEurodollarManager {
             return TransferResult.REQUEST_NOT_FOUND;
         }
         ServerPlayer counterpart = actor.server.getPlayerList().getPlayer(incoming ? request.fromPlayerId() : request.toPlayerId());
-        removeRequest(actor, requestId);
         if (counterpart != null) {
             removeRequest(counterpart, requestId);
             appendTransaction(counterpart, "request_declined", 0, "Payment request closed", actor.getUUID(), actor.getGameProfile().getName());
-        } else {
-            removeRequestOffline(actor.server, incoming ? request.fromPlayerId() : request.toPlayerId(), requestId);
-            appendTransactionOffline(actor.server, incoming ? request.fromPlayerId() : request.toPlayerId(), "request_declined", 0, "Payment request closed", actor.getUUID(), actor.getGameProfile().getName());
+        } else if (offlinePlayerDataExists(actor.server, incoming ? request.fromPlayerId() : request.toPlayerId())
+                && !updateOfflinePlayerData(actor.server, incoming ? request.fromPlayerId() : request.toPlayerId(), data -> {
+            removeRequest(data, requestId);
+            appendTransaction(data, currentDay(actor), "request_declined", 0, "Payment request closed", actor.getUUID(), actor.getGameProfile().getName());
+        })) {
+            return TransferResult.TARGET_NOT_FOUND;
         }
+        removeRequest(actor, requestId);
         appendTransaction(actor, "request_declined", 0, "Payment request closed", counterpart == null ? null : counterpart.getUUID(), counterpart == null ? (incoming ? request.fromPlayerName() : request.toPlayerName()) : counterpart.getGameProfile().getName());
         return TransferResult.OK;
     }
@@ -295,35 +293,39 @@ public final class PlayerEurodollarManager {
     }
 
     public static int totalIncome(Player player) {
-        int total = 0;
+        long total = 0;
         for (TransactionEntry entry : ledger(player)) {
             if (entry.amount() > 0) {
                 total += entry.amount();
             }
         }
-        return total;
+        return (int) Math.min(Integer.MAX_VALUE, total);
     }
 
     public static int totalExpense(Player player) {
-        int total = 0;
+        long total = 0;
         for (TransactionEntry entry : ledger(player)) {
             if (entry.amount() < 0) {
-                total += -entry.amount();
+                total -= (long) entry.amount();
             }
         }
-        return total;
+        return (int) Math.min(Integer.MAX_VALUE, total);
     }
 
     public static int[] graphNet(Player player, int buckets) {
-        int[] values = new int[Math.max(1, buckets)];
+        long[] totals = new long[Math.max(1, buckets)];
         long currentDay = currentDay(player);
         for (TransactionEntry entry : ledger(player)) {
             long delta = currentDay - entry.day();
-            if (delta < 0 || delta >= values.length) {
+            if (delta < 0 || delta >= totals.length) {
                 continue;
             }
-            int index = values.length - 1 - (int) delta;
-            values[index] += entry.amount();
+            int index = totals.length - 1 - (int) delta;
+            totals[index] += entry.amount();
+        }
+        int[] values = new int[totals.length];
+        for (int i = 0; i < totals.length; i++) {
+            values[i] = (int) Math.max(Integer.MIN_VALUE, Math.min(Integer.MAX_VALUE, totals[i]));
         }
         return values;
     }
@@ -361,10 +363,15 @@ public final class PlayerEurodollarManager {
             @Nullable UUID counterpartyId,
             @Nullable String counterpartyName
     ) {
-        List<TransactionEntry> entries = readLedger(player.getPersistentData());
+        appendTransaction(player.getPersistentData(), currentDay(player), typeId, amount, note, counterpartyId, counterpartyName);
+    }
+
+    private static void appendTransaction(CompoundTag persistentData, long day, String typeId, int amount, String note,
+                                          @Nullable UUID counterpartyId, @Nullable String counterpartyName) {
+        List<TransactionEntry> entries = readLedger(persistentData);
         entries.add(0, new TransactionEntry(
-                nextSequence(player.getPersistentData()),
-                currentDay(player),
+                nextSequence(persistentData),
+                day,
                 sanitizeType(typeId),
                 amount,
                 counterpartyId == null ? "" : counterpartyId.toString(),
@@ -374,23 +381,31 @@ public final class PlayerEurodollarManager {
         if (entries.size() > MAX_LEDGER_ENTRIES) {
             entries = new ArrayList<>(entries.subList(0, MAX_LEDGER_ENTRIES));
         }
-        writeLedger(player.getPersistentData(), entries);
+        writeLedger(persistentData, entries);
     }
 
     private static void appendRequest(Player player, PaymentRequest request) {
-        List<PaymentRequest> requests = readRequests(player.getPersistentData());
+        appendRequest(player.getPersistentData(), request);
+    }
+
+    private static void appendRequest(CompoundTag persistentData, PaymentRequest request) {
+        List<PaymentRequest> requests = readRequests(persistentData);
         requests.removeIf(existing -> existing.requestId().equals(request.requestId()));
         requests.add(0, request);
         if (requests.size() > MAX_PENDING_REQUESTS) {
             requests = new ArrayList<>(requests.subList(0, MAX_PENDING_REQUESTS));
         }
-        writeRequests(player.getPersistentData(), requests);
+        writeRequests(persistentData, requests);
     }
 
     private static void removeRequest(Player player, UUID requestId) {
-        List<PaymentRequest> requests = readRequests(player.getPersistentData());
+        removeRequest(player.getPersistentData(), requestId);
+    }
+
+    private static void removeRequest(CompoundTag persistentData, UUID requestId) {
+        List<PaymentRequest> requests = readRequests(persistentData);
         if (requests.removeIf(request -> request.requestId().equals(requestId))) {
-            writeRequests(player.getPersistentData(), requests);
+            writeRequests(persistentData, requests);
         }
     }
 
@@ -427,7 +442,14 @@ public final class PlayerEurodollarManager {
         ListTag listTag = persistentData.getList(REQUESTS_KEY, Tag.TAG_COMPOUND);
         for (Tag tag : listTag) {
             if (tag instanceof CompoundTag compoundTag) {
-                requests.add(PaymentRequest.fromTag(compoundTag));
+                try {
+                    PaymentRequest request = PaymentRequest.fromTag(compoundTag);
+                    if (request.amount() > 0 && !request.fromPlayerId().equals(request.toPlayerId())) {
+                        requests.add(request);
+                    }
+                } catch (IllegalArgumentException ignored) {
+
+                }
             }
         }
         return requests;
@@ -448,7 +470,7 @@ public final class PlayerEurodollarManager {
     }
 
     private static long currentDay(Player player) {
-        return player.level().getDayTime() / 24000L;
+        return (player.getServer() == null ? player.level().getDayTime() : player.getServer().overworld().getDayTime()) / 24000L;
     }
 
     private static String sanitizeType(String raw) {
@@ -458,87 +480,7 @@ public final class PlayerEurodollarManager {
     }
 
     private static int clampBalance(int amount) {
-        return Math.max(0, Math.min(MAX_BALANCE, amount));
-    }
-
-    private static boolean appendRequestOffline(MinecraftServer server, UUID playerId, PaymentRequest request) {
-        return updateOfflinePlayerData(server, playerId, persistentData -> {
-            List<PaymentRequest> requests = readRequests(persistentData);
-            requests.removeIf(existing -> existing.requestId().equals(request.requestId()));
-            requests.add(0, request);
-            if (requests.size() > MAX_PENDING_REQUESTS) {
-                requests = new ArrayList<>(requests.subList(0, MAX_PENDING_REQUESTS));
-            }
-            writeRequests(persistentData, requests);
-        });
-    }
-
-    private static boolean removeRequestOffline(MinecraftServer server, UUID playerId, UUID requestId) {
-        return updateOfflinePlayerData(server, playerId, persistentData -> {
-            List<PaymentRequest> requests = readRequests(persistentData);
-            if (requests.removeIf(request -> request.requestId().equals(requestId))) {
-                writeRequests(persistentData, requests);
-            }
-        });
-    }
-
-    private static boolean appendTransactionOffline(
-            MinecraftServer server,
-            UUID playerId,
-            String typeId,
-            int amount,
-            String note,
-            @Nullable UUID counterpartyId,
-            @Nullable String counterpartyName
-    ) {
-        return updateOfflinePlayerData(server, playerId, persistentData -> {
-            List<TransactionEntry> entries = readLedger(persistentData);
-            entries.add(0, new TransactionEntry(
-                    nextSequence(persistentData),
-                    server.overworld().getDayTime() / 24000L,
-                    sanitizeType(typeId),
-                    amount,
-                    counterpartyId == null ? "" : counterpartyId.toString(),
-                    counterpartyName == null ? "" : counterpartyName,
-                    note == null ? "" : note
-            ));
-            if (entries.size() > MAX_LEDGER_ENTRIES) {
-                entries = new ArrayList<>(entries.subList(0, MAX_LEDGER_ENTRIES));
-            }
-            writeLedger(persistentData, entries);
-        });
-    }
-
-    private static boolean changeOfflineBalance(
-            MinecraftServer server,
-            UUID playerId,
-            int delta,
-            String typeId,
-            String note,
-            @Nullable UUID counterpartyId,
-            @Nullable String counterpartyName
-    ) {
-        return updateOfflinePlayerData(server, playerId, persistentData -> {
-            int updated = clampBalance(balance(persistentData) + delta);
-            int actualDelta = updated - balance(persistentData);
-            setStoredBalance(persistentData, updated);
-            if (actualDelta != 0) {
-                List<TransactionEntry> entries = readLedger(persistentData);
-                entries.add(0, new TransactionEntry(
-                        nextSequence(persistentData),
-                        server.overworld().getDayTime() / 24000L,
-                        sanitizeType(typeId),
-                        actualDelta,
-                        counterpartyId == null ? "" : counterpartyId.toString(),
-                        counterpartyName == null ? "" : counterpartyName,
-                        note == null ? "" : note
-                ));
-                if (entries.size() > MAX_LEDGER_ENTRIES) {
-                    entries = new ArrayList<>(entries.subList(0, MAX_LEDGER_ENTRIES));
-                }
-                writeLedger(persistentData, entries);
-            }
-        });
+        return BalanceMath.clamp(amount);
     }
 
     private static boolean updateOfflinePlayerData(MinecraftServer server, UUID playerId, java.util.function.Consumer<CompoundTag> mutator) {
@@ -580,8 +522,7 @@ public final class PlayerEurodollarManager {
             Path tempFile = tempBackingFile.toPath();
             NbtIo.writeCompressed(data.rootTag(), tempFile);
             Path backupFile = data.file().resolveSibling(data.file().getFileName().toString() + "_old");
-            Util.safeReplaceFile(data.file(), tempFile, backupFile);
-            return true;
+            return Util.safeReplaceOrMoveFile(data.file(), tempFile, backupFile, false);
         } catch (IOException ignored) {
             return false;
         }

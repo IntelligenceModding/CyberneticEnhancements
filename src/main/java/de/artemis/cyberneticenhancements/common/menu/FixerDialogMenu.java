@@ -15,6 +15,8 @@ import de.artemis.cyberneticenhancements.common.registry.ModMenuTypes;
 import net.minecraft.network.RegistryFriendlyByteBuf;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.effect.MobEffectInstance;
+import net.minecraft.world.effect.MobEffects;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.inventory.DataSlot;
@@ -102,7 +104,6 @@ public final class FixerDialogMenu extends AbstractBaseMenu {
     private static final int BASE_PRICE_PURGE = 12;
     private static final int BASE_PRICE_MAXDOC = 3;
     private static final int BASE_PRICE_RAM_JOLT = 4;
-    private static final int BASE_PRICE_CHROME_SUPPRESSANT = 5;
     private static final int BASE_PRICE_IMMUNOBLOCKERS = 8;
 
     private final Player player;
@@ -240,70 +241,74 @@ public final class FixerDialogMenu extends AbstractBaseMenu {
                 responseId = RESPONSE_CACHE_INTEL;
             }
             case OPTION_STABILIZE -> {
-                if (!chargeFunds(serverPlayer, priceForServerOption(OPTION_STABILIZE), "Paid for stabilization")) {
+                if ((optionMask() & (1 << OPTION_STABILIZE)) == 0) {
+                    responseId = RESPONSE_BUSY_STATE;
+                } else if (!chargeFunds(serverPlayer, priceForServerOption(OPTION_STABILIZE), primaryServiceLedgerNote())) {
                     responseId = npc.isRefusing(serverPlayer) ? RESPONSE_COOL_OFF : RESPONSE_NEED_FUNDS;
                 } else {
-                    CyberstrainManager.applySuppressionDose(serverPlayer, 18, 90L * 20L, false);
-                    npc.raiseTrust(serverPlayer, 1);
+                    applyPrimaryService(serverPlayer);
+                    npc.raiseTrust(serverPlayer, trustGainForOption(OPTION_STABILIZE));
                     npc.recordPaidTransaction(serverPlayer);
                     responseId = RESPONSE_STABILIZE_OK;
                 }
             }
             case OPTION_PURGE -> {
-                if (npc.trustLevel(serverPlayer) < 2) {
+                if (!isServiceUnlocked(OPTION_PURGE)) {
                     responseId = RESPONSE_PURGE_LOCKED;
-                } else if (!purgeReady()) {
+                } else if (usesDailyServiceCooldown(OPTION_PURGE) && !purgeReady()) {
                     responseId = RESPONSE_PURGE_COOLDOWN;
-                } else if (!chargeFunds(serverPlayer, priceForServerOption(OPTION_PURGE), "Paid for full purge")) {
+                } else if (!chargeFunds(serverPlayer, priceForServerOption(OPTION_PURGE), secondaryServiceLedgerNote())) {
                     responseId = npc.isRefusing(serverPlayer) ? RESPONSE_COOL_OFF : RESPONSE_NEED_FUNDS;
                 } else {
-                    CyberstrainManager.purgeNegativeStatuses(serverPlayer, true);
-                    npc.setLastPurgeDay(serverPlayer, currentDay());
-                    npc.raiseTrust(serverPlayer, 2);
+                    applySecondaryService(serverPlayer);
+                    if (usesDailyServiceCooldown(OPTION_PURGE)) {
+                        npc.setLastPurgeDay(serverPlayer, currentDay());
+                    }
+                    npc.raiseTrust(serverPlayer, trustGainForOption(OPTION_PURGE));
                     npc.recordPaidTransaction(serverPlayer);
                     responseId = RESPONSE_PURGE_OK;
                 }
             }
             case OPTION_BUY_MAXDOC_MK2 -> {
-                if (!chargeFunds(serverPlayer, priceForServerOption(OPTION_BUY_MAXDOC_MK2), "Purchased stock")) {
+                if (!chargeFunds(serverPlayer, priceForServerOption(OPTION_BUY_MAXDOC_MK2), stockLedgerNote(0))) {
                     responseId = npc.isRefusing(serverPlayer) ? RESPONSE_COOL_OFF : RESPONSE_NEED_FUNDS;
                 } else {
                     grantShopItem(serverPlayer, optionId);
-                    npc.raiseTrust(serverPlayer, 1);
+                    npc.raiseTrust(serverPlayer, trustGainForOption(optionId));
                     npc.recordPaidTransaction(serverPlayer);
                     responseId = RESPONSE_MAXDOC_OK;
                 }
             }
             case OPTION_BUY_RAM_JOLT -> {
-                if (!chargeFunds(serverPlayer, priceForServerOption(OPTION_BUY_RAM_JOLT), "Purchased stock")) {
+                if (!chargeFunds(serverPlayer, priceForServerOption(OPTION_BUY_RAM_JOLT), stockLedgerNote(1))) {
                     responseId = npc.isRefusing(serverPlayer) ? RESPONSE_COOL_OFF : RESPONSE_NEED_FUNDS;
                 } else {
                     grantShopItem(serverPlayer, optionId);
-                    npc.raiseTrust(serverPlayer, 1);
+                    npc.raiseTrust(serverPlayer, trustGainForOption(optionId));
                     npc.recordPaidTransaction(serverPlayer);
                     responseId = RESPONSE_RAM_JOLT_OK;
                 }
             }
             case OPTION_BUY_CHROME_SUPPRESSANT -> {
-                if (npc.trustLevel(serverPlayer) < 1) {
-                    responseId = RESPONSE_INTRO;
-                } else if (!chargeFunds(serverPlayer, priceForServerOption(OPTION_BUY_CHROME_SUPPRESSANT), "Purchased stock")) {
+                if ((optionMask() & (1 << OPTION_BUY_CHROME_SUPPRESSANT)) == 0) {
+                    responseId = RESPONSE_IMMUNOBLOCKERS_LOCKED;
+                } else if (!chargeFunds(serverPlayer, priceForServerOption(OPTION_BUY_CHROME_SUPPRESSANT), stockLedgerNote(2))) {
                     responseId = npc.isRefusing(serverPlayer) ? RESPONSE_COOL_OFF : RESPONSE_NEED_FUNDS;
                 } else {
                     grantShopItem(serverPlayer, optionId);
-                    npc.raiseTrust(serverPlayer, 1);
+                    npc.raiseTrust(serverPlayer, trustGainForOption(optionId));
                     npc.recordPaidTransaction(serverPlayer);
                     responseId = RESPONSE_CHROME_SUPPRESSANT_OK;
                 }
             }
             case OPTION_BUY_IMMUNOBLOCKERS -> {
-                if (npc.trustLevel(serverPlayer) < 3) {
+                if ((optionMask() & (1 << OPTION_BUY_IMMUNOBLOCKERS)) == 0) {
                     responseId = RESPONSE_IMMUNOBLOCKERS_LOCKED;
-                } else if (!chargeFunds(serverPlayer, priceForServerOption(OPTION_BUY_IMMUNOBLOCKERS), "Purchased stock")) {
+                } else if (!chargeFunds(serverPlayer, priceForServerOption(OPTION_BUY_IMMUNOBLOCKERS), stockLedgerNote(3))) {
                     responseId = npc.isRefusing(serverPlayer) ? RESPONSE_COOL_OFF : RESPONSE_NEED_FUNDS;
                 } else {
                     grantShopItem(serverPlayer, optionId);
-                    npc.raiseTrust(serverPlayer, 2);
+                    npc.raiseTrust(serverPlayer, trustGainForOption(optionId));
                     npc.recordPaidTransaction(serverPlayer);
                     responseId = RESPONSE_IMMUNOBLOCKERS_OK;
                 }
@@ -386,42 +391,116 @@ public final class FixerDialogMenu extends AbstractBaseMenu {
             case FIXER -> switch (optionId) {
                 case OPTION_BUY_MAXDOC_MK2 -> new ItemStack(ModItems.consumable("maxdoc_mk2").get());
                 case OPTION_BUY_RAM_JOLT -> new ItemStack(ModItems.consumable("ram_jolt").get());
-                case OPTION_BUY_CHROME_SUPPRESSANT -> new ItemStack(ModItems.consumable("chrome_suppressant").get());
+                case OPTION_BUY_CHROME_SUPPRESSANT -> new ItemStack(ModItems.cyberware("memory_boost").get());
                 case OPTION_BUY_IMMUNOBLOCKERS -> new ItemStack(ModItems.consumable("immunoblockers").get());
                 default -> ItemStack.EMPTY;
             };
             case RIPPERDOC -> switch (optionId) {
                 case OPTION_BUY_MAXDOC_MK2 -> new ItemStack(ModItems.consumable("maxdoc_mk2").get(), 2);
                 case OPTION_BUY_RAM_JOLT -> new ItemStack(ModItems.consumable("bounce_back_mk2").get());
-                case OPTION_BUY_CHROME_SUPPRESSANT -> new ItemStack(ModItems.consumable("chrome_suppressant").get(), 2);
-                case OPTION_BUY_IMMUNOBLOCKERS -> new ItemStack(ModItems.consumable("immunoblockers").get());
+                case OPTION_BUY_CHROME_SUPPRESSANT -> new ItemStack(ModItems.cyberware("basic_kiroshi_optics").get());
+                case OPTION_BUY_IMMUNOBLOCKERS -> new ItemStack(ModItems.cyberware("bionic_joints").get());
                 default -> ItemStack.EMPTY;
             };
             case TECHIE -> switch (optionId) {
                 case OPTION_BUY_MAXDOC_MK2 -> new ItemStack(ModItems.COMMON_ITEM_COMPONENTS.get(), 2);
-                case OPTION_BUY_RAM_JOLT -> new ItemStack(ModItems.SENSOR_LENS.get(), 2);
-                case OPTION_BUY_CHROME_SUPPRESSANT -> new ItemStack(ModItems.SERVO_SCREWS.get(), 4);
-                case OPTION_BUY_IMMUNOBLOCKERS -> new ItemStack(ModItems.REPLACEMENT_JOINT.get(), 2);
+                case OPTION_BUY_RAM_JOLT -> new ItemStack(ModItems.cyberware("precision_miner").get());
+                case OPTION_BUY_CHROME_SUPPRESSANT -> new ItemStack(ModItems.cyberware("masons_grip").get());
+                case OPTION_BUY_IMMUNOBLOCKERS -> new ItemStack(ModItems.cyberware("cargo_spine").get());
                 default -> ItemStack.EMPTY;
             };
             case NETRUNNER -> switch (optionId) {
                 case OPTION_BUY_MAXDOC_MK2 -> new ItemStack(ModItems.consumable("ram_jolt").get(), 2);
-                case OPTION_BUY_RAM_JOLT -> new ItemStack(ModItems.cyberware("relic_scanner").get());
-                case OPTION_BUY_CHROME_SUPPRESSANT -> new ItemStack(ModItems.BASIC_CIRCUIT_PLATE.get(), 2);
-                case OPTION_BUY_IMMUNOBLOCKERS -> new ItemStack(ModItems.MICRO_BATTERY.get(), 2);
+                case OPTION_BUY_RAM_JOLT -> new ItemStack(ModItems.cyberware("memory_boost").get());
+                case OPTION_BUY_CHROME_SUPPRESSANT -> new ItemStack(ModItems.cyberware("ram_upgrade").get());
+                case OPTION_BUY_IMMUNOBLOCKERS -> new ItemStack(ModItems.cyberware("chipware_socket").get());
                 default -> ItemStack.EMPTY;
             };
             case MERC -> switch (optionId) {
                 case OPTION_BUY_MAXDOC_MK2 -> new ItemStack(ModItems.consumable("maxdoc_mk2").get());
-                case OPTION_BUY_RAM_JOLT -> new ItemStack(ModItems.consumable("asskick").get());
-                case OPTION_BUY_CHROME_SUPPRESSANT -> new ItemStack(ModItems.consumable("black_lace").get());
-                case OPTION_BUY_IMMUNOBLOCKERS -> new ItemStack(ModItems.consumable("bounce_back_mk3").get());
+                case OPTION_BUY_RAM_JOLT -> new ItemStack(ModItems.cyberware("handle_wrap").get());
+                case OPTION_BUY_CHROME_SUPPRESSANT -> new ItemStack(ModItems.cyberware("fortified_ankles").get());
+                case OPTION_BUY_IMMUNOBLOCKERS -> new ItemStack(ModItems.cyberware("subdermal_armor").get());
                 default -> ItemStack.EMPTY;
             };
         };
         if (!stack.isEmpty()) {
             player.addItem(stack);
         }
+    }
+
+    private void applyPrimaryService(ServerPlayer player) {
+        switch (npcType()) {
+            case FIXER -> CyberstrainManager.applySuppressionDose(player, 18, 90L * 20L, false);
+            case RIPPERDOC -> {
+                CyberstrainManager.applySuppressionDose(player, 24, 120L * 20L, false);
+                player.heal(4.0F);
+            }
+            case TECHIE -> {
+                player.addEffect(new MobEffectInstance(MobEffects.DIG_SPEED, 5 * 60 * 20, 0));
+                player.addEffect(new MobEffectInstance(MobEffects.MOVEMENT_SPEED, 5 * 60 * 20, 0));
+            }
+            case NETRUNNER -> {
+                player.addEffect(new MobEffectInstance(MobEffects.NIGHT_VISION, 6 * 60 * 20, 0));
+                player.addEffect(new MobEffectInstance(MobEffects.LUCK, 6 * 60 * 20, 0));
+                player.addEffect(new MobEffectInstance(MobEffects.MOVEMENT_SPEED, 3 * 60 * 20, 0));
+            }
+            case MERC -> {
+                player.addEffect(new MobEffectInstance(MobEffects.REGENERATION, 20 * 20, 1));
+                player.addEffect(new MobEffectInstance(MobEffects.ABSORPTION, 2 * 60 * 20, 1));
+            }
+        }
+    }
+
+    private void applySecondaryService(ServerPlayer player) {
+        switch (npcType()) {
+            case FIXER, RIPPERDOC -> CyberstrainManager.purgeNegativeStatuses(player, true);
+            case TECHIE -> {
+                player.addEffect(new MobEffectInstance(MobEffects.DIG_SPEED, 3 * 60 * 20, 1));
+                player.addEffect(new MobEffectInstance(MobEffects.DAMAGE_RESISTANCE, 3 * 60 * 20, 0));
+                player.addEffect(new MobEffectInstance(MobEffects.MOVEMENT_SPEED, 3 * 60 * 20, 0));
+            }
+            case NETRUNNER -> {
+                player.addEffect(new MobEffectInstance(MobEffects.NIGHT_VISION, 6 * 60 * 20, 0));
+                player.addEffect(new MobEffectInstance(MobEffects.LUCK, 6 * 60 * 20, 1));
+                player.addEffect(new MobEffectInstance(MobEffects.MOVEMENT_SPEED, 4 * 60 * 20, 1));
+            }
+            case MERC -> {
+                player.addEffect(new MobEffectInstance(MobEffects.DAMAGE_BOOST, 3 * 60 * 20, 0));
+                player.addEffect(new MobEffectInstance(MobEffects.MOVEMENT_SPEED, 3 * 60 * 20, 1));
+                player.addEffect(new MobEffectInstance(MobEffects.ABSORPTION, 3 * 60 * 20, 1));
+            }
+        }
+    }
+
+    private String primaryServiceLedgerNote() {
+        return switch (npcType()) {
+            case FIXER -> "Paid for stabilize systems";
+            case RIPPERDOC -> "Paid for clinic stabilizer";
+            case TECHIE -> "Paid for calibration pass";
+            case NETRUNNER -> "Paid for signal trace";
+            case MERC -> "Paid for field patch";
+        };
+    }
+
+    private String secondaryServiceLedgerNote() {
+        return switch (npcType()) {
+            case FIXER -> "Paid for full purge";
+            case RIPPERDOC -> "Paid for clinic purge";
+            case TECHIE -> "Paid for hardware overclock";
+            case NETRUNNER -> "Paid for ghost route package";
+            case MERC -> "Paid for combat dosing";
+        };
+    }
+
+    private String stockLedgerNote(int slot) {
+        return switch (npcType()) {
+            case FIXER -> "Purchased street stock";
+            case RIPPERDOC -> "Purchased clinic stock";
+            case TECHIE -> "Purchased workshop stock";
+            case NETRUNNER -> "Purchased signal stock";
+            case MERC -> "Purchased field stock";
+        } + " #" + (slot + 1);
     }
 
     private long currentDay() {
@@ -438,20 +517,20 @@ public final class FixerDialogMenu extends AbstractBaseMenu {
         if (npcType().supportsIntel()) {
             mask |= 1 << OPTION_CACHE_INTEL;
         }
-        if (npcType().supportsMedicalServices()) {
+        if (supportsServices()) {
             mask |= 1 << OPTION_STABILIZE;
         }
         if (npcType().supportsShop()) {
             mask |= 1 << OPTION_BUY_MAXDOC_MK2;
             mask |= 1 << OPTION_BUY_RAM_JOLT;
         }
-        if (npcType().supportsShop() && npc.trustLevel(player) >= 1) {
+        if (npcType().supportsShop() && npc.trustLevel(player) >= unlockLevelForOption(OPTION_BUY_CHROME_SUPPRESSANT)) {
             mask |= 1 << OPTION_BUY_CHROME_SUPPRESSANT;
         }
-        if (npcType().supportsMedicalServices() && npc.trustLevel(player) >= 2) {
+        if (supportsServices() && isServiceUnlocked(OPTION_PURGE)) {
             mask |= 1 << OPTION_PURGE;
         }
-        if (npcType().supportsShop() && npc.trustLevel(player) >= 3) {
+        if (npcType().supportsShop() && npc.trustLevel(player) >= unlockLevelForOption(OPTION_BUY_IMMUNOBLOCKERS)) {
             mask |= 1 << OPTION_BUY_IMMUNOBLOCKERS;
         }
         return mask;
@@ -500,7 +579,7 @@ public final class FixerDialogMenu extends AbstractBaseMenu {
     }
 
     public boolean supportsServices() {
-        return npcType().supportsMedicalServices();
+        return true;
     }
 
     public boolean supportsShop() {
@@ -587,6 +666,45 @@ public final class FixerDialogMenu extends AbstractBaseMenu {
 
     public int trustDiscountPercent() {
         return discountPercentForTrustPoints(trustPoints());
+    }
+
+    public int unlockLevelForOption(int optionId) {
+        return switch (npcType()) {
+            case FIXER -> switch (optionId) {
+                case OPTION_PURGE -> 2;
+                case OPTION_BUY_CHROME_SUPPRESSANT -> 1;
+                case OPTION_BUY_IMMUNOBLOCKERS -> 3;
+                default -> 0;
+            };
+            case RIPPERDOC -> switch (optionId) {
+                case OPTION_PURGE -> 2;
+                case OPTION_BUY_CHROME_SUPPRESSANT -> 1;
+                case OPTION_BUY_IMMUNOBLOCKERS -> 3;
+                default -> 0;
+            };
+            case TECHIE -> switch (optionId) {
+                case OPTION_PURGE -> 2;
+                case OPTION_BUY_CHROME_SUPPRESSANT -> 1;
+                case OPTION_BUY_IMMUNOBLOCKERS -> 2;
+                default -> 0;
+            };
+            case NETRUNNER -> switch (optionId) {
+                case OPTION_PURGE -> 2;
+                case OPTION_BUY_CHROME_SUPPRESSANT -> 1;
+                case OPTION_BUY_IMMUNOBLOCKERS -> 2;
+                default -> 0;
+            };
+            case MERC -> switch (optionId) {
+                case OPTION_PURGE -> 2;
+                case OPTION_BUY_CHROME_SUPPRESSANT -> 1;
+                case OPTION_BUY_IMMUNOBLOCKERS -> 2;
+                default -> 0;
+            };
+        };
+    }
+
+    public Component trustGateLabelForOption(int optionId) {
+        return Component.translatable("screen.cyberneticenhancements.fixer.trust." + Math.max(0, Math.min(4, unlockLevelForOption(optionId))));
     }
 
     public int trustProgressPercent() {
@@ -708,7 +826,7 @@ public final class FixerDialogMenu extends AbstractBaseMenu {
                 case OPTION_PURGE -> BASE_PRICE_PURGE;
                 case OPTION_BUY_MAXDOC_MK2 -> BASE_PRICE_MAXDOC;
                 case OPTION_BUY_RAM_JOLT -> BASE_PRICE_RAM_JOLT;
-                case OPTION_BUY_CHROME_SUPPRESSANT -> BASE_PRICE_CHROME_SUPPRESSANT;
+                case OPTION_BUY_CHROME_SUPPRESSANT -> 8;
                 case OPTION_BUY_IMMUNOBLOCKERS -> BASE_PRICE_IMMUNOBLOCKERS;
                 default -> 0;
             };
@@ -716,30 +834,30 @@ public final class FixerDialogMenu extends AbstractBaseMenu {
                 case OPTION_STABILIZE -> 4;
                 case OPTION_PURGE -> 10;
                 case OPTION_BUY_MAXDOC_MK2 -> 5;
-                case OPTION_BUY_RAM_JOLT -> 5;
-                case OPTION_BUY_CHROME_SUPPRESSANT -> 7;
-                case OPTION_BUY_IMMUNOBLOCKERS -> 9;
+                case OPTION_BUY_RAM_JOLT -> 4;
+                case OPTION_BUY_CHROME_SUPPRESSANT -> 9;
+                case OPTION_BUY_IMMUNOBLOCKERS -> 10;
                 default -> 0;
             };
             case TECHIE -> switch (optionId) {
-                case OPTION_BUY_MAXDOC_MK2 -> 4;
-                case OPTION_BUY_RAM_JOLT -> 5;
-                case OPTION_BUY_CHROME_SUPPRESSANT -> 4;
-                case OPTION_BUY_IMMUNOBLOCKERS -> 6;
+                case OPTION_BUY_MAXDOC_MK2 -> 3;
+                case OPTION_BUY_RAM_JOLT -> 7;
+                case OPTION_BUY_CHROME_SUPPRESSANT -> 7;
+                case OPTION_BUY_IMMUNOBLOCKERS -> 8;
                 default -> 0;
             };
             case NETRUNNER -> switch (optionId) {
-                case OPTION_BUY_MAXDOC_MK2 -> 5;
-                case OPTION_BUY_RAM_JOLT -> 9;
-                case OPTION_BUY_CHROME_SUPPRESSANT -> 5;
-                case OPTION_BUY_IMMUNOBLOCKERS -> 6;
+                case OPTION_BUY_MAXDOC_MK2 -> 6;
+                case OPTION_BUY_RAM_JOLT -> 8;
+                case OPTION_BUY_CHROME_SUPPRESSANT -> 9;
+                case OPTION_BUY_IMMUNOBLOCKERS -> 10;
                 default -> 0;
             };
             case MERC -> switch (optionId) {
                 case OPTION_BUY_MAXDOC_MK2 -> 4;
-                case OPTION_BUY_RAM_JOLT -> 6;
-                case OPTION_BUY_CHROME_SUPPRESSANT -> 8;
-                case OPTION_BUY_IMMUNOBLOCKERS -> 7;
+                case OPTION_BUY_RAM_JOLT -> 7;
+                case OPTION_BUY_CHROME_SUPPRESSANT -> 9;
+                case OPTION_BUY_IMMUNOBLOCKERS -> 10;
                 default -> 0;
             };
         };
@@ -754,7 +872,7 @@ public final class FixerDialogMenu extends AbstractBaseMenu {
     }
 
     public Component activeContractTitle() {
-        return QuestContract.titleForType(activeContractType());
+        return questTitleFor(activeContractType());
     }
 
     public Component activeContractObjective() {
@@ -778,7 +896,19 @@ public final class FixerDialogMenu extends AbstractBaseMenu {
     }
 
     public Component offerTitle(int slot) {
-        return QuestContract.titleForType(offerType(slot));
+        return questTitleFor(offerType(slot));
+    }
+
+    public Component contractBoardTitle() {
+        return Component.translatable("screen.cyberneticenhancements.npc.contract." + npcTypeId() + ".board");
+    }
+
+    public Component contractBoardNote() {
+        return Component.translatable("screen.cyberneticenhancements.npc.contract." + npcTypeId() + ".board_note");
+    }
+
+    private Component questTitleFor(QuestType type) {
+        return Component.translatable("quest.cyberneticenhancements.title." + npcTypeId() + "." + type.id());
     }
 
     public Component offerSummary(int slot) {
@@ -824,6 +954,26 @@ public final class FixerDialogMenu extends AbstractBaseMenu {
         return rewardStack.isEmpty()
                 ? Component.translatable("quest.cyberneticenhancements.reward.bundle", money, trust)
                 : Component.translatable("quest.cyberneticenhancements.reward.bundle.item", money, trust, rewardStack.getHoverName());
+    }
+
+    private boolean isServiceUnlocked(int optionId) {
+        return npc != null && npc.trustLevel(player) >= unlockLevelForOption(optionId);
+    }
+
+    private boolean usesDailyServiceCooldown(int optionId) {
+        return optionId == OPTION_PURGE && (npcType() == NpcType.FIXER || npcType() == NpcType.RIPPERDOC);
+    }
+
+    private int trustGainForOption(int optionId) {
+        return switch (optionId) {
+            case OPTION_STABILIZE -> switch (npcType()) {
+                case FIXER, TECHIE, NETRUNNER, MERC -> 1;
+                case RIPPERDOC -> 2;
+            };
+            case OPTION_PURGE -> 2;
+            case OPTION_BUY_IMMUNOBLOCKERS -> 2;
+            default -> 1;
+        };
     }
 
     private int offerValue(int slot, int offset) {

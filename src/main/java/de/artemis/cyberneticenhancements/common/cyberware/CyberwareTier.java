@@ -20,6 +20,11 @@ public enum CyberwareTier {
         this.color = color;
     }
 
+    public CyberwareTier next() {
+        CyberwareTier[] tiers = values();
+        return tiers[Math.min(ordinal() + 1, tiers.length - 1)];
+    }
+
     public String translationKey() {
         return "cyberwareTier.cyberneticenhancements." + id;
     }

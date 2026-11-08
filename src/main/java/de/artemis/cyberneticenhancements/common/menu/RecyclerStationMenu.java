@@ -163,6 +163,9 @@ public final class RecyclerStationMenu extends AbstractBaseMenu implements Named
 
     @Override
     public ItemStack quickMoveStack(Player player, int index) {
+        if (index < 0 || index >= this.slots.size()) {
+            return ItemStack.EMPTY;
+        }
         Slot sourceSlot = this.slots.get(index);
         if (sourceSlot == null || !sourceSlot.hasItem()) {
             return ItemStack.EMPTY;
@@ -320,7 +323,7 @@ public final class RecyclerStationMenu extends AbstractBaseMenu implements Named
 
     public CyberwareTier getNextSupportedTier() {
         CyberwareTier current = getSupportedTier();
-        return current == CyberwareTier.TIER_5 ? CyberwareTier.TIER_5 : CyberwareTier.values()[current.ordinal() + 1];
+        return current.next();
     }
 
     public boolean canUpgradeSupportedTier() {

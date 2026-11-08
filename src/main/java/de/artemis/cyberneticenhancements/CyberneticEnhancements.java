@@ -25,7 +25,6 @@ import de.artemis.cyberneticenhancements.common.registry.ModItems;
 import de.artemis.cyberneticenhancements.common.registry.ModMenuTypes;
 import de.artemis.cyberneticenhancements.common.registry.ModRecipeSerializers;
 import de.artemis.cyberneticenhancements.common.registry.ModRecipeTypes;
-import de.artemis.cyberneticenhancements.common.registry.ModSoundEvents;
 import de.artemis.cyberneticenhancements.common.world.FixerVillageSpawner;
 import de.artemis.cyberneticenhancements.common.world.NpcIdentityConfig;
 import de.artemis.cyberneticenhancements.common.world.RelicCacheWorldgen;
@@ -33,9 +32,6 @@ import net.neoforged.bus.api.IEventBus;
 import net.neoforged.fml.common.Mod;
 import net.neoforged.neoforge.common.NeoForge;
 import net.neoforged.neoforge.event.RegisterCommandsEvent;
-import net.neoforged.neoforge.event.level.ChunkEvent;
-import net.neoforged.neoforge.event.level.LevelEvent;
-import net.neoforged.neoforge.event.tick.LevelTickEvent;
 
 @Mod(CyberneticEnhancements.MOD_ID)
 public class CyberneticEnhancements {
@@ -52,7 +48,6 @@ public class CyberneticEnhancements {
         ModRecipeTypes.register(modEventBus);
         ModRecipeSerializers.register(modEventBus);
         ModCreativeModeTabs.register(modEventBus);
-        ModSoundEvents.register(modEventBus);
         modEventBus.addListener(DataGenerators::gatherData);
         modEventBus.addListener(ModPayloads::register);
         modEventBus.addListener(ModEntityTypes::registerAttributes);

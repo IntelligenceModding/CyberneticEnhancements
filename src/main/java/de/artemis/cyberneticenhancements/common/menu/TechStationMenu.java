@@ -202,6 +202,9 @@ public final class TechStationMenu extends AbstractBaseMenu implements NamedBloc
 
     @Override
     public ItemStack quickMoveStack(Player player, int index) {
+        if (index < 0 || index >= this.slots.size()) {
+            return ItemStack.EMPTY;
+        }
         Slot sourceSlot = this.slots.get(index);
         if (sourceSlot == null || !sourceSlot.hasItem()) {
             return ItemStack.EMPTY;
@@ -428,7 +431,7 @@ public final class TechStationMenu extends AbstractBaseMenu implements NamedBloc
 
     public CyberwareTier getNextRepairSupportedTier() {
         CyberwareTier current = getRepairSupportedTier();
-        return current == CyberwareTier.TIER_5 ? CyberwareTier.TIER_5 : CyberwareTier.values()[current.ordinal() + 1];
+        return current.next();
     }
 
     public boolean canUpgradeRepairSupportedTier() {
@@ -467,7 +470,7 @@ public final class TechStationMenu extends AbstractBaseMenu implements NamedBloc
 
     public CyberwareTier getNextUpgradeSupportedTier() {
         CyberwareTier current = getUpgradeSupportedTier();
-        return current == CyberwareTier.TIER_5 ? CyberwareTier.TIER_5 : CyberwareTier.values()[current.ordinal() + 1];
+        return current.next();
     }
 
     public boolean canUpgradeUpgradeSupportedTier() {

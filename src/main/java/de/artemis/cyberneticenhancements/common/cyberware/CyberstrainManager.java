@@ -1,5 +1,11 @@
 package de.artemis.cyberneticenhancements.common.cyberware;
 
+import static de.artemis.cyberneticenhancements.common.util.PersistentDataHelper.copyDouble;
+import static de.artemis.cyberneticenhancements.common.util.PersistentDataHelper.copyFloat;
+import static de.artemis.cyberneticenhancements.common.util.PersistentDataHelper.copyInt;
+import static de.artemis.cyberneticenhancements.common.util.PersistentDataHelper.copyLong;
+import static de.artemis.cyberneticenhancements.common.util.PersistentDataHelper.copyString;
+
 import de.artemis.cyberneticenhancements.common.network.CyberpsychosisControlPayload;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.chat.Component;
@@ -13,7 +19,6 @@ import net.minecraft.world.entity.animal.Animal;
 import net.minecraft.world.entity.monster.Monster;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.entity.ai.attributes.Attributes;
-import net.minecraft.world.level.Level;
 import net.minecraft.world.phys.Vec3;
 import net.neoforged.neoforge.event.entity.living.LivingHealEvent;
 import net.neoforged.neoforge.network.PacketDistributor;
@@ -823,46 +828,6 @@ public final class CyberstrainManager {
 
     private static void merge(EnumMap<CyberwareEffectType, Double> totals, CyberwareEffectType type, double amount) {
         totals.merge(type, amount, type.isMobEffect() ? Math::max : Double::sum);
-    }
-
-    private static void copyLong(CompoundTag fromData, CompoundTag toData, String key) {
-        if (fromData.contains(key)) {
-            toData.putLong(key, fromData.getLong(key));
-        } else {
-            toData.remove(key);
-        }
-    }
-
-    private static void copyInt(CompoundTag fromData, CompoundTag toData, String key) {
-        if (fromData.contains(key)) {
-            toData.putInt(key, fromData.getInt(key));
-        } else {
-            toData.remove(key);
-        }
-    }
-
-    private static void copyDouble(CompoundTag fromData, CompoundTag toData, String key) {
-        if (fromData.contains(key)) {
-            toData.putDouble(key, fromData.getDouble(key));
-        } else {
-            toData.remove(key);
-        }
-    }
-
-    private static void copyFloat(CompoundTag fromData, CompoundTag toData, String key) {
-        if (fromData.contains(key)) {
-            toData.putFloat(key, fromData.getFloat(key));
-        } else {
-            toData.remove(key);
-        }
-    }
-
-    private static void copyString(CompoundTag fromData, CompoundTag toData, String key) {
-        if (fromData.contains(key)) {
-            toData.putString(key, fromData.getString(key));
-        } else {
-            toData.remove(key);
-        }
     }
 
     private enum EpisodeTier {

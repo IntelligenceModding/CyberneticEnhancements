@@ -1,17 +1,41 @@
 # Cybernetic Enhancements
 
-Cybernetic Enhancements is a NeoForge mod for Minecraft focused on cybernetic body upgrades, augmentation, and android-themed progression.
+A Minecraft 1.21.1 NeoForge mod featuring cyberware, body upgrades, NPC services, contracts, and relic-cache hacking.
 
-This repository is intentionally set up as a clean project baseline. Its Gradle configuration, package layout, and overall mod structure mirror the same style used in `Matterworks`, but the gameplay implementation is still largely blank.
+The current release is an **alpha**. Gameplay, balance, and saved-data formats may change during development. Back up existing worlds before updating.
 
-Built for:
+## Requirements
 
-* **Minecraft:** 1.21.1
-* **Mod Loader:** NeoForge
+- Minecraft 1.21.1
+- NeoForge 21.1.228 or newer within the Minecraft 1.21.1 line
+- Java 21
+- Install the mod on both the client and the server for multiplayer.
+- JEI is optional; it adds recipe integration.
 
-Current baseline:
+## Features
 
-* `client` and `common` package split
-* placeholder registry classes for blocks, items, and creative tabs
-* datagen hook and client entrypoint wiring
-* template-driven `neoforge.mods.toml`
+- Body-slot cyberware with passive effects, activated abilities, modules, and chipware
+- Cyberstrain, cyberpsychosis, implant condition, repairs, upgrades, and recycling
+- Fixers, ripperdocs, techies, netrunners, and mercs with shared dialogue trees per type
+- Delivery, extraction, investigation, breach, elimination, and recovery contracts
+- Relic caches with timed hacking puzzles and rewards
+- Eurodollar banking, payments, contacts, quest tracking, and an in-game archive
+
+Default keys: **J** opens the archive, **H** toggles the HUD, and **V / B / G / C** activate operating-system, auxiliary, arm, and face abilities. Bindings can be changed in Controls.
+
+## Building
+
+Use JDK 21 and the included Gradle wrapper:
+
+```powershell
+.\gradlew.bat runData
+.\gradlew.bat clean build
+```
+
+Release JARs are written to `build/libs/` using the pattern `cyberneticenhancements-<version>-neoforge-mc1.21.1.jar`.
+
+Include generated resources under `src/generated/resources/` when committing release sources. Do not include its `.cache/` directory.
+
+## License
+
+MIT; see [LICENSE](LICENSE).

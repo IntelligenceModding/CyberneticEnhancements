@@ -5,6 +5,7 @@ import de.artemis.cyberneticenhancements.common.menu.RelicCacheHackMenu;
 import de.artemis.cyberneticenhancements.common.quest.PlayerQuestManager;
 import de.artemis.cyberneticenhancements.common.registry.ModBlockEntities;
 import de.artemis.cyberneticenhancements.common.reliccache.RelicCacheHackPuzzle;
+import de.artemis.cyberneticenhancements.common.reliccache.RelicCacheHackRules;
 import net.minecraft.ChatFormatting;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.HolderLookup;
@@ -163,10 +164,6 @@ public final class RelicCacheBlockEntity extends BlockEntity {
         return true;
     }
 
-    public void abortHackSession(ServerPlayer player) {
-        // Hack sessions are cache-bound and keep running after the screen closes.
-    }
-
     public void trySelectHackCell(ServerPlayer player, int cellIndex) {
         if (!hasActiveHackSession() || hackingPlayer == null || !hackingPlayer.equals(player.getUUID()) || !(level instanceof ServerLevel serverLevel)) {
             return;
@@ -187,6 +184,17 @@ public final class RelicCacheBlockEntity extends BlockEntity {
             return;
         }
 
+        boolean hasMove = false;
+        for (int next = 0; next < hackGridSize * hackGridSize; next++) {
+            if (isSelectableCell(next)) {
+                hasMove = true;
+                break;
+            }
+        }
+        if (!hasMove) {
+            failHack(player, Component.translatable("message.cyberneticenhancements.relic_cache.no_moves"));
+            return;
+        }
         if (player.containerMenu instanceof RelicCacheHackMenu menu && menu.isForBlock(worldPosition)) {
             menu.broadcastChanges();
         }
@@ -233,7 +241,9 @@ public final class RelicCacheBlockEntity extends BlockEntity {
         setChanged();
         if (player != null) {
             player.displayClientMessage(message.copy().withStyle(ChatFormatting.RED), true);
-            player.closeContainer();
+            if (player.level() == level && player.containerMenu instanceof RelicCacheHackMenu menu && menu.isForBlock(worldPosition)) {
+                player.closeContainer();
+            }
         }
     }
 
@@ -253,43 +263,14 @@ public final class RelicCacheBlockEntity extends BlockEntity {
     }
 
     private boolean pathContainsSequence(int targetIndex, int targetLength) {
-        for (int start = 0; start <= hackSelectedCount - targetLength; start++) {
-            boolean matches = true;
-            for (int offset = 0; offset < targetLength; offset++) {
-                int selectedCell = hackSelectedCells[start + offset];
-                int selectedToken = selectedCell >= 0 && selectedCell < hackGridTokens.length ? hackGridTokens[selectedCell] : -1;
-                int targetToken = hackTargetTokens[targetIndex * RelicCacheHackPuzzle.MAX_SEQUENCE_LENGTH + offset];
-                if (selectedToken != targetToken) {
-                    matches = false;
-                    break;
-                }
-            }
-            if (matches) {
-                return true;
-            }
-        }
-        return false;
+        return RelicCacheHackRules.containsSequence(hackSelectedCount,
+                i -> getHackGridToken(getHackSelectedCell(i)), targetLength,
+                i -> hackTargetTokens[targetIndex * RelicCacheHackPuzzle.MAX_SEQUENCE_LENGTH + i]);
     }
 
     private boolean isSelectableCell(int cellIndex) {
-        int cellCount = hackGridSize * hackGridSize;
-        if (!hasActiveHackSession() || cellIndex < 0 || cellIndex >= cellCount) {
-            return false;
-        }
-        for (int index = 0; index < hackSelectedCount; index++) {
-            if (hackSelectedCells[index] == cellIndex) {
-                return false;
-            }
-        }
-        if (hackSelectedCount == 0) {
-            return cellIndex / hackGridSize == 0;
-        }
-
-        int lastCell = hackSelectedCells[hackSelectedCount - 1];
-        if ((hackSelectedCount & 1) == 1) {
-            return cellIndex % hackGridSize == lastCell % hackGridSize;
-        }
-        return cellIndex / hackGridSize == lastCell / hackGridSize;
+        return hasActiveHackSession() && RelicCacheHackRules.isSelectable(hackGridSize, hackSelectedCount,
+                i -> hackSelectedCells[i], cellIndex);
     }
 
     private void ensureStoredPuzzle(ServerLevel level, ServerPlayer player) {
@@ -638,6 +619,11 @@ public final class RelicCacheBlockEntity extends BlockEntity {
         readIntArray(tag, HACK_TARGET_LENGTHS_TAG, hackTargetLengths, 0);
         readIntArray(tag, HACK_TARGET_TOKENS_TAG, hackTargetTokens, -1);
         readIntArray(tag, HACK_SELECTED_CELLS_TAG, hackSelectedCells, -1);
+        RelicCacheHackPuzzle.repairLegacyFallback(puzzleGridSize, puzzleGridTokens, puzzleTargetLengths, puzzleTargetTokens);
+        if (RelicCacheHackPuzzle.repairLegacyFallback(hackGridSize, hackGridTokens, hackTargetLengths, hackTargetTokens)) {
+
+            clearHackSessionState();
+        }
     }
 
     @Override

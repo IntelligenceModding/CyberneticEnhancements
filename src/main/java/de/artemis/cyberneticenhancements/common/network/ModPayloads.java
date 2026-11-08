@@ -124,10 +124,8 @@ public final class ModPayloads {
                                 return;
                             }
                             if (context.player().containerMenu instanceof RelicCacheHackMenu menu
-                                    && context.player() instanceof net.minecraft.server.level.ServerPlayer serverPlayer) {
-                                if (serverPlayer.level().getBlockEntity(menu.getBlockPos()) instanceof de.artemis.cyberneticenhancements.common.blockentity.RelicCacheBlockEntity blockEntity) {
-                                    blockEntity.trySelectHackCell(serverPlayer, payload.cellIndex());
-                                }
+                                    && context.player() instanceof ServerPlayer) {
+                                menu.trySelectCell(payload.cellIndex());
                             }
                         }))
                 .playToServer(FixerDialogueChoicePayload.TYPE, FixerDialogueChoicePayload.STREAM_CODEC, (payload, context) ->

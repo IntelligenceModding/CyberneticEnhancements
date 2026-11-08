@@ -32,19 +32,16 @@ final class CyberwareHudOverlay {
     private static final int BAR_TEXT_GAP = 1;
 
     private static final int LEFT_CARD_MIN_WIDTH = 112;
-    private static final int RIGHT_CARD_MIN_WIDTH = 96;
-    private static final int RIGHT_ABILITY_MIN_WIDTH = 120;
     private static final int RIGHT_BAND_GAP = 6;
     private static final int TOP_CARD_MIN_WIDTH = 180;
 
-    private static final int CARD_BACKGROUND = StationScreenStyle.PANEL_BG;
-    private static final int CARD_HEADER_BACKGROUND = StationScreenStyle.PANEL_ALT;
-    private static final int CARD_BODY_BACKGROUND = StationScreenStyle.PANEL_DEEP;
-    private static final int CARD_FRAME_HIGHLIGHT = StationScreenStyle.FRAME_HIGHLIGHT;
-    private static final int CARD_FRAME_HIGHLIGHT_SOFT = StationScreenStyle.FRAME_HIGHLIGHT_SOFT;
-    private static final int CARD_FRAME_SHADOW_SOFT = StationScreenStyle.FRAME_SHADOW_SOFT;
-    private static final int CARD_FRAME_SHADOW = StationScreenStyle.FRAME_SHADOW;
-    private static final int CARD_HEADER_ACCENT = 0xCC1EE2B5;
+    private static final int CARD_HEADER_BACKGROUND = (StationScreenStyle.PANEL_ALT & 0x00FFFFFF) | 0xB8000000;
+    private static final int CARD_BODY_BACKGROUND = (StationScreenStyle.PANEL_DEEP & 0x00FFFFFF) | 0xA8000000;
+    private static final int CARD_FRAME_HIGHLIGHT = (StationScreenStyle.FRAME_HIGHLIGHT & 0x00FFFFFF) | 0xB0000000;
+    private static final int CARD_FRAME_HIGHLIGHT_SOFT = (StationScreenStyle.FRAME_HIGHLIGHT_SOFT & 0x00FFFFFF) | 0x90000000;
+    private static final int CARD_FRAME_SHADOW_SOFT = (StationScreenStyle.FRAME_SHADOW_SOFT & 0x00FFFFFF) | 0x90000000;
+    private static final int CARD_FRAME_SHADOW = (StationScreenStyle.FRAME_SHADOW & 0x00FFFFFF) | 0x90000000;
+    private static final int CARD_HEADER_ACCENT = 0x991EE2B5;
 
     private static final int TEXT_PRIMARY = StationScreenStyle.TEXT_PRIMARY;
     private static final int TEXT_SECONDARY = StationScreenStyle.TEXT_SECONDARY;
@@ -630,7 +627,7 @@ final class CyberwareHudOverlay {
     ) {
         drawCardFrame(guiGraphics, x, y, card.width(), card.height());
         Component title = trimComponent(font, card.title(), card.width() - CARD_PADDING * 2);
-        guiGraphics.drawString(font, title, x + CARD_PADDING, y + 5, TEXT_PRIMARY, false);
+        guiGraphics.drawString(font, title, x + CARD_PADDING, y + 5, TEXT_PRIMARY, true);
 
         int rowY = y + CARD_HEADER_HEIGHT + CARD_PADDING;
         for (RowData row : card.rows()) {
@@ -646,8 +643,8 @@ final class CyberwareHudOverlay {
         int valueWidth = font.width(row.value());
         int labelMaxWidth = Math.max(24, width - valueWidth - 8);
         Component label = trimComponent(font, row.label(), labelMaxWidth);
-        guiGraphics.drawString(font, label, x, y, TEXT_SECONDARY, false);
-        guiGraphics.drawString(font, row.value(), x + width - valueWidth, y, TEXT_PRIMARY, false);
+        guiGraphics.drawString(font, label, x, y, TEXT_SECONDARY, true);
+        guiGraphics.drawString(font, row.value(), x + width - valueWidth, y, TEXT_PRIMARY, true);
 
         int barY = y + font.lineHeight + BAR_TEXT_GAP;
         drawHorizontalBar(guiGraphics, x, barY, width, BAR_HEIGHT, row.ratio(), row.idleColor(), row.fillColor(), row.warning());
@@ -657,14 +654,14 @@ final class CyberwareHudOverlay {
         int x2 = x + width;
         int y2 = y + height;
 
-        guiGraphics.fill(x, y, x2, y2, CARD_FRAME_SHADOW);
-        guiGraphics.fill(x + 1, y + 1, x2 - 1, y2 - 1, CARD_BACKGROUND);
-        guiGraphics.fill(x, y, x2 - 1, y + 1, CARD_FRAME_HIGHLIGHT);
-        guiGraphics.fill(x, y, x + 1, y2 - 1, CARD_FRAME_HIGHLIGHT);
+        guiGraphics.fill(x, y, x2, y + 1, CARD_FRAME_HIGHLIGHT);
+        guiGraphics.fill(x, y + 1, x + 1, y2 - 1, CARD_FRAME_HIGHLIGHT);
+        guiGraphics.fill(x, y2 - 1, x2, y2, CARD_FRAME_SHADOW);
+        guiGraphics.fill(x2 - 1, y + 1, x2, y2 - 1, CARD_FRAME_SHADOW);
         guiGraphics.fill(x + 1, y + 1, x2 - 1, y + 2, CARD_FRAME_HIGHLIGHT_SOFT);
-        guiGraphics.fill(x + 1, y + 1, x + 2, y2 - 1, CARD_FRAME_HIGHLIGHT_SOFT);
-        guiGraphics.fill(x + 1, y2 - 2, x2, y2 - 1, CARD_FRAME_SHADOW_SOFT);
-        guiGraphics.fill(x2 - 2, y + 1, x2 - 1, y2, CARD_FRAME_SHADOW_SOFT);
+        guiGraphics.fill(x + 1, y + 2, x + 2, y2 - 2, CARD_FRAME_HIGHLIGHT_SOFT);
+        guiGraphics.fill(x + 1, y2 - 2, x2 - 1, y2 - 1, CARD_FRAME_SHADOW_SOFT);
+        guiGraphics.fill(x2 - 2, y + 2, x2 - 1, y2 - 2, CARD_FRAME_SHADOW_SOFT);
         guiGraphics.fill(x + 2, y + 2, x2 - 2, y + CARD_HEADER_HEIGHT, CARD_HEADER_BACKGROUND);
         guiGraphics.fill(x + 2, y + CARD_HEADER_HEIGHT, x2 - 2, y + CARD_HEADER_HEIGHT + 1, CARD_HEADER_ACCENT);
         guiGraphics.fill(x + 2, y + CARD_HEADER_HEIGHT + 1, x2 - 2, y2 - 2, CARD_BODY_BACKGROUND);

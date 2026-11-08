@@ -49,14 +49,6 @@ public final class ModItems {
             Item::new,
             properties -> properties.stacksTo(1).rarity(Rarity.UNCOMMON)
     );
-    public static final DeferredItem<Item> WHOS_READY_FOR_TOMORROW_MUSIC_DISC = register(
-            "whos_ready_for_tomorrow_music_disc",
-            Item::new,
-            properties -> properties
-                    .stacksTo(1)
-                    .rarity(Rarity.RARE)
-                    .jukeboxPlayable(ModJukeboxSongs.WHOS_READY_FOR_TOMORROW_INSTRUMENTAL)
-    );
     public static final DeferredItem<Item> FIXER_SPAWN_EGG = register(
             "fixer_spawn_egg",
             properties -> new SpawnEggItem(ModEntityTypes.FIXER.get(), 0x24323E, 0x1EE2B5, properties),
@@ -99,7 +91,6 @@ public final class ModItems {
             EPIC_ITEM_COMPONENTS,
             LEGENDARY_ITEM_COMPONENTS,
             COURIER_PACKAGE,
-            WHOS_READY_FOR_TOMORROW_MUSIC_DISC,
             FIXER_SPAWN_EGG,
             RIPPERDOC_SPAWN_EGG,
             TECHIE_SPAWN_EGG,

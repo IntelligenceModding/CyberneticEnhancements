@@ -4,6 +4,7 @@ import de.artemis.cyberneticenhancements.common.block.RelicCacheBlock;
 import de.artemis.cyberneticenhancements.common.blockentity.RelicCacheBlockEntity;
 import de.artemis.cyberneticenhancements.common.registry.ModMenuTypes;
 import de.artemis.cyberneticenhancements.common.reliccache.RelicCacheHackPuzzle;
+import de.artemis.cyberneticenhancements.common.reliccache.RelicCacheHackRules;
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.RegistryFriendlyByteBuf;
 import net.minecraft.world.entity.player.Inventory;
@@ -201,26 +202,12 @@ public final class RelicCacheHackMenu extends AbstractBaseMenu implements NamedB
     }
 
     public boolean isCellSelectable(int cellIndex) {
-        int gridSize = gridSize();
-        if (!hasActiveSession() || gridSize <= 0) {
-            return false;
-        }
-        int cellCount = gridSize * gridSize;
-        if (cellIndex < 0 || cellIndex >= cellCount || isCellAlreadySelected(cellIndex)) {
-            return false;
-        }
-        if (selectedCount() == 0) {
-            return cellIndex / gridSize == 0;
-        }
+        return hasActiveSession() && RelicCacheHackRules.isSelectable(gridSize(), selectedCount(), this::selectedCell, cellIndex);
+    }
 
-        int lastCell = selectedCell(selectedCount() - 1);
-        if (lastCell < 0) {
-            return false;
-        }
-        if ((selectedCount() & 1) == 1) {
-            return cellIndex % gridSize == lastCell % gridSize;
-        }
-        return cellIndex / gridSize == lastCell / gridSize;
+    public int targetPrefixLength(int targetIndex) {
+        return RelicCacheHackRules.matchingPrefix(selectedCount(), i -> tokenAtCell(selectedCell(i)),
+                targetLength(targetIndex), i -> targetToken(targetIndex, i));
     }
 
     public String tokenLabel(int tokenId) {
@@ -231,7 +218,7 @@ public final class RelicCacheHackMenu extends AbstractBaseMenu implements NamedB
     }
 
     public void trySelectCell(int cellIndex) {
-        if (!clientSide || !(player instanceof net.minecraft.server.level.ServerPlayer serverPlayer) || blockEntity == null) {
+        if (clientSide || !(player instanceof net.minecraft.server.level.ServerPlayer serverPlayer) || blockEntity == null || !stillValid(player)) {
             return;
         }
         blockEntity.trySelectHackCell(serverPlayer, cellIndex);
@@ -244,11 +231,6 @@ public final class RelicCacheHackMenu extends AbstractBaseMenu implements NamedB
             return false;
         }
         return player.canInteractWithBlock(blockPos, 8.0D);
-    }
-
-    @Override
-    public void removed(Player player) {
-        super.removed(player);
     }
 
     @Override

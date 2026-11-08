@@ -69,7 +69,9 @@ public final class RelicCacheHackScreen extends AbstractContainerScreen<RelicCac
     @Override
     protected void renderLabels(GuiGraphics guiGraphics, int mouseX, int mouseY) {
         guiGraphics.drawString(font, Component.translatable("screen.cyberneticenhancements.relic_cache_hack.header"), gridPanelInnerX(), RelicCacheHackLayout.GRID_PANEL_Y1 + PANEL_TEXT_PADDING_Y, ACCENT, false);
-        guiGraphics.drawString(font, title, gridPanelInnerX(), RelicCacheHackLayout.GRID_PANEL_Y1 + PANEL_TEXT_PADDING_Y + 12, TEXT_PRIMARY, false);
+        String moveKey = menu.selectedCount() == 0 ? "top_row" : (menu.selectedCount() & 1) == 1 ? "column" : "row";
+        guiGraphics.drawString(font, Component.translatable("screen.cyberneticenhancements.relic_cache_hack.next." + moveKey),
+                gridPanelInnerX(), RelicCacheHackLayout.GRID_PANEL_Y1 + PANEL_TEXT_PADDING_Y + 12, TEXT_PRIMARY, false);
 
         Component difficulty = Component.translatable("screen.cyberneticenhancements.relic_cache_hack.difficulty", menu.difficulty());
         Component timer = Component.translatable("screen.cyberneticenhancements.relic_cache_hack.timer", formatSeconds(menu.timeRemainingTicks()));
@@ -183,22 +185,27 @@ public final class RelicCacheHackScreen extends AbstractContainerScreen<RelicCac
             drawPanel(guiGraphics, baseX, y, cardWidth, cardHeight, completed ? 0xFF143833 : PANEL_BG);
             guiGraphics.drawString(
                     font,
-                    Component.translatable("screen.cyberneticenhancements.relic_cache_hack.daemon", targetIndex + 1),
+                    Component.translatable(completed ? "screen.cyberneticenhancements.relic_cache_hack.completed" : "screen.cyberneticenhancements.relic_cache_hack.daemon", targetIndex + 1),
                     baseX + 6,
                     y + 4,
                     completed ? ACCENT : TEXT_SECONDARY,
                     false
             );
 
+            int matchedPrefix = menu.targetPrefixLength(targetIndex);
             int tokenBox = targetTokenBoxSize(targetIndex, cardWidth);
             int tokenRowWidth = menu.targetLength(targetIndex) * tokenBox + Math.max(0, menu.targetLength(targetIndex) - 1) * TARGET_TOKEN_GAP;
             int tokenX = baseX + (cardWidth - tokenRowWidth) / 2;
             int tokenY = y + cardHeight - 16;
             for (int tokenIndex = 0; tokenIndex < menu.targetLength(targetIndex); tokenIndex++) {
                 int x = tokenX + tokenIndex * (tokenBox + TARGET_TOKEN_GAP);
-                guiGraphics.fill(x, tokenY - 2, x + tokenBox, tokenY + 10, completed ? 0xFF1A5248 : PANEL_DEEP);
+                boolean matched = completed || tokenIndex < matchedPrefix;
+                guiGraphics.fill(x, tokenY - 2, x + tokenBox, tokenY + 10, matched ? 0xFF1A5248 : PANEL_DEEP);
+                if (!completed && tokenIndex == matchedPrefix) {
+                    guiGraphics.fill(x, tokenY + 10, x + tokenBox, tokenY + 11, ACCENT);
+                }
                 String token = menu.tokenLabel(menu.targetToken(targetIndex, tokenIndex));
-                guiGraphics.drawString(font, token, x + (tokenBox - font.width(token)) / 2, tokenY, completed ? TEXT_PRIMARY : TEXT_SECONDARY, false);
+                guiGraphics.drawString(font, token, x + (tokenBox - font.width(token)) / 2, tokenY, matched ? TEXT_PRIMARY : TEXT_SECONDARY, false);
             }
         }
     }
@@ -270,7 +277,9 @@ public final class RelicCacheHackScreen extends AbstractContainerScreen<RelicCac
         if (hoveredCell < 0) {
             return;
         }
-        Component hint = menu.isCellSelectable(hoveredCell)
+        Component hint = menu.isCellAlreadySelected(hoveredCell)
+                ? Component.translatable("screen.cyberneticenhancements.relic_cache_hack.used")
+                : menu.isCellSelectable(hoveredCell)
                 ? Component.translatable("screen.cyberneticenhancements.relic_cache_hack.pick")
                 : Component.translatable("screen.cyberneticenhancements.relic_cache_hack.locked");
         guiGraphics.renderTooltip(font, hint, mouseX, mouseY);

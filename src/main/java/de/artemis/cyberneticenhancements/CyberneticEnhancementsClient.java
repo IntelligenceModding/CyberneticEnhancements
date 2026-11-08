@@ -12,6 +12,7 @@ public class CyberneticEnhancementsClient {
     public CyberneticEnhancementsClient(IEventBus modEventBus) {
         modEventBus.addListener(ClientModEvents::onClientSetup);
         modEventBus.addListener(ClientModEvents::registerRenderers);
+        modEventBus.addListener(de.artemis.cyberneticenhancements.client.render.NpcSkinModels::registerReloadListeners);
         modEventBus.addListener(ClientModEvents::registerScreens);
         modEventBus.addListener(ClientModEvents::registerTooltipComponents);
         modEventBus.addListener(ModKeyMappings::register);

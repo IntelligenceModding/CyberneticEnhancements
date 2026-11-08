@@ -26,7 +26,7 @@ public final class NpcDialogueTrees {
     private static final int MERC_WORK = 401;
     private static final int MERC_CODE = 402;
 
-    private static final Map<NpcType, NpcDialogueTree> TREES = Map.of(
+    private static final Map<NpcType, NpcDialogueTree> BASE_TREES = Map.of(
             NpcType.FIXER, new NpcDialogueTree(FIXER_ROOT, Map.of(
                     FIXER_ROOT, new NpcDialogueNode(FIXER_ROOT, line("fixer", "root"), List.of(
                             choice(1000, key("fixer", "respect"), player("fixer", "respect"), FIXER_CREDS, NpcDialogueView.DIALOGUE, 1, 0, false, "fixer_respect"),
@@ -70,7 +70,7 @@ public final class NpcDialogueTrees {
             NpcType.TECHIE, new NpcDialogueTree(TECHIE_ROOT, Map.of(
                     TECHIE_ROOT, new NpcDialogueNode(TECHIE_ROOT, line("techie", "root"), List.of(
                             choice(1200, key("techie", "respect"), player("techie", "respect"), TECHIE_SALVAGE, NpcDialogueView.DIALOGUE, 1, 0, false, "techie_respect"),
-                            choice(1201, key("techie", "gear"), player("techie", "services"), TECHIE_ROOT, NpcDialogueView.SHOP, 0, 0, false, ""),
+                            choice(1201, key("techie", "gear"), player("techie", "services"), TECHIE_ROOT, NpcDialogueView.SERVICES, 0, 0, false, ""),
                             choice(1202, key("techie", "parts"), player("techie", "shop"), TECHIE_ROOT, NpcDialogueView.SHOP, 0, 0, false, ""),
                             choice(1203, key("techie", "trash_talk"), player("techie", "trash_talk"), TECHIE_ROOT, NpcDialogueView.CLOSE, -2, 2, true, "")
                     )),
@@ -102,7 +102,7 @@ public final class NpcDialogueTrees {
                     )),
                     NETRUNNER_DISCIPLINE, new NpcDialogueNode(NETRUNNER_DISCIPLINE, line("netrunner", "discipline"), List.of(
                             choice(1320, key("netrunner", "agree"), player("netrunner", "agree"), NETRUNNER_ROUTE, NpcDialogueView.DIALOGUE, 1, 0, false, "netrunner_agree"),
-                            choice(1321, key("netrunner", "services"), player("netrunner", "services"), NETRUNNER_DISCIPLINE, NpcDialogueView.CONTRACTS, 0, 0, false, ""),
+                            choice(1321, key("netrunner", "services"), player("netrunner", "services"), NETRUNNER_DISCIPLINE, NpcDialogueView.SERVICES, 0, 0, false, ""),
                             choice(1322, key("netrunner", "challenge"), player("netrunner", "challenge"), NETRUNNER_ROOT, NpcDialogueView.DIALOGUE, -1, 1, false, ""),
                             choice(1323, key("netrunner", "close"), player("netrunner", "back"), NETRUNNER_ROOT, NpcDialogueView.CLOSE, 0, 0, true, "")
                     ))
@@ -116,7 +116,7 @@ public final class NpcDialogueTrees {
                     )),
                     MERC_WORK, new NpcDialogueNode(MERC_WORK, line("merc", "work"), List.of(
                             choice(1410, key("merc", "code"), player("merc", "code"), MERC_CODE, NpcDialogueView.DIALOGUE, 1, 0, false, "merc_code"),
-                            choice(1411, key("merc", "services"), player("merc", "services"), MERC_WORK, NpcDialogueView.SHOP, 0, 0, false, ""),
+                            choice(1411, key("merc", "services"), player("merc", "services"), MERC_WORK, NpcDialogueView.SERVICES, 0, 0, false, ""),
                             choice(1412, key("merc", "disagree"), player("merc", "disagree"), MERC_ROOT, NpcDialogueView.DIALOGUE, -1, 1, false, ""),
                             choice(1413, key("merc", "leave"), player("merc", "back"), MERC_ROOT, NpcDialogueView.CLOSE, 0, 0, true, "")
                     )),
@@ -128,6 +128,56 @@ public final class NpcDialogueTrees {
                     ))
             ))
     );
+
+    private static final Map<NpcType, NpcDialogueTree> TREES = expandedTrees();
+
+    private static Map<NpcType, NpcDialogueTree> expandedTrees() {
+        Map<NpcType, NpcDialogueTree> result = new java.util.EnumMap<>(NpcType.class);
+        for (Map.Entry<NpcType, NpcDialogueTree> entry : BASE_TREES.entrySet()) {
+            NpcType type = entry.getKey();
+            NpcDialogueTree base = entry.getValue();
+            String id = type.id();
+            int root = base.rootNodeId();
+            int briefing = root + 3;
+            int preparation = root + 4;
+            int consequences = root + 5;
+            int entryChoice = switch (type) {
+                case FIXER -> 1020;
+                case RIPPERDOC -> 1121;
+                case TECHIE -> 1220;
+                case NETRUNNER -> 1311;
+                case MERC -> 1420;
+            };
+            Map<Integer, NpcDialogueNode> nodes = new java.util.HashMap<>(base.nodes());
+
+            for (NpcDialogueNode node : base.nodes().values()) {
+                nodes.put(node.id(), new NpcDialogueNode(node.id(), node.npcLineKey(), node.choices().stream().map(c ->
+                        c.id() == entryChoice ? new NpcDialogueChoice(c.id(), c.translationKey(), c.playerLineKey(),
+                                briefing, c.view(), c.trustDelta(), c.annoyanceDelta(), c.closeConversation(), c.rewardMemoryKey()) : c).toList()));
+            }
+            int first = 2000 + root;
+            nodes.put(briefing, new NpcDialogueNode(briefing, line(id, "briefing"), List.of(
+                    choice(first, key(id, "prepare"), player(id, "prepare"), preparation, NpcDialogueView.DIALOGUE, 0, 0, false, ""),
+                    choice(first + 1, key(id, "consequences"), player(id, "consequences"), consequences, NpcDialogueView.DIALOGUE, 0, 0, false, ""),
+                    choice(first + 2, key(id, "take_work"), player(id, "take_work"), briefing, type.supportsContracts() ? NpcDialogueView.CONTRACTS : NpcDialogueView.SERVICES, 0, 0, false, ""),
+                    choice(first + 3, key(id, "return"), player(id, "return"), root, NpcDialogueView.DIALOGUE, 0, 0, false, "")
+            )));
+            nodes.put(preparation, new NpcDialogueNode(preparation, line(id, "preparation"), List.of(
+                    choice(first + 4, key(id, "understood"), player(id, "understood"), consequences, NpcDialogueView.DIALOGUE, 1, 0, false, id + "_preparation_understood"),
+                    choice(first + 5, key(id, "supplies"), player(id, "supplies"), preparation, NpcDialogueView.SHOP, 0, 0, false, ""),
+                    choice(first + 6, key(id, "treatment"), player(id, "treatment"), preparation, NpcDialogueView.SERVICES, 0, 0, false, ""),
+                    choice(first + 7, key(id, "return"), player(id, "return"), briefing, NpcDialogueView.DIALOGUE, 0, 0, false, "")
+            )));
+            nodes.put(consequences, new NpcDialogueNode(consequences, line(id, "consequences"), List.of(
+                    choice(first + 8, key(id, "take_work"), player(id, "take_work"), consequences, type.supportsContracts() ? NpcDialogueView.CONTRACTS : NpcDialogueView.SERVICES, 0, 0, false, ""),
+                    choice(first + 9, key(id, "prepare"), player(id, "prepare"), preparation, NpcDialogueView.DIALOGUE, 0, 0, false, ""),
+                    choice(first + 10, key(id, "reckless"), player(id, "reckless"), root, NpcDialogueView.DIALOGUE, -1, 1, false, ""),
+                    choice(first + 11, key(id, "return"), player(id, "return"), briefing, NpcDialogueView.DIALOGUE, 0, 0, false, "")
+            )));
+            result.put(type, new NpcDialogueTree(root, Map.copyOf(nodes)));
+        }
+        return Map.copyOf(result);
+    }
 
     private NpcDialogueTrees() {
     }

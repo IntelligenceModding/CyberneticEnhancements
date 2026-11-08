@@ -8,10 +8,8 @@ import de.artemis.cyberneticenhancements.common.consumable.CyberConsumableProfil
 import de.artemis.cyberneticenhancements.common.cyberware.ArmCyberwareManager;
 import de.artemis.cyberneticenhancements.common.cyberware.ChipwareCatalog;
 import de.artemis.cyberneticenhancements.common.cyberware.ChipwareDefinition;
-import de.artemis.cyberneticenhancements.common.cyberware.CombatStatusManager;
 import de.artemis.cyberneticenhancements.common.cyberware.CombatStatusType;
 import de.artemis.cyberneticenhancements.common.cyberware.CirculatoryCyberwareManager;
-import de.artemis.cyberneticenhancements.common.cyberware.CyberstrainManager;
 import de.artemis.cyberneticenhancements.common.cyberware.CyberwareAbilities;
 import de.artemis.cyberneticenhancements.common.cyberware.CyberwareAcquisitionMethod;
 import de.artemis.cyberneticenhancements.common.cyberware.CyberwareBalance;
@@ -27,7 +25,6 @@ import de.artemis.cyberneticenhancements.common.cyberware.CyberwareRecycleHelper
 import de.artemis.cyberneticenhancements.common.cyberware.CyberwareServiceHelper;
 import de.artemis.cyberneticenhancements.common.cyberware.CyberwareServicePlan;
 import de.artemis.cyberneticenhancements.common.cyberware.CyberwareSlotType;
-import de.artemis.cyberneticenhancements.common.cyberware.CyberwareTier;
 import de.artemis.cyberneticenhancements.common.cyberware.CyberwareUpgradeHelper;
 import de.artemis.cyberneticenhancements.common.cyberware.FaceCyberwareManager;
 import de.artemis.cyberneticenhancements.common.cyberware.FrontalCortexManager;
@@ -1056,12 +1053,6 @@ final class CyberwareWikiData {
                 || LegCyberwareManager.hasSpecialBehavior(id);
     }
 
-    private static void appendPlanMaterials(List<Component> lines, CyberwareServicePlan plan) {
-        for (CyberwareServiceHelper.MaterialRequirement requirement : CyberwareServiceHelper.getRequiredMaterials(plan)) {
-            lines.add(stackLine(requirement.stack().copyWithCount(requirement.count())));
-        }
-    }
-
     private static ItemLike auxiliarySupportItem(CyberwareSlotType slotType) {
         return switch (slotType) {
             case FRONTAL_CORTEX, OPERATING_SYSTEM, NERVOUS_SYSTEM, FACE -> ModItems.MICRO_BATTERY.get();
@@ -1236,10 +1227,6 @@ final class CyberwareWikiData {
             stacks.add(requirement.stack().copyWithCount(requirement.count()));
         }
         return stacks;
-    }
-
-    private static Component counted(ItemLike itemLike, int count) {
-        return stackLine(new ItemStack(itemLike, count));
     }
 
     private static Component stackLine(ItemStack stack) {

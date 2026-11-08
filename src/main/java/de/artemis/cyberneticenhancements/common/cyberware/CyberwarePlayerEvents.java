@@ -4,7 +4,6 @@ import de.artemis.cyberneticenhancements.common.consumable.CyberConsumableManage
 import de.artemis.cyberneticenhancements.common.economy.PlayerEurodollarManager;
 import de.artemis.cyberneticenhancements.common.quest.PlayerQuestManager;
 import net.minecraft.server.level.ServerPlayer;
-import net.minecraft.world.entity.player.Player;
 import net.neoforged.neoforge.event.entity.player.PlayerEvent;
 
 public final class CyberwarePlayerEvents {

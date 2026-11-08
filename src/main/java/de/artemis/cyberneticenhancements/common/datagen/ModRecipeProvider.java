@@ -305,16 +305,6 @@ public final class ModRecipeProvider extends RecipeProvider {
                 .save(recipeOutput);
     }
 
-    private ItemLike tierIngredient(CyberwareTier tier) {
-        return switch (tier) {
-            case TIER_1 -> Items.IRON_INGOT;
-            case TIER_2 -> Items.GOLD_INGOT;
-            case TIER_3 -> Items.DIAMOND;
-            case TIER_4 -> Items.ECHO_SHARD;
-            case TIER_5 -> Items.NETHER_STAR;
-        };
-    }
-
     private ItemLike componentItem(CyberwareTier tier) {
         return CyberwareServiceHelper.componentItem(tier);
     }

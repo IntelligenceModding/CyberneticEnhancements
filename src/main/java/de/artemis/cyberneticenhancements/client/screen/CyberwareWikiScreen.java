@@ -79,7 +79,6 @@ public final class CyberwareWikiScreen extends Screen {
     private static final int PANEL_HEADER_HEIGHT = 22;
     private static final int CHIP_HEIGHT = 16;
     private static final int VISUAL_SLOT_STRIDE = 20;
-    private static final int VISUAL_SLOT_SIZE = 16;
     private static final int VISUAL_CONTENT_PADDING = 4;
     private static final int TRANSFORM_OUTPUT_START = 58;
     private static final int SERVICE_MATERIALS_START = 34;
@@ -1735,17 +1734,6 @@ public final class CyberwareWikiScreen extends Screen {
             return 0xFFE0B35A;
         }
         return StationScreenStyle.ACCENT;
-    }
-
-    private Component accessChip(ArchiveContactsPayload.ContactEntry contact) {
-        return Component.translatable("screen.cyberneticenhancements.archive.contacts.access", accessSummary(contact));
-    }
-
-    private Component specialtyChip(ArchiveContactsPayload.ContactEntry contact) {
-        return switch (contact.npcTypeId()) {
-            case "fixer" -> Component.translatable("screen.cyberneticenhancements.archive.contacts.specialty", Component.translatable("screen.cyberneticenhancements.archive.contacts.specialty.fixer"));
-            default -> Component.translatable("screen.cyberneticenhancements.archive.contacts.specialty", humanizeId(contact.npcTypeId()));
-        };
     }
 
     private String accessSummary(ArchiveContactsPayload.ContactEntry contact) {

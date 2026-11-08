@@ -43,9 +43,12 @@ import org.jetbrains.annotations.Nullable;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
+import java.util.function.Supplier;
 
 public final class PlayerQuestManager {
     private static final String ROOT_TAG = "cyberneticenhancements.quest_state";
@@ -67,6 +70,7 @@ public final class PlayerQuestManager {
     private static final String QUEST_ITEM_TYPE_EXTRACTION_COMPASS = "extraction_compass";
     private static final String QUEST_ITEM_TYPE_INVESTIGATION_COMPASS = "investigation_compass";
     private static final String QUEST_ITEM_TYPE_BREACH_COMPASS = "breach_compass";
+    private static final String QUEST_ITEM_TYPE_HUNT_COMPASS = "hunt_compass";
     private static final int DELIVERY_MIN_DISTANCE = 220;
     private static final int DELIVERY_MAX_DISTANCE = 1000;
     private static final int EXTRACTION_MIN_DISTANCE = 180;
@@ -104,7 +108,12 @@ public final class PlayerQuestManager {
         if (entity instanceof Player) {
             return;
         }
-        updateEliminationProgress(player, entity.getType());
+        updateEliminationProgress(
+                player,
+                entity.getType(),
+                entity.blockPosition(),
+                entity.level().dimension().location().toString()
+        );
     }
 
     public static void onRightClickBlock(PlayerInteractEvent.RightClickBlock event) {
@@ -199,6 +208,10 @@ public final class PlayerQuestManager {
             case BREACH -> {
                 issueBreachItems(player, offer);
                 ensureBreachSite(resolveContractLevel(player, offer), offer);
+            }
+            case ELIMINATION -> {
+                issueEliminationItems(player, offer);
+                ensureEliminationMarker(resolveContractLevel(player, offer), offer);
             }
             default -> {
             }
@@ -503,14 +516,27 @@ public final class PlayerQuestManager {
             case INVESTIGATION -> updateInvestigationMarker(player, contract);
             case BREACH -> updateBreachProgress(player, contract);
             case RECOVERY -> updateRecoveryProgress(player, contract);
-            case ELIMINATION -> {
-                if (contract.isProgressComplete() && contract.status() != QuestStatus.READY) {
-                    contract.setStatus(QuestStatus.READY);
-                    yield true;
-                }
-                yield false;
-            }
+            case ELIMINATION -> updateEliminationRuntime(player, contract);
         };
+    }
+
+    private static boolean updateEliminationRuntime(ServerPlayer player, QuestContract contract) {
+        boolean dirty = false;
+        if (contract.status() == QuestStatus.ACTIVE) {
+            dirty |= ensureEliminationMarker(resolveContractLevel(player, contract), contract);
+            dirty |= EliminationEncounter.trySpawn(player, contract);
+            dirty |= ensureQuestGuidanceItem(
+                    player,
+                    contract,
+                    QUEST_ITEM_TYPE_HUNT_COMPASS,
+                    () -> createQuestCompass(contract, QUEST_ITEM_TYPE_HUNT_COMPASS, "item.cyberneticenhancements.hunt_compass")
+            );
+        }
+        if (contract.isProgressComplete() && contract.status() != QuestStatus.READY) {
+            contract.setStatus(QuestStatus.READY);
+            dirty = true;
+        }
+        return dirty;
     }
 
     private static boolean updateDeliveryProgress(ServerPlayer player, QuestContract contract) {
@@ -520,6 +546,13 @@ public final class PlayerQuestManager {
         }
         boolean dirty = false;
         if (!contract.destinationReached()) {
+            dirty |= ensureQuestGuidanceItem(
+                    player,
+                    contract,
+                    QUEST_ITEM_TYPE_COMPASS,
+                    () -> createHiddenStashCompass(contract)
+            );
+            dirty |= ensureCourierPackage(player, level, contract);
             dirty |= ensureCourierStash(level, contract);
         }
         if (!contract.destinationReached() && consumeCourierPackageFromStash(level, contract)) {
@@ -533,7 +566,17 @@ public final class PlayerQuestManager {
     }
 
     private static boolean updateExtractionProgress(ServerPlayer player, QuestContract contract) {
-        if (hasTaggedQuestItemInInventory(player, contract, QUEST_ITEM_TYPE_EXTRACTION)) {
+        boolean dirty = false;
+        boolean hasExtractionItem = hasTaggedQuestItemInInventory(player, contract, QUEST_ITEM_TYPE_EXTRACTION);
+        if (contract.status() == QuestStatus.ACTIVE) {
+            dirty |= ensureQuestGuidanceItem(
+                    player,
+                    contract,
+                    QUEST_ITEM_TYPE_EXTRACTION_COMPASS,
+                    () -> createQuestCompass(contract, QUEST_ITEM_TYPE_EXTRACTION_COMPASS, "item.cyberneticenhancements.extraction_compass")
+            );
+        }
+        if (hasExtractionItem) {
             if (!contract.destinationReached() || contract.status() != QuestStatus.READY) {
                 contract.setDestinationReached(true);
                 contract.setProgress(contract.targetCount());
@@ -542,28 +585,53 @@ public final class PlayerQuestManager {
                 cleanupExtractionCompass(player, contract);
                 return true;
             }
-            return false;
+            return dirty;
         }
-        return ensureExtractionDrop(resolveContractLevel(player, contract), contract);
+        if (contract.destinationReached() || contract.status() == QuestStatus.READY) {
+            contract.setDestinationReached(false);
+            contract.setProgress(0);
+            contract.setStatus(QuestStatus.ACTIVE);
+            dirty = true;
+        }
+        return dirty | ensureExtractionDrop(resolveContractLevel(player, contract), contract);
     }
 
     private static boolean updateInvestigationMarker(ServerPlayer player, QuestContract contract) {
-        return ensureInvestigationMarker(resolveContractLevel(player, contract), contract);
+        if (contract.status() != QuestStatus.ACTIVE) {
+            return false;
+        }
+        boolean dirty = ensureQuestGuidanceItem(
+                player,
+                contract,
+                QUEST_ITEM_TYPE_INVESTIGATION_COMPASS,
+                () -> createQuestCompass(contract, QUEST_ITEM_TYPE_INVESTIGATION_COMPASS, "item.cyberneticenhancements.signal_trace_compass")
+        );
+        return dirty | ensureInvestigationMarker(resolveContractLevel(player, contract), contract);
     }
 
     private static boolean updateBreachProgress(ServerPlayer player, QuestContract contract) {
+        boolean dirty = false;
+        if (contract.status() == QuestStatus.ACTIVE) {
+            dirty |= ensureQuestGuidanceItem(
+                    player,
+                    contract,
+                    QUEST_ITEM_TYPE_BREACH_COMPASS,
+                    () -> createQuestCompass(contract, QUEST_ITEM_TYPE_BREACH_COMPASS, "item.cyberneticenhancements.breach_vector_compass")
+            );
+        }
         if (contract.isProgressComplete() && contract.status() != QuestStatus.READY) {
             contract.setStatus(QuestStatus.READY);
             return true;
         }
         if (contract.isProgressComplete()) {
-            return false;
+            return dirty;
         }
-        return ensureBreachSite(resolveContractLevel(player, contract), contract);
+        return dirty | ensureBreachSite(resolveContractLevel(player, contract), contract);
     }
 
     private static boolean updateRecoveryProgress(ServerPlayer player, QuestContract contract) {
         int oldProgress = contract.progress();
+        QuestStatus oldStatus = contract.status();
         int inventoryCount = countInventoryItems(player, contract.recoveryItem());
         contract.setProgress(QuestContract.normalizeProgressForRecovery(contract, inventoryCount));
         if (contract.progress() >= contract.targetCount() && contract.status() != QuestStatus.READY) {
@@ -571,10 +639,10 @@ public final class PlayerQuestManager {
         } else if (contract.progress() < contract.targetCount() && contract.status() == QuestStatus.READY) {
             contract.setStatus(QuestStatus.ACTIVE);
         }
-        return contract.progress() != oldProgress;
+        return contract.progress() != oldProgress || contract.status() != oldStatus;
     }
 
-    private static void updateEliminationProgress(ServerPlayer player, EntityType<?> killedType) {
+    private static void updateEliminationProgress(ServerPlayer player, EntityType<?> killedType, BlockPos killedPos, String killedDimensionId) {
         CompoundTag root = rootTag(player, false);
         if (root == null) {
             return;
@@ -594,8 +662,8 @@ public final class PlayerQuestManager {
                 continue;
             }
             boolean inHuntZone = contract.targetPos() == null
-                    || (player.serverLevel().dimension().location().toString().equals(contract.dimensionId())
-                    && player.blockPosition().distManhattan(contract.targetPos()) <= Math.max(12, contract.areaRadius()));
+                    || (killedDimensionId.equals(contract.dimensionId())
+                    && killedPos.closerThan(contract.targetPos(), Math.max(1.0D, contract.areaRadius() + 0.5D)));
             if (contract.eliminationTarget() == killedType && inHuntZone) {
                 contract.setProgress(contract.progress() + 1);
                 if (contract.isProgressComplete()) {
@@ -632,7 +700,8 @@ public final class PlayerQuestManager {
             if (contract.type() != QuestType.INVESTIGATION || contract.status() != QuestStatus.ACTIVE || contract.targetPos() == null) {
                 continue;
             }
-            if (!dimensionId.equals(contract.dimensionId()) || !clickedPos.equals(contract.targetPos())) {
+            if (!dimensionId.equals(contract.dimensionId())
+                    || !clickedPos.closerThan(contract.targetPos(), Math.max(1.0D, contract.areaRadius() + 0.5D))) {
                 continue;
             }
             cleanupInvestigationMarker(player.serverLevel(), contract);
@@ -741,42 +810,87 @@ public final class PlayerQuestManager {
         int trust = issuer.trustLevel(player);
         int maxTier = trust >= 3 ? 3 : trust >= 1 ? 2 : 1;
         List<QuestContract> offers = new ArrayList<>(MAX_OFFERS);
+        Set<QuestType> used = new HashSet<>();
         for (int index = 0; index < MAX_OFFERS; index++) {
-            QuestType type = questTypeForSlot(issuer.npcType(), index);
+            QuestType type = questTypeForSlot(issuer.npcType(), index, random, trust, used);
+            used.add(type);
             int tier = 1 + random.nextInt(maxTier);
             offers.add(generateOffer(player, issuer, type, tier, index, day, random));
         }
         return offers;
     }
 
-    private static QuestType questTypeForSlot(NpcType npcType, int index) {
+    private static QuestType questTypeForSlot(NpcType npcType, int index, RandomSource random, int trust, Set<QuestType> used) {
+        if (index == 0) {
+            return primaryQuestType(npcType);
+        }
+        List<QuestType> pool = weightedQuestPool(npcType, trust);
+        for (int attempt = 0; attempt < 10; attempt++) {
+            QuestType picked = pool.get(random.nextInt(pool.size()));
+            if (used.size() >= QuestType.values().length || !used.contains(picked)) {
+                return picked;
+            }
+        }
+        for (QuestType fallback : pool) {
+            if (!used.contains(fallback)) {
+                return fallback;
+            }
+        }
+        return primaryQuestType(npcType);
+    }
+
+    private static QuestType primaryQuestType(NpcType npcType) {
         return switch (npcType) {
-            case FIXER -> switch (index) {
-                case 0 -> QuestType.DELIVERY;
-                case 1 -> QuestType.INVESTIGATION;
-                default -> QuestType.ELIMINATION;
-            };
-            case NETRUNNER -> switch (index) {
-                case 0 -> QuestType.BREACH;
-                case 1 -> QuestType.INVESTIGATION;
-                default -> QuestType.EXTRACTION;
-            };
-            case MERC -> switch (index) {
-                case 0 -> QuestType.ELIMINATION;
-                case 1 -> QuestType.EXTRACTION;
-                default -> QuestType.DELIVERY;
-            };
-            case TECHIE -> switch (index) {
-                case 0 -> QuestType.RECOVERY;
-                case 1 -> QuestType.EXTRACTION;
-                default -> QuestType.INVESTIGATION;
-            };
-            case RIPPERDOC -> switch (index) {
-                case 0 -> QuestType.DELIVERY;
-                case 1 -> QuestType.RECOVERY;
-                default -> QuestType.EXTRACTION;
-            };
+            case FIXER -> QuestType.DELIVERY;
+            case RIPPERDOC -> QuestType.RECOVERY;
+            case TECHIE -> QuestType.RECOVERY;
+            case NETRUNNER -> QuestType.BREACH;
+            case MERC -> QuestType.ELIMINATION;
         };
+    }
+
+    private static List<QuestType> weightedQuestPool(NpcType npcType, int trust) {
+        List<QuestType> base = new ArrayList<>();
+        switch (npcType) {
+            case FIXER -> {
+                addWeighted(base, QuestType.DELIVERY, 4);
+                addWeighted(base, QuestType.INVESTIGATION, trust >= 1 ? 3 : 2);
+                addWeighted(base, QuestType.EXTRACTION, 2);
+                addWeighted(base, QuestType.RECOVERY, 2);
+                addWeighted(base, QuestType.ELIMINATION, trust >= 2 ? 2 : 1);
+            }
+            case RIPPERDOC -> {
+                addWeighted(base, QuestType.RECOVERY, 4);
+                addWeighted(base, QuestType.DELIVERY, 3);
+                addWeighted(base, QuestType.EXTRACTION, 2);
+                addWeighted(base, QuestType.INVESTIGATION, trust >= 2 ? 2 : 1);
+            }
+            case TECHIE -> {
+                addWeighted(base, QuestType.RECOVERY, 4);
+                addWeighted(base, QuestType.EXTRACTION, 3);
+                addWeighted(base, QuestType.DELIVERY, 2);
+                addWeighted(base, QuestType.INVESTIGATION, 2);
+            }
+            case NETRUNNER -> {
+                addWeighted(base, QuestType.BREACH, 4);
+                addWeighted(base, QuestType.INVESTIGATION, 4);
+                addWeighted(base, QuestType.EXTRACTION, 3);
+                addWeighted(base, QuestType.RECOVERY, trust >= 1 ? 2 : 1);
+            }
+            case MERC -> {
+                addWeighted(base, QuestType.ELIMINATION, 5);
+                addWeighted(base, QuestType.EXTRACTION, 3);
+                addWeighted(base, QuestType.DELIVERY, 2);
+                addWeighted(base, QuestType.RECOVERY, 1);
+            }
+        }
+        return base;
+    }
+
+    private static void addWeighted(List<QuestType> pool, QuestType type, int weight) {
+        for (int count = 0; count < weight; count++) {
+            pool.add(type);
+        }
     }
 
     private static QuestContract generateOffer(ServerPlayer player, AbstractCityNpcEntity issuer, QuestType type, int tier, int index, long day, RandomSource random) {
@@ -820,6 +934,7 @@ public final class PlayerQuestManager {
             case ELIMINATION -> 110 + tier * 80 + random.nextInt(40);
             case RECOVERY -> 100 + tier * 70 + random.nextInt(35);
         };
+        rewardMoney = Math.max(45, Math.round(rewardMoney * moneyProfileMultiplier(issuer.npcType())));
         int rewardTrust;
         if (tier >= 3 && (type == QuestType.BREACH || type == QuestType.INVESTIGATION)) {
             rewardTrust = 3;
@@ -853,6 +968,15 @@ public final class PlayerQuestManager {
                 day,
                 0L
         );
+    }
+
+    private static float moneyProfileMultiplier(NpcType npcType) {
+        return switch (npcType) {
+            case FIXER -> 1.0F;
+            case RIPPERDOC, TECHIE -> 0.95F;
+            case NETRUNNER -> 1.04F;
+            case MERC -> 1.08F;
+        };
     }
 
     private static DeliveryTarget generateDeliveryTarget(ServerLevel preferredLevel, AbstractCityNpcEntity issuer, ServerPlayer player, int tier, RandomSource random) {
@@ -983,6 +1107,10 @@ public final class PlayerQuestManager {
 
     private static void issueBreachItems(ServerPlayer player, QuestContract contract) {
         giveQuestItem(player, createQuestCompass(contract, QUEST_ITEM_TYPE_BREACH_COMPASS, "item.cyberneticenhancements.breach_vector_compass"));
+    }
+
+    private static void issueEliminationItems(ServerPlayer player, QuestContract contract) {
+        giveQuestItem(player, createQuestCompass(contract, QUEST_ITEM_TYPE_HUNT_COMPASS, "item.cyberneticenhancements.hunt_compass"));
     }
 
     private static ItemStack createCourierPackage(QuestContract contract) {
@@ -1128,6 +1256,18 @@ public final class PlayerQuestManager {
         return dirty;
     }
 
+    private static boolean ensureEliminationMarker(@Nullable ServerLevel level, QuestContract contract) {
+        if (level == null || contract.targetPos() == null || contract.isReady()) {
+            return false;
+        }
+        BlockPos lodestonePos = contract.targetPos().below();
+        if (!level.getBlockState(lodestonePos).is(Blocks.LODESTONE)) {
+            level.setBlock(lodestonePos, Blocks.LODESTONE.defaultBlockState(), Block.UPDATE_ALL);
+            return true;
+        }
+        return false;
+    }
+
     private static boolean consumeCourierPackageFromStash(ServerLevel level, QuestContract contract) {
         if (contract.targetPos() == null) {
             return false;
@@ -1199,6 +1339,10 @@ public final class PlayerQuestManager {
                 cleanupBreachCompass(player, contract);
                 cleanupBreachMarker(resolveContractLevel(player, contract), contract);
             }
+            case ELIMINATION -> {
+                cleanupEliminationCompass(player, contract);
+                cleanupEliminationMarker(resolveContractLevel(player, contract), contract);
+            }
             default -> {
             }
         }
@@ -1226,6 +1370,10 @@ public final class PlayerQuestManager {
         removeTaggedQuestItems(player, contract, QUEST_ITEM_TYPE_BREACH_COMPASS);
     }
 
+    private static void cleanupEliminationCompass(ServerPlayer player, QuestContract contract) {
+        removeTaggedQuestItems(player, contract, QUEST_ITEM_TYPE_HUNT_COMPASS);
+    }
+
     private static void removeTaggedQuestItems(ServerPlayer player, QuestContract contract, String itemType) {
         for (ItemStack stack : player.getInventory().items) {
             if (matchesQuestItem(stack, contract, itemType)) {
@@ -1251,6 +1399,31 @@ public final class PlayerQuestManager {
             }
         }
         return false;
+    }
+
+    private static boolean ensureQuestGuidanceItem(ServerPlayer player, QuestContract contract, String itemType, Supplier<ItemStack> supplier) {
+        if (hasTaggedQuestItemInInventory(player, contract, itemType)) {
+            return false;
+        }
+        giveQuestItem(player, supplier.get());
+        return true;
+    }
+
+    private static boolean ensureCourierPackage(ServerPlayer player, ServerLevel level, QuestContract contract) {
+        if (hasTaggedQuestItemInInventory(player, contract, QUEST_ITEM_TYPE_PACKAGE)
+                || courierStashContainsPackage(level, contract)) {
+            return false;
+        }
+        giveQuestItem(player, createCourierPackage(contract));
+        return true;
+    }
+
+    private static boolean courierStashContainsPackage(ServerLevel level, QuestContract contract) {
+        if (contract.targetPos() == null) {
+            return false;
+        }
+        BlockEntity blockEntity = level.getBlockEntity(contract.targetPos());
+        return blockEntity instanceof Container container && containerContainsQuestItem(container, contract, QUEST_ITEM_TYPE_PACKAGE);
     }
 
     private static boolean canForceReadyDeliveryTurnIn(ServerPlayer player, QuestContract contract) {
@@ -1358,6 +1531,16 @@ public final class PlayerQuestManager {
                 || level.getBlockState(cachePos).getBlock() == ModBlocks.LEGENDARY_RELIC_CACHE.get()) {
             level.removeBlock(cachePos, false);
         }
+        if (level.getBlockState(lodestonePos).is(Blocks.LODESTONE)) {
+            level.removeBlock(lodestonePos, false);
+        }
+    }
+
+    private static void cleanupEliminationMarker(@Nullable ServerLevel level, QuestContract contract) {
+        if (level == null || contract.targetPos() == null) {
+            return;
+        }
+        BlockPos lodestonePos = contract.targetPos().below();
         if (level.getBlockState(lodestonePos).is(Blocks.LODESTONE)) {
             level.removeBlock(lodestonePos, false);
         }

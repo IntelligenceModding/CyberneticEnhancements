@@ -18,7 +18,6 @@ import de.artemis.cyberneticenhancements.common.menu.RipperStationMenu;
 import de.artemis.cyberneticenhancements.common.network.UpgradeCyberwareSlotPayload;
 import de.artemis.cyberneticenhancements.common.network.UpgradeRipperSubSlotPayload;
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.gui.screens.inventory.InventoryScreen;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen;
 import net.minecraft.client.player.AbstractClientPlayer;
@@ -196,11 +195,6 @@ public final class RipperStationScreen extends AbstractContainerScreen<RipperSta
     private void drawStatLine(GuiGraphics guiGraphics, Component label, Component value, int x, int y, int rightX) {
         guiGraphics.drawString(font, label, x, y, TEXT_SECONDARY, false);
         guiGraphics.drawString(font, value, rightX - font.width(value) + BODY_OVERVIEW_VALUE_OFFSET_X, y, TEXT_PRIMARY, false);
-    }
-
-    private int drawOverviewSlotLine(GuiGraphics guiGraphics, Component label, int installed, int total, int y) {
-        drawStatLine(guiGraphics, label, Component.literal(installed + " / " + total), 18, y, 178);
-        return y + BODY_OVERVIEW_LINE_SPACING;
     }
 
     private void renderBodyOverviewBonuses(GuiGraphics guiGraphics, int startY) {
@@ -589,7 +583,7 @@ public final class RipperStationScreen extends AbstractContainerScreen<RipperSta
             VertexConsumer vertexConsumer,
             int overlay
     ) {
-        // The preview faces the viewer, so the screen-left hand is the model's right arm.
+
         renderSingleHandGroup(model.rightArm, model.rightSleeve, PlayerModelPart.RIGHT_SLEEVE, player, guiGraphics, vertexConsumer, overlay);
     }
 
@@ -812,15 +806,6 @@ public final class RipperStationScreen extends AbstractContainerScreen<RipperSta
     private void drawCenteredBodyLabel(GuiGraphics guiGraphics, CyberwareSlotType slotType, int centerX, int y) {
         Component label = Component.translatable(slotType.translationKey());
         guiGraphics.drawString(font, label, centerX - font.width(label) / 2, y, getBodyLabelColor(slotType), false);
-    }
-
-    private void drawLeftAlignedBodyLabel(GuiGraphics guiGraphics, CyberwareSlotType slotType, int x, int y) {
-        guiGraphics.drawString(font, Component.translatable(slotType.translationKey()), x, y, getBodyLabelColor(slotType), false);
-    }
-
-    private void drawRightAlignedBodyLabel(GuiGraphics guiGraphics, CyberwareSlotType slotType, int rightX, int y) {
-        Component label = Component.translatable(slotType.translationKey());
-        guiGraphics.drawString(font, label, rightX - font.width(label), y, getBodyLabelColor(slotType), false);
     }
 
     private int getBodyLabelColor(CyberwareSlotType slotType) {
