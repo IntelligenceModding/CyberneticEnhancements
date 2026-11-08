@@ -3,11 +3,11 @@
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/Release%20Status-ALPHA-D32F2F?style=for-the-badge" alt="ALPHA ? experimental release">
+  <img src="https://img.shields.io/badge/Release%20Status-BETA-F9A825?style=for-the-badge" alt="BETA - experimental release">
 </p>
 
 <p align="center">
-  <strong>THIS MOD IS STILL IN ALPHA. EVERYTHING IS SUBJECT TO CHANGE.</strong><br>
+  <strong>THIS MOD IS STILL IN BETA. EVERYTHING IS SUBJECT TO CHANGE.</strong><br>
   <strong>Game-breaking changes, world-breaking changes, and incompatible saves are completely possible between updates.</strong>
 </p>
 
@@ -123,7 +123,7 @@
 </p>
 
 <p align="center">
-  Bug reports and feature suggestions are welcome, especially during alpha testing.<br>
+  Bug reports and feature suggestions are welcome, especially during beta testing.<br>
   When reporting a problem, include your mod version, NeoForge version, reproduction steps, and relevant logs or crash reports.<br>
   Mention whether the issue happens in singleplayer or on a dedicated server.
 </p>

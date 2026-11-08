@@ -6,7 +6,7 @@
 
 Thank you for helping improve Cybernetic Enhancements. Bug fixes, gameplay improvements, compatibility fixes, assets, translations, and documentation are welcome.
 
-**This is an alpha project. Features, balance, and saved-data formats can change, including changes that break existing worlds. Test with disposable worlds or backups, and explain compatibility impacts in your pull request.**
+**This is a beta project. Features, balance, and saved-data formats can change, including changes that break existing worlds. Test with disposable worlds or backups, and explain compatibility impacts in your pull request.**
 
 ## Reporting Problems and Proposing Features
 

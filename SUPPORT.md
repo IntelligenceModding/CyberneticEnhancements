@@ -4,9 +4,9 @@
 
 <h1 align="center">Support for Cybernetic Enhancements</h1>
 
-## Alpha Status
+## Beta Status
 
-**Everything is subject to change. Game-breaking changes, world-breaking changes, and incompatible saves are possible between releases.** Back up worlds before updating and use a disposable world to reproduce destructive bugs. Alpha status does not mean save problems should go unreported.
+**Everything is subject to change. Game-breaking changes, world-breaking changes, and incompatible saves are possible between releases.** Back up worlds before updating and use a disposable world to reproduce destructive bugs. Beta status does not mean save problems should go unreported.
 
 ## Installation and Gameplay Help
 
@@ -22,7 +22,7 @@ Open the [Bug Report form](https://github.com/IntelligenceModding/Cybernetic-Enh
 - Singleplayer, LAN, or dedicated-server environment; include both client and server versions for multiplayer problems.
 - Steps to reproduce, expected behavior, and actual behavior.
 - Relevant implants, abilities, NPC type, contract type, cache tier, station, or banking action.
-- Whether the world is new or updated from an earlier alpha, and what world or player data was affected.
+- Whether the world is new or updated from an earlier beta, and what world or player data was affected.
 - Relevant logs or crash reports, other mods, resource packs, and screenshots where useful.
 
 Logs normally live in the game's `logs/` directory and crash reports in `crash-reports/`. For multiplayer problems, server logs may be needed as well as client logs. Remove private information before sharing. Do not publicly upload a personal world or disclose a live server's credentials.

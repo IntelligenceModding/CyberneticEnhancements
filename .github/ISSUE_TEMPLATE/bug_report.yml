@@ -10,7 +10,7 @@ body:
       value: |
         Thank you for reporting a problem with Cybernetic Enhancements.
 
-        This mod is in alpha. Gameplay and world/save compatibility may change between releases.
+        This mod is in beta. Gameplay and world/save compatibility may change between releases.
         Please report game-breaking behavior and save problems as well as ordinary bugs.
         Use a backup or disposable world when reproducing destructive problems.
 
@@ -28,7 +28,7 @@ body:
     attributes:
       label: Cybernetic Enhancements Version
       description: Which version of Cybernetic Enhancements are you using?
-      placeholder: "Example: 0.1a"
+      placeholder: "Example: 0.1b"
     validations:
       required: true
 
@@ -78,7 +78,7 @@ body:
     attributes:
       label: World or player-data impact
       description: For save problems, state the previous mod version, whether this is a fresh world or an upgraded save, and what data was affected. Do not upload a private world publicly.
-      placeholder: "Example: upgraded from an earlier alpha; installed cyberware disappeared after respawning."
+      placeholder: "Example: upgraded from an earlier beta; installed cyberware disappeared after respawning."
 
   - type: textarea
     id: description

@@ -41,7 +41,7 @@ body:
     id: progression
     attributes:
       label: Progression and compatibility
-      description: If relevant, explain the effect on balance, existing saves, multiplayer, and current progression. Alpha changes can be substantial, but their impact should be clear.
+      description: If relevant, explain the effect on balance, existing saves, multiplayer, and current progression. Beta changes can be substantial, but their impact should be clear.
 
   - type: textarea
     id: references
