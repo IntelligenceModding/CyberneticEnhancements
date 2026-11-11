@@ -1,10 +1,24 @@
 {
   "type": "cyberneticenhancements:recycling",
+  "damaged_outputs": [
+    {
+      "count": 1,
+      "id": "cyberneticenhancements:basic_circuit_plate"
+    }
+  ],
   "ingredient": {
     "item": "cyberneticenhancements:ram_jolt"
   },
-  "result": {
-    "count": 1,
-    "id": "cyberneticenhancements:basic_circuit_plate"
-  }
+  "outputs": [
+    {
+      "count": 1,
+      "id": "cyberneticenhancements:basic_circuit_plate"
+    }
+  ],
+  "worn_outputs": [
+    {
+      "count": 1,
+      "id": "cyberneticenhancements:basic_circuit_plate"
+    }
+  ]
 }

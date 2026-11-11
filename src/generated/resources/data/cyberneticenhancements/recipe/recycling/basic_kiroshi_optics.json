@@ -1,11 +1,32 @@
 {
   "type": "cyberneticenhancements:recycling",
-  "damage_sensitive": true,
+  "damaged_outputs": [
+    {
+      "count": 1,
+      "id": "cyberneticenhancements:copper_wiring"
+    }
+  ],
   "ingredient": {
     "item": "cyberneticenhancements:basic_kiroshi_optics"
   },
-  "result": {
-    "count": 1,
-    "id": "cyberneticenhancements:common_item_components"
-  }
+  "outputs": [
+    {
+      "count": 1,
+      "id": "cyberneticenhancements:sensor_lens"
+    },
+    {
+      "count": 1,
+      "id": "cyberneticenhancements:copper_wiring"
+    }
+  ],
+  "worn_outputs": [
+    {
+      "count": 1,
+      "id": "cyberneticenhancements:sensor_lens"
+    },
+    {
+      "count": 1,
+      "id": "cyberneticenhancements:copper_wiring"
+    }
+  ]
 }

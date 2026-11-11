@@ -28,6 +28,8 @@ public final class DataGenerators {
                 lookupProvider
         ));
         generator.addProvider(event.includeServer(), new ModRecipeProvider(packOutput, lookupProvider));
+        generator.addProvider(event.includeServer(), new WorkshopDefaults(packOutput));
+        generator.addProvider(event.includeServer(), new de.artemis.cyberneticenhancements.common.fabrication.FabricationLootProvider(packOutput));
 
         BlockTagsProvider blockTagsProvider = new ModBlockTagProvider(packOutput, lookupProvider);
         generator.addProvider(event.includeServer(), blockTagsProvider);

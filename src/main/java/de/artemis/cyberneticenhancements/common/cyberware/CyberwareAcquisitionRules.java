@@ -41,6 +41,7 @@ public final class CyberwareAcquisitionRules {
             "chipware_socket_mk3",
             "militech_canto",
             "militech_apogee",
+            "militech_experimental_sandevistan",
             "behavioral_imprint_synced_faceplate",
             "second_heart",
             "chitin"

@@ -1,11 +1,36 @@
 {
   "type": "cyberneticenhancements:recycling",
-  "damage_sensitive": true,
+  "damaged_outputs": [
+    {
+      "count": 1,
+      "id": "cyberneticenhancements:polymer_shell"
+    }
+  ],
   "ingredient": {
     "item": "cyberneticenhancements:nano_plating"
   },
-  "result": {
-    "count": 3,
-    "id": "cyberneticenhancements:rare_item_components"
-  }
+  "outputs": [
+    {
+      "count": 1,
+      "id": "cyberneticenhancements:biocompatible_mesh"
+    },
+    {
+      "count": 1,
+      "id": "cyberneticenhancements:polymer_shell"
+    },
+    {
+      "count": 1,
+      "id": "cyberneticenhancements:thermal_regulator"
+    }
+  ],
+  "worn_outputs": [
+    {
+      "count": 1,
+      "id": "cyberneticenhancements:biocompatible_mesh"
+    },
+    {
+      "count": 1,
+      "id": "cyberneticenhancements:polymer_shell"
+    }
+  ]
 }

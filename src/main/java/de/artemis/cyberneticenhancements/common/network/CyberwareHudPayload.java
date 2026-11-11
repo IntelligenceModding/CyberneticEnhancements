@@ -262,6 +262,11 @@ public record CyberwareHudPayload(
 
     private static List<StatusEntry> collectStatuses(ServerPlayer player, long gameTime, int suppressionSeconds) {
         List<StatusEntry> entries = new ArrayList<>();
+        if (de.artemis.cyberneticenhancements.common.cyberware.sandevistan.SandevistanManager.recentUses(player) > 0) {
+            int remaining = (int) Math.max(1, (de.artemis.cyberneticenhancements.common.cyberware.sandevistan.SandevistanManager.recoveryRemaining(player) + 19) / 20);
+            entries.add(new StatusEntry("hud.cyberneticenhancements.sandevistan.instability", CyberstrainManager.getInstability(player),
+                    remaining, Math.max(remaining, de.artemis.cyberneticenhancements.common.cyberware.sandevistan.SandevistanManager.recoveryTotalSeconds(player)), true));
+        }
         if (suppressionSeconds > 0) {
             entries.add(new StatusEntry(
                     "hud.cyberneticenhancements.suppression",

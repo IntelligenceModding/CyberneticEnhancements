@@ -5,7 +5,8 @@ import de.artemis.cyberneticenhancements.common.menu.RelicCacheHackMenu;
 import de.artemis.cyberneticenhancements.common.network.RelicCacheHackSelectPayload;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
-import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen;
+import de.artemis.cyberneticenhancements.client.ui.UiRenderer;
+import de.artemis.cyberneticenhancements.client.ui.ResponsiveContainerScreen;
 import net.minecraft.network.chat.Component;
 import net.minecraft.util.FormattedCharSequence;
 import net.minecraft.sounds.SoundEvents;
@@ -15,8 +16,8 @@ import net.neoforged.neoforge.network.PacketDistributor;
 
 import java.util.List;
 
-public final class RelicCacheHackScreen extends AbstractContainerScreen<RelicCacheHackMenu> {
-    private static final int OUTER_BG = 0xF40A1015;
+public final class RelicCacheHackScreen extends ResponsiveContainerScreen<RelicCacheHackMenu> {
+    private static final int OUTER_BG = UiRenderer.PANEL;
     private static final int PANEL_BG = StationScreenStyle.PANEL_BG;
     private static final int PANEL_ALT = StationScreenStyle.PANEL_ALT;
     private static final int PANEL_EDGE = StationScreenStyle.PANEL_EDGE;
@@ -64,6 +65,7 @@ public final class RelicCacheHackScreen extends AbstractContainerScreen<RelicCac
         drawTimerBar(guiGraphics, x0 + targetPanelInnerX(), y0 + targetTimerBarY(), targetPanelInnerWidth(), TIMER_BAR_HEIGHT);
         drawGrid(guiGraphics, mouseX, mouseY);
         drawTargets(guiGraphics);
+        drawBuffer(guiGraphics);
     }
 
     @Override
@@ -74,18 +76,18 @@ public final class RelicCacheHackScreen extends AbstractContainerScreen<RelicCac
                 gridPanelInnerX(), RelicCacheHackLayout.GRID_PANEL_Y1 + PANEL_TEXT_PADDING_Y + 12, TEXT_PRIMARY, false);
 
         Component difficulty = Component.translatable("screen.cyberneticenhancements.relic_cache_hack.difficulty", menu.difficulty());
-        Component timer = Component.translatable("screen.cyberneticenhancements.relic_cache_hack.timer", formatSeconds(menu.timeRemainingTicks()));
+        Component timer = Component.translatable(menu.selectedCount() == 0 ? "screen.cyberneticenhancements.relic_cache_hack.planning" : "screen.cyberneticenhancements.relic_cache_hack.timer", formatSeconds(menu.timeRemainingTicks()));
         guiGraphics.drawString(font, Component.translatable("screen.cyberneticenhancements.relic_cache_hack.targets"), targetPanelInnerX(), RelicCacheHackLayout.TARGET_PANEL_Y1 + PANEL_TEXT_PADDING_Y, TEXT_PRIMARY, false);
         drawRightAlignedString(guiGraphics, difficulty, RelicCacheHackLayout.TARGET_PANEL_X2 - PANEL_TEXT_PADDING_X, RelicCacheHackLayout.TARGET_PANEL_Y1 + PANEL_TEXT_PADDING_Y, TEXT_SECONDARY);
         guiGraphics.drawString(font, timer, targetPanelInnerX(), RelicCacheHackLayout.TARGET_PANEL_Y1 + PANEL_TEXT_PADDING_Y + 12, colorForRemainingTime(), false);
 
-        drawWrappedText(guiGraphics, Component.translatable("screen.cyberneticenhancements.relic_cache_hack.rule"), footerPanelInnerX(), footerPanelInnerY(), footerPanelInnerWidth(), TEXT_SECONDARY, footerMaxLines());
+        guiGraphics.drawString(font, Component.translatable("screen.cyberneticenhancements.relic_cache_hack.buffer", menu.selectedCount(), menu.bufferSize()), footerPanelInnerX(), footerPanelInnerY(), ACCENT, false);
+        drawWrappedText(guiGraphics, Component.translatable("screen.cyberneticenhancements.relic_cache_hack.rule"), footerPanelInnerX(), footerPanelInnerY() + 46, footerPanelInnerWidth(), TEXT_SECONDARY, 4);
     }
 
     @Override
-    public void render(GuiGraphics guiGraphics, int mouseX, int mouseY, float partialTick) {
-        renderBackground(guiGraphics, mouseX, mouseY, partialTick);
-        super.render(guiGraphics, mouseX, mouseY, partialTick);
+    protected void renderContent(GuiGraphics guiGraphics, int mouseX, int mouseY, float partialTick) {
+        super.renderContent(guiGraphics, mouseX, mouseY, partialTick);
         renderCellTooltip(guiGraphics, mouseX, mouseY);
     }
 
@@ -110,7 +112,7 @@ public final class RelicCacheHackScreen extends AbstractContainerScreen<RelicCac
     }
 
     @Override
-    public boolean mouseClicked(double mouseX, double mouseY, int button) {
+    protected boolean mouseClickedContent(double mouseX, double mouseY, int button) {
         if (button == 0) {
             int cellIndex = hoveredCell((int) mouseX, (int) mouseY);
             if (cellIndex >= 0) {
@@ -123,7 +125,7 @@ public final class RelicCacheHackScreen extends AbstractContainerScreen<RelicCac
                 return true;
             }
         }
-        return super.mouseClicked(mouseX, mouseY, button);
+        return super.mouseClickedContent(mouseX, mouseY, button);
     }
 
     private void drawGrid(GuiGraphics guiGraphics, int mouseX, int mouseY) {
@@ -144,21 +146,19 @@ public final class RelicCacheHackScreen extends AbstractContainerScreen<RelicCac
                 boolean hoveredCell = hovered == cellIndex;
 
                 int fillColor = selected
-                        ? 0xFF173C39
+                        ? UiRenderer.ROW_SELECTED
                         : selectable
-                        ? 0xFF133138
-                        : 0xFF121A22;
-                if (hoveredCell && selectable) {
-                    fillColor = 0xFF1A4148;
+                        ? StationScreenStyle.SLOT_ACTIVE
+                        : StationScreenStyle.PANEL_DEEP;
+                if (hoveredCell && (selectable || selected)) {
+                    fillColor = UiRenderer.blend(fillColor, UiRenderer.ACCENT, 0.18F);
                 } else if (hoveredCell) {
                     fillColor = 0xFF1B2731;
                 }
 
                 guiGraphics.fill(x, y, x + cellSize, y + cellSize, fillColor);
-                guiGraphics.fill(x, y, x + cellSize, y + 1, selectable ? ACCENT : PANEL_EDGE);
-                guiGraphics.fill(x, y + cellSize - 1, x + cellSize, y + cellSize, PANEL_DEEP);
-                guiGraphics.fill(x, y, x + 1, y + cellSize, PANEL_EDGE);
-                guiGraphics.fill(x + cellSize - 1, y, x + cellSize, y + cellSize, PANEL_DEEP);
+                UiRenderer.outline(guiGraphics, x, y, cellSize, cellSize,
+                        selected ? ACCENT : hoveredCell ? UiRenderer.PANEL_EDGE_ACTIVE : selectable ? ACCENT : PANEL_EDGE);
 
                 String token = menu.tokenLabel(menu.tokenAtCell(cellIndex));
                 int tokenColor = selected ? 0xFFE9FFF6 : selectable ? 0xFFBFEFE1 : TEXT_SECONDARY;
@@ -210,6 +210,18 @@ public final class RelicCacheHackScreen extends AbstractContainerScreen<RelicCac
         }
     }
 
+    private void drawBuffer(GuiGraphics g) {
+        int count = menu.bufferSize(), cellWidth = 24, gap = 4;
+        int x = leftPos + RelicCacheHackLayout.FOOTER_PANEL_X1 + (footerPanelWidth() - count * cellWidth - (count - 1) * gap) / 2;
+        int y = topPos + footerPanelInnerY() + 18;
+        for (int i = 0; i < count; i++) {
+            boolean filled = i < menu.selectedCount();
+            UiRenderer.panel(g, x, y, cellWidth, 18, filled ? UiRenderer.ROW_SELECTED : UiRenderer.FIELD, filled ? ACCENT : UiRenderer.FIELD_EDGE);
+            String label = filled ? menu.tokenLabel(menu.tokenAtCell(menu.selectedCell(i))) : "--";
+            g.drawString(font, label, x + (cellWidth - font.width(label)) / 2, y + 5, filled ? TEXT_PRIMARY : TEXT_SECONDARY, false);
+            x += cellWidth + gap;
+        }
+    }
     private void drawTimerBar(GuiGraphics guiGraphics, int x, int y, int width, int height) {
         float progress = (float) menu.timeRemainingTicks() / (float) menu.timeLimitTicks();
         int fillWidth = Mth.clamp(Math.round(progress * width), 0, width);
@@ -294,11 +306,7 @@ public final class RelicCacheHackScreen extends AbstractContainerScreen<RelicCac
     }
 
     private void drawPanel(GuiGraphics guiGraphics, int x, int y, int width, int height, int fill) {
-        guiGraphics.fill(x, y, x + width, y + height, fill);
-        guiGraphics.fill(x, y, x + width, y + 1, PANEL_EDGE);
-        guiGraphics.fill(x, y + height - 1, x + width, y + height, PANEL_DEEP);
-        guiGraphics.fill(x, y, x + 1, y + height, PANEL_EDGE);
-        guiGraphics.fill(x + width - 1, y, x + width, y + height, PANEL_DEEP);
+        UiRenderer.panel(guiGraphics, x, y, width, height, fill);
     }
 
     private void playLocalSound(net.minecraft.sounds.SoundEvent sound, float volume, float pitch) {

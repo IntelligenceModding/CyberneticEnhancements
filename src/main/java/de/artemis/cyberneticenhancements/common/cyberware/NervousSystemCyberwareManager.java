@@ -83,7 +83,7 @@ public final class NervousSystemCyberwareManager {
         PlayerCyberwareInventory inventory = new PlayerCyberwareInventory(player);
         int retrievalCount = inventory.countInstalledCyberware(KIROSHI_RETRIEVAL_SUITE_ID);
         if (retrievalCount > 0 && player.tickCount % 4 == 0) {
-            vacuumNearbyDrops(player, CyberwareBalance.doubleValue("nervous.kiroshi_retrieval_suite.pickup_radius") * retrievalCount);
+            vacuumNearbyDrops(player, CyberwareUpgradeHelper.performance(inventory, "kiroshi_retrieval_suite", "nervous.kiroshi_retrieval_suite.pickup_radius") * retrievalCount);
         }
 
         int atomicSensorsCount = inventory.countInstalledCyberware(ATOMIC_SENSORS_ID);
@@ -276,7 +276,7 @@ public final class NervousSystemCyberwareManager {
     }
 
     private static void pulseAtomicSensors(Player player, int installedCount) {
-        double radius = 8.0D + installedCount * 2.0D;
+        double radius = (8.0D + installedCount * 2.0D) * CyberwareUpgradeHelper.functionMultiplier(new PlayerCyberwareInventory(player), ATOMIC_SENSORS_ID);
         int maxTargets = 6 + installedCount * 2;
         List<UUID> highlightedEntities = new ArrayList<>();
 

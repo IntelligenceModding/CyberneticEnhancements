@@ -24,13 +24,11 @@ import net.neoforged.neoforge.event.level.LevelEvent;
 import net.neoforged.neoforge.event.tick.LevelTickEvent;
 
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 
 public final class FixerVillageSpawner {
     private static final ResourceLocation NIGHT_CITY_STRUCTURE_ID = ResourceLocation.fromNamespaceAndPath("cyberneticenhancements", "night_city");
-    private static final Map<ResourceLocation, List<LevelChunk>> PENDING_CHUNKS = new HashMap<>();
+    private static final DeferredWorkQueue<ServerLevel, LevelChunk> PENDING_CHUNKS = new DeferredWorkQueue<>();
     private static final List<SpawnDefinition> NPC_SPAWNS = List.of(
             new SpawnDefinition(ModEntityTypes.FIXER.get(), 0.0D, -4.0D),
             new SpawnDefinition(ModEntityTypes.RIPPERDOC.get(), 6.0D, -2.0D),
@@ -46,15 +44,15 @@ public final class FixerVillageSpawner {
         if (!event.isNewChunk() || !(event.getLevel() instanceof ServerLevel serverLevel) || !(event.getChunk() instanceof LevelChunk chunk)) {
             return;
         }
-        PENDING_CHUNKS.computeIfAbsent(serverLevel.dimension().location(), ignored -> new ArrayList<>()).add(chunk);
+        PENDING_CHUNKS.add(serverLevel, chunk);
     }
 
     public static void onLevelTick(LevelTickEvent.Post event) {
         if (!(event.getLevel() instanceof ServerLevel serverLevel)) {
             return;
         }
-        List<LevelChunk> pending = PENDING_CHUNKS.get(serverLevel.dimension().location());
-        if (pending == null || pending.isEmpty()) {
+        List<LevelChunk> pending = PENDING_CHUNKS.takeBatch(serverLevel);
+        if (pending.isEmpty()) {
             return;
         }
 
@@ -68,16 +66,12 @@ public final class FixerVillageSpawner {
             trySpawnNpcs(serverLevel, chunk);
         }
 
-        if (deferred.isEmpty()) {
-            PENDING_CHUNKS.remove(serverLevel.dimension().location());
-        } else {
-            PENDING_CHUNKS.put(serverLevel.dimension().location(), deferred);
-        }
+        PENDING_CHUNKS.defer(serverLevel, deferred);
     }
 
     public static void onLevelUnload(LevelEvent.Unload event) {
         if (event.getLevel() instanceof ServerLevel serverLevel) {
-            PENDING_CHUNKS.remove(serverLevel.dimension().location());
+            PENDING_CHUNKS.clear(serverLevel);
         }
     }
 

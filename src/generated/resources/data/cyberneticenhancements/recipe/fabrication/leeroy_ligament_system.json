@@ -1,0 +1,133 @@
+{
+  "type": "cyberneticenhancements:fabrication",
+  "category": "LEGS",
+  "parts": [
+    {
+      "ingredient": {
+        "item": "cyberneticenhancements:reinforced_alloy"
+      },
+      "slot": 0
+    },
+    {
+      "ingredient": {
+        "item": "cyberneticenhancements:reinforced_alloy"
+      },
+      "slot": 4
+    },
+    {
+      "ingredient": {
+        "item": "cyberneticenhancements:high_torque_servo"
+      },
+      "slot": 5
+    },
+    {
+      "ingredient": {
+        "item": "cyberneticenhancements:neural_interface"
+      },
+      "slot": 6
+    },
+    {
+      "ingredient": {
+        "item": "cyberneticenhancements:neural_interface"
+      },
+      "slot": 8
+    },
+    {
+      "ingredient": {
+        "item": "cyberneticenhancements:high_torque_servo"
+      },
+      "slot": 9
+    },
+    {
+      "ingredient": {
+        "item": "cyberneticenhancements:copper_wiring"
+      },
+      "slot": 10
+    },
+    {
+      "ingredient": {
+        "item": "cyberneticenhancements:firmware_module"
+      },
+      "slot": 11
+    },
+    {
+      "ingredient": {
+        "item": "cyberneticenhancements:jenkins_tendons"
+      },
+      "slot": 12
+    },
+    {
+      "ingredient": {
+        "item": "cyberneticenhancements:firmware_module"
+      },
+      "slot": 13
+    },
+    {
+      "ingredient": {
+        "item": "cyberneticenhancements:copper_wiring"
+      },
+      "slot": 14
+    },
+    {
+      "ingredient": {
+        "item": "cyberneticenhancements:high_torque_servo"
+      },
+      "slot": 15
+    },
+    {
+      "ingredient": {
+        "item": "cyberneticenhancements:neural_interface"
+      },
+      "slot": 16
+    },
+    {
+      "ingredient": {
+        "item": "cyberneticenhancements:neural_interface"
+      },
+      "slot": 18
+    },
+    {
+      "ingredient": {
+        "item": "cyberneticenhancements:high_torque_servo"
+      },
+      "slot": 19
+    },
+    {
+      "ingredient": {
+        "item": "cyberneticenhancements:reinforced_alloy"
+      },
+      "slot": 20
+    },
+    {
+      "ingredient": {
+        "item": "cyberneticenhancements:basic_circuit_plate"
+      },
+      "slot": 21
+    },
+    {
+      "ingredient": {
+        "item": "cyberneticenhancements:micro_battery"
+      },
+      "slot": 22
+    },
+    {
+      "ingredient": {
+        "item": "cyberneticenhancements:basic_circuit_plate"
+      },
+      "slot": 23
+    },
+    {
+      "ingredient": {
+        "item": "cyberneticenhancements:reinforced_alloy"
+      },
+      "slot": 24
+    }
+  ],
+  "result": {
+    "count": 1,
+    "id": "cyberneticenhancements:leeroy_ligament_system"
+  },
+  "schematic": "leeroy_ligament_system",
+  "ticks": 600,
+  "tier": 4
+}

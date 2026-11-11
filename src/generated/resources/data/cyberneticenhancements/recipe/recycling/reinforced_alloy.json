@@ -1,0 +1,25 @@
+{
+  "type": "cyberneticenhancements:recycling",
+  "damaged_outputs": [
+    {
+      "count": 1,
+      "id": "cyberneticenhancements:alloy_plate"
+    }
+  ],
+  "group": "fabrication",
+  "ingredient": {
+    "item": "cyberneticenhancements:reinforced_alloy"
+  },
+  "outputs": [
+    {
+      "count": 1,
+      "id": "cyberneticenhancements:alloy_plate"
+    }
+  ],
+  "worn_outputs": [
+    {
+      "count": 1,
+      "id": "cyberneticenhancements:alloy_plate"
+    }
+  ]
+}

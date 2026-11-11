@@ -1,0 +1,114 @@
+{
+  "type": "cyberneticenhancements:fabrication",
+  "category": "CIRCULATORY SYSTEM",
+  "parts": [
+    {
+      "ingredient": {
+        "item": "cyberneticenhancements:biocompatible_mesh"
+      },
+      "slot": 1
+    },
+    {
+      "ingredient": {
+        "item": "cyberneticenhancements:firmware_module"
+      },
+      "slot": 2
+    },
+    {
+      "ingredient": {
+        "item": "cyberneticenhancements:biocompatible_mesh"
+      },
+      "slot": 3
+    },
+    {
+      "ingredient": {
+        "item": "cyberneticenhancements:biocompatible_mesh"
+      },
+      "slot": 5
+    },
+    {
+      "ingredient": {
+        "item": "cyberneticenhancements:microfluidic_pump"
+      },
+      "slot": 6
+    },
+    {
+      "ingredient": {
+        "item": "cyberneticenhancements:neural_interface"
+      },
+      "slot": 7
+    },
+    {
+      "ingredient": {
+        "item": "cyberneticenhancements:microfluidic_pump"
+      },
+      "slot": 8
+    },
+    {
+      "ingredient": {
+        "item": "cyberneticenhancements:biocompatible_mesh"
+      },
+      "slot": 9
+    },
+    {
+      "ingredient": {
+        "item": "cyberneticenhancements:copper_wiring"
+      },
+      "slot": 11
+    },
+    {
+      "ingredient": {
+        "item": "cyberneticenhancements:precision_chassis"
+      },
+      "slot": 12
+    },
+    {
+      "ingredient": {
+        "item": "cyberneticenhancements:copper_wiring"
+      },
+      "slot": 13
+    },
+    {
+      "ingredient": {
+        "item": "cyberneticenhancements:biocompatible_mesh"
+      },
+      "slot": 15
+    },
+    {
+      "ingredient": {
+        "item": "cyberneticenhancements:microfluidic_pump"
+      },
+      "slot": 16
+    },
+    {
+      "ingredient": {
+        "item": "cyberneticenhancements:neural_interface"
+      },
+      "slot": 17
+    },
+    {
+      "ingredient": {
+        "item": "cyberneticenhancements:microfluidic_pump"
+      },
+      "slot": 18
+    },
+    {
+      "ingredient": {
+        "item": "cyberneticenhancements:biocompatible_mesh"
+      },
+      "slot": 19
+    },
+    {
+      "ingredient": {
+        "item": "cyberneticenhancements:micro_battery"
+      },
+      "slot": 22
+    }
+  ],
+  "result": {
+    "count": 1,
+    "id": "cyberneticenhancements:microrotors"
+  },
+  "ticks": 200,
+  "tier": 2
+}

@@ -1,0 +1,64 @@
+{
+  "type": "cyberneticenhancements:fabrication",
+  "parts": [
+    {
+      "ingredient": {
+        "item": "cyberneticenhancements:polymer_shell"
+      },
+      "slot": 6
+    },
+    {
+      "ingredient": {
+        "item": "minecraft:honeycomb"
+      },
+      "slot": 7
+    },
+    {
+      "ingredient": {
+        "item": "cyberneticenhancements:polymer_shell"
+      },
+      "slot": 8
+    },
+    {
+      "ingredient": {
+        "item": "cyberneticenhancements:conductive_paste"
+      },
+      "slot": 11
+    },
+    {
+      "ingredient": {
+        "item": "cyberneticenhancements:polymer_shell"
+      },
+      "slot": 12
+    },
+    {
+      "ingredient": {
+        "item": "cyberneticenhancements:conductive_paste"
+      },
+      "slot": 13
+    },
+    {
+      "ingredient": {
+        "item": "cyberneticenhancements:polymer_shell"
+      },
+      "slot": 16
+    },
+    {
+      "ingredient": {
+        "item": "minecraft:honeycomb"
+      },
+      "slot": 17
+    },
+    {
+      "ingredient": {
+        "item": "cyberneticenhancements:polymer_shell"
+      },
+      "slot": 18
+    }
+  ],
+  "result": {
+    "count": 4,
+    "id": "cyberneticenhancements:biocompatible_mesh"
+  },
+  "ticks": 80
+}

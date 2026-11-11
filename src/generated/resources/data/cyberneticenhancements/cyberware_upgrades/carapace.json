@@ -1,0 +1,59 @@
+{
+  "levels": [
+    {
+      "effects": {
+        "armor": 0.25
+      },
+      "materials": [
+        {
+          "count": 1,
+          "item": "cyberneticenhancements:uncommon_item_components"
+        },
+        {
+          "count": 1,
+          "item": "cyberneticenhancements:biocompatible_mesh"
+        }
+      ]
+    },
+    {
+      "effects": {
+        "armor": 0.5
+      },
+      "materials": [
+        {
+          "count": 1,
+          "item": "cyberneticenhancements:uncommon_item_components"
+        },
+        {
+          "count": 1,
+          "item": "cyberneticenhancements:biocompatible_mesh"
+        }
+      ]
+    },
+    {
+      "effects": {
+        "armor": 0.75
+      },
+      "materials": [
+        {
+          "count": 2,
+          "item": "cyberneticenhancements:uncommon_item_components"
+        },
+        {
+          "count": 1,
+          "item": "cyberneticenhancements:biocompatible_mesh"
+        }
+      ]
+    }
+  ],
+  "repair_materials": [
+    {
+      "count": 3,
+      "item": "cyberneticenhancements:uncommon_item_components"
+    },
+    {
+      "count": 1,
+      "item": "cyberneticenhancements:polymer_shell"
+    }
+  ]
+}

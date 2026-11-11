@@ -1,0 +1,145 @@
+{
+  "type": "minecraft:chest",
+  "pools": [
+    {
+      "entries": [
+        {
+          "type": "minecraft:item",
+          "name": "cyberneticenhancements:self_ice_schematic",
+          "weight": 3
+        },
+        {
+          "type": "minecraft:item",
+          "name": "cyberneticenhancements:chipware_socket_mk2_schematic",
+          "weight": 3
+        },
+        {
+          "type": "minecraft:item",
+          "name": "cyberneticenhancements:biodyn_berserk_schematic",
+          "weight": 1
+        },
+        {
+          "type": "minecraft:item",
+          "name": "cyberneticenhancements:militech_berserk_schematic",
+          "weight": 3
+        },
+        {
+          "type": "minecraft:item",
+          "name": "cyberneticenhancements:moore_tech_berserk_schematic",
+          "weight": 3
+        },
+        {
+          "type": "minecraft:item",
+          "name": "cyberneticenhancements:zetatech_berserk_schematic",
+          "weight": 3
+        },
+        {
+          "type": "minecraft:item",
+          "name": "cyberneticenhancements:biotech_sigma_schematic",
+          "weight": 1
+        },
+        {
+          "type": "minecraft:item",
+          "name": "cyberneticenhancements:militech_paraline_schematic",
+          "weight": 1
+        },
+        {
+          "type": "minecraft:item",
+          "name": "cyberneticenhancements:netwatch_netdriver_schematic",
+          "weight": 3
+        },
+        {
+          "type": "minecraft:item",
+          "name": "cyberneticenhancements:dynalar_sandevistan_schematic",
+          "weight": 1
+        },
+        {
+          "type": "minecraft:item",
+          "name": "cyberneticenhancements:zetatech_sandevistan_schematic",
+          "weight": 1
+        },
+        {
+          "type": "minecraft:item",
+          "name": "cyberneticenhancements:chrome_compressor_schematic",
+          "weight": 1
+        },
+        {
+          "type": "minecraft:item",
+          "name": "cyberneticenhancements:clairvoyant_schematic",
+          "weight": 3
+        },
+        {
+          "type": "minecraft:item",
+          "name": "cyberneticenhancements:relic_scanner_schematic",
+          "weight": 3
+        },
+        {
+          "type": "minecraft:item",
+          "name": "cyberneticenhancements:para_bellum_schematic",
+          "weight": 3
+        },
+        {
+          "type": "minecraft:item",
+          "name": "cyberneticenhancements:universal_booster_schematic",
+          "weight": 3
+        },
+        {
+          "type": "minecraft:item",
+          "name": "cyberneticenhancements:synaptic_accelerator_schematic",
+          "weight": 3
+        },
+        {
+          "type": "minecraft:item",
+          "name": "cyberneticenhancements:tyrosine_injector_schematic",
+          "weight": 3
+        },
+        {
+          "type": "minecraft:item",
+          "name": "cyberneticenhancements:biomonitor_schematic",
+          "weight": 3
+        },
+        {
+          "type": "minecraft:item",
+          "name": "cyberneticenhancements:black_mamba_schematic",
+          "weight": 3
+        },
+        {
+          "type": "minecraft:item",
+          "name": "cyberneticenhancements:blood_pump_schematic",
+          "weight": 3
+        },
+        {
+          "type": "minecraft:item",
+          "name": "cyberneticenhancements:threatevac_schematic",
+          "weight": 3
+        },
+        {
+          "type": "minecraft:item",
+          "name": "cyberneticenhancements:defenzikov_schematic",
+          "weight": 3
+        },
+        {
+          "type": "minecraft:item",
+          "name": "cyberneticenhancements:nano_plating_schematic",
+          "weight": 3
+        },
+        {
+          "type": "minecraft:item",
+          "name": "cyberneticenhancements:neural_processor",
+          "weight": 8
+        },
+        {
+          "type": "minecraft:item",
+          "name": "cyberneticenhancements:high_torque_servo",
+          "weight": 8
+        },
+        {
+          "type": "minecraft:item",
+          "name": "cyberneticenhancements:optical_array",
+          "weight": 8
+        }
+      ],
+      "rolls": 1
+    }
+  ]
+}

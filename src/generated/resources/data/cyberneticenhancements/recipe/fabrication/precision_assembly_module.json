@@ -1,0 +1,64 @@
+{
+  "type": "cyberneticenhancements:fabrication",
+  "parts": [
+    {
+      "ingredient": {
+        "item": "cyberneticenhancements:neural_processor"
+      },
+      "slot": 6
+    },
+    {
+      "ingredient": {
+        "item": "minecraft:diamond"
+      },
+      "slot": 7
+    },
+    {
+      "ingredient": {
+        "item": "cyberneticenhancements:neural_processor"
+      },
+      "slot": 8
+    },
+    {
+      "ingredient": {
+        "item": "cyberneticenhancements:neural_interface"
+      },
+      "slot": 11
+    },
+    {
+      "ingredient": {
+        "item": "cyberneticenhancements:precision_chassis"
+      },
+      "slot": 12
+    },
+    {
+      "ingredient": {
+        "item": "cyberneticenhancements:neural_interface"
+      },
+      "slot": 13
+    },
+    {
+      "ingredient": {
+        "item": "cyberneticenhancements:micro_actuator"
+      },
+      "slot": 16
+    },
+    {
+      "ingredient": {
+        "item": "cyberneticenhancements:thermal_regulator"
+      },
+      "slot": 17
+    },
+    {
+      "ingredient": {
+        "item": "cyberneticenhancements:micro_actuator"
+      },
+      "slot": 18
+    }
+  ],
+  "result": {
+    "count": 1,
+    "id": "cyberneticenhancements:precision_assembly_module"
+  },
+  "tier": 2
+}

@@ -1,0 +1,89 @@
+{
+  "levels": [
+    {
+      "effects": {
+        "max_health": 0.25
+      },
+      "materials": [
+        {
+          "count": 1,
+          "item": "cyberneticenhancements:epic_item_components"
+        },
+        {
+          "count": 1,
+          "item": "cyberneticenhancements:reinforced_alloy"
+        }
+      ]
+    },
+    {
+      "effects": {
+        "max_health": 0.5
+      },
+      "materials": [
+        {
+          "count": 1,
+          "item": "cyberneticenhancements:epic_item_components"
+        },
+        {
+          "count": 1,
+          "item": "cyberneticenhancements:reinforced_alloy"
+        }
+      ]
+    },
+    {
+      "effects": {
+        "max_health": 0.75
+      },
+      "materials": [
+        {
+          "count": 1,
+          "item": "cyberneticenhancements:epic_item_components"
+        },
+        {
+          "count": 1,
+          "item": "cyberneticenhancements:reinforced_alloy"
+        }
+      ]
+    },
+    {
+      "effects": {
+        "max_health": 1.0
+      },
+      "materials": [
+        {
+          "count": 1,
+          "item": "cyberneticenhancements:epic_item_components"
+        },
+        {
+          "count": 2,
+          "item": "cyberneticenhancements:reinforced_alloy"
+        }
+      ]
+    },
+    {
+      "effects": {
+        "max_health": 1.25
+      },
+      "materials": [
+        {
+          "count": 2,
+          "item": "cyberneticenhancements:epic_item_components"
+        },
+        {
+          "count": 2,
+          "item": "cyberneticenhancements:reinforced_alloy"
+        }
+      ]
+    }
+  ],
+  "repair_materials": [
+    {
+      "count": 2,
+      "item": "cyberneticenhancements:epic_item_components"
+    },
+    {
+      "count": 2,
+      "item": "cyberneticenhancements:replacement_joint"
+    }
+  ]
+}

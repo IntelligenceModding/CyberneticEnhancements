@@ -1,0 +1,59 @@
+{
+  "levels": [
+    {
+      "cooldown_multiplier": 0.96,
+      "duration_multiplier": 1.05,
+      "instability_multiplier": 0.95,
+      "materials": [
+        {
+          "count": 1,
+          "item": "cyberneticenhancements:uncommon_item_components"
+        },
+        {
+          "count": 1,
+          "item": "cyberneticenhancements:neural_interface"
+        }
+      ]
+    },
+    {
+      "cooldown_multiplier": 0.92,
+      "duration_multiplier": 1.1,
+      "instability_multiplier": 0.9,
+      "materials": [
+        {
+          "count": 1,
+          "item": "cyberneticenhancements:uncommon_item_components"
+        },
+        {
+          "count": 1,
+          "item": "cyberneticenhancements:neural_interface"
+        }
+      ]
+    },
+    {
+      "cooldown_multiplier": 0.88,
+      "duration_multiplier": 1.15,
+      "instability_multiplier": 0.85,
+      "materials": [
+        {
+          "count": 2,
+          "item": "cyberneticenhancements:uncommon_item_components"
+        },
+        {
+          "count": 1,
+          "item": "cyberneticenhancements:neural_interface"
+        }
+      ]
+    }
+  ],
+  "repair_materials": [
+    {
+      "count": 3,
+      "item": "cyberneticenhancements:uncommon_item_components"
+    },
+    {
+      "count": 1,
+      "item": "cyberneticenhancements:basic_circuit_plate"
+    }
+  ]
+}

@@ -1,11 +1,32 @@
 {
   "type": "cyberneticenhancements:recycling",
-  "damage_sensitive": true,
+  "damaged_outputs": [
+    {
+      "count": 1,
+      "id": "cyberneticenhancements:polymer_shell"
+    }
+  ],
   "ingredient": {
     "item": "cyberneticenhancements:shock_n_awe"
   },
-  "result": {
-    "count": 1,
-    "id": "cyberneticenhancements:common_item_components"
-  }
+  "outputs": [
+    {
+      "count": 1,
+      "id": "cyberneticenhancements:biocompatible_mesh"
+    },
+    {
+      "count": 1,
+      "id": "cyberneticenhancements:polymer_shell"
+    }
+  ],
+  "worn_outputs": [
+    {
+      "count": 1,
+      "id": "cyberneticenhancements:biocompatible_mesh"
+    },
+    {
+      "count": 1,
+      "id": "cyberneticenhancements:polymer_shell"
+    }
+  ]
 }

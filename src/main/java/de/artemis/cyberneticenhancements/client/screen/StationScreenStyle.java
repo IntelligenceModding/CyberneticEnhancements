@@ -1,22 +1,24 @@
 package de.artemis.cyberneticenhancements.client.screen;
 
+import de.artemis.cyberneticenhancements.client.ui.UiRenderer;
+
 public final class StationScreenStyle {
-    public static final int PANEL_BG = 0xFF10161D;
-    public static final int PANEL_EDGE = 0xFF2B3C4D;
-    public static final int PANEL_ALT = 0xFF151E27;
-    public static final int PANEL_DEEP = 0xFF0D1319;
-    public static final int SLOT_BG = 0xFF202A34;
-    public static final int SLOT_ACTIVE = 0xFF2D4A4F;
-    public static final int SECTION_HIGHLIGHT = 0xFF344554;
-    public static final int SECTION_SHADOW = 0xFF16212B;
-    public static final int TEXT_PRIMARY = 0xFFE5F2FF;
-    public static final int TEXT_SECONDARY = 0xFF9FB5C7;
-    public static final int ACCENT = 0xFF1EE2B5;
-    public static final int WARNING = 0xFFFF6B6B;
-    public static final int FRAME_HIGHLIGHT = 0xFF3B5164;
-    public static final int FRAME_HIGHLIGHT_SOFT = 0xFF2B3C4D;
-    public static final int FRAME_SHADOW_SOFT = 0xFF141C24;
-    public static final int FRAME_SHADOW = 0xFF090E13;
+    public static final int PANEL_BG = UiRenderer.PANEL;
+    public static final int PANEL_EDGE = UiRenderer.PANEL_EDGE;
+    public static final int PANEL_ALT = 0xF0202A35;
+    public static final int PANEL_DEEP = UiRenderer.FIELD;
+    public static final int SLOT_BG = UiRenderer.ROW;
+    public static final int SLOT_ACTIVE = UiRenderer.ROW_SELECTED;
+    public static final int SECTION_HIGHLIGHT = UiRenderer.PANEL_EDGE_ACTIVE;
+    public static final int SECTION_SHADOW = UiRenderer.ROW_DISABLED;
+    public static final int TEXT_PRIMARY = UiRenderer.TEXT;
+    public static final int TEXT_SECONDARY = UiRenderer.TEXT_SECONDARY;
+    public static final int ACCENT = UiRenderer.ACCENT;
+    public static final int WARNING = UiRenderer.WARNING;
+    public static final int FRAME_HIGHLIGHT = UiRenderer.PANEL_EDGE_ACTIVE;
+    public static final int FRAME_HIGHLIGHT_SOFT = UiRenderer.PANEL_EDGE;
+    public static final int FRAME_SHADOW_SOFT = UiRenderer.FIELD_EDGE;
+    public static final int FRAME_SHADOW = UiRenderer.FIELD_EDGE;
     public static final int PANEL_TEXT_PADDING_X = 6;
     public static final int PANEL_TEXT_PADDING_Y = 8;
     public static final int SLOT_LABEL_Y = 34;

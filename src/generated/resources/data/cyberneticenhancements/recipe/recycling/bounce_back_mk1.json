@@ -1,10 +1,24 @@
 {
   "type": "cyberneticenhancements:recycling",
+  "damaged_outputs": [
+    {
+      "count": 1,
+      "id": "cyberneticenhancements:conductive_paste"
+    }
+  ],
   "ingredient": {
     "item": "cyberneticenhancements:bounce_back_mk1"
   },
-  "result": {
-    "count": 1,
-    "id": "cyberneticenhancements:conductive_paste"
-  }
+  "outputs": [
+    {
+      "count": 1,
+      "id": "cyberneticenhancements:conductive_paste"
+    }
+  ],
+  "worn_outputs": [
+    {
+      "count": 1,
+      "id": "cyberneticenhancements:conductive_paste"
+    }
+  ]
 }

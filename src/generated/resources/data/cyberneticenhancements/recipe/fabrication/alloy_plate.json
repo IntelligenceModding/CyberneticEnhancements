@@ -1,0 +1,34 @@
+{
+  "type": "cyberneticenhancements:fabrication",
+  "parts": [
+    {
+      "ingredient": {
+        "item": "minecraft:iron_ingot"
+      },
+      "slot": 6
+    },
+    {
+      "ingredient": {
+        "item": "minecraft:copper_ingot"
+      },
+      "slot": 7
+    },
+    {
+      "ingredient": {
+        "item": "minecraft:copper_ingot"
+      },
+      "slot": 11
+    },
+    {
+      "ingredient": {
+        "item": "minecraft:iron_ingot"
+      },
+      "slot": 12
+    }
+  ],
+  "result": {
+    "count": 4,
+    "id": "cyberneticenhancements:alloy_plate"
+  },
+  "ticks": 80
+}

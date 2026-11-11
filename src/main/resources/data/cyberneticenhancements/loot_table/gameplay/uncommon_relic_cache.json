@@ -1,73 +1,183 @@
 {
-  "type": "minecraft:chest",
-  "pools": [
-    {
-      "rolls": 1,
-      "entries": [
-        { "type": "minecraft:item", "name": "cyberneticenhancements:precision_miner", "weight": 9 },
-        { "type": "minecraft:item", "name": "cyberneticenhancements:masons_grip", "weight": 9 },
-        { "type": "minecraft:item", "name": "cyberneticenhancements:forager_lens", "weight": 8 },
-        { "type": "minecraft:item", "name": "cyberneticenhancements:cargo_spine", "weight": 7 },
-        { "type": "minecraft:item", "name": "cyberneticenhancements:fortified_ankles", "weight": 7 },
-        { "type": "minecraft:item", "name": "cyberneticenhancements:basic_kiroshi_optics", "weight": 7 },
-        { "type": "minecraft:item", "name": "cyberneticenhancements:ex_disk", "weight": 6 },
-        { "type": "minecraft:item", "name": "cyberneticenhancements:memory_boost", "weight": 6 },
-        { "type": "minecraft:item", "name": "cyberneticenhancements:newton_module", "weight": 5 },
-        { "type": "minecraft:item", "name": "cyberneticenhancements:mining_accelerator", "weight": 6 },
-        { "type": "minecraft:item", "name": "cyberneticenhancements:builder_grip", "weight": 6 },
-        { "type": "minecraft:item", "name": "cyberneticenhancements:fall_damper", "weight": 5 },
-        { "type": "minecraft:item", "name": "cyberneticenhancements:miner_skillchip", "weight": 5 },
-        { "type": "minecraft:item", "name": "cyberneticenhancements:builder_skillchip", "weight": 5 }
-      ]
-    },
-    {
-      "rolls": {
-        "type": "minecraft:uniform",
-        "min": 1.0,
-        "max": 2.0
-      },
-      "entries": [
-        {
-          "type": "minecraft:item",
-          "name": "cyberneticenhancements:common_item_components",
-          "weight": 10,
-          "functions": [{ "function": "minecraft:set_count", "count": { "type": "minecraft:uniform", "min": 2.0, "max": 5.0 } }]
-        },
-        {
-          "type": "minecraft:item",
-          "name": "cyberneticenhancements:uncommon_item_components",
-          "weight": 8,
-          "functions": [{ "function": "minecraft:set_count", "count": { "type": "minecraft:uniform", "min": 1.0, "max": 3.0 } }]
-        },
-        {
-          "type": "minecraft:item",
-          "name": "cyberneticenhancements:basic_circuit_plate",
-          "weight": 6,
-          "functions": [{ "function": "minecraft:set_count", "count": { "type": "minecraft:uniform", "min": 1.0, "max": 2.0 } }]
-        },
-        {
-          "type": "minecraft:item",
-          "name": "cyberneticenhancements:sensor_lens",
-          "weight": 7,
-          "functions": [{ "function": "minecraft:set_count", "count": { "type": "minecraft:uniform", "min": 1.0, "max": 3.0 } }]
-        },
-        {
-          "type": "minecraft:item",
-          "name": "cyberneticenhancements:micro_battery",
-          "weight": 5,
-          "functions": [{ "function": "minecraft:set_count", "count": { "type": "minecraft:uniform", "min": 1.0, "max": 2.0 } }]
-        },
-        {
-          "type": "minecraft:item",
-          "name": "cyberneticenhancements:maxdoc_mk2",
-          "weight": 4
-        },
-        {
-          "type": "minecraft:item",
-          "name": "cyberneticenhancements:bounce_back_mk2",
-          "weight": 4
-        }
-      ]
-    }
-  ]
+    "type":  "minecraft:chest",
+    "pools":  [
+                  {
+                      "rolls":  1,
+                      "entries":  [
+                                      {
+                                          "type":  "minecraft:item",
+                                          "name":  "cyberneticenhancements:precision_miner",
+                                          "weight":  9
+                                      },
+                                      {
+                                          "type":  "minecraft:item",
+                                          "name":  "cyberneticenhancements:masons_grip",
+                                          "weight":  9
+                                      },
+                                      {
+                                          "type":  "minecraft:item",
+                                          "name":  "cyberneticenhancements:forager_lens",
+                                          "weight":  8
+                                      },
+                                      {
+                                          "type":  "minecraft:item",
+                                          "name":  "cyberneticenhancements:cargo_spine",
+                                          "weight":  7
+                                      },
+                                      {
+                                          "type":  "minecraft:item",
+                                          "name":  "cyberneticenhancements:fortified_ankles",
+                                          "weight":  7
+                                      },
+                                      {
+                                          "type":  "minecraft:item",
+                                          "name":  "cyberneticenhancements:basic_kiroshi_optics",
+                                          "weight":  7
+                                      },
+                                      {
+                                          "type":  "minecraft:item",
+                                          "name":  "cyberneticenhancements:ex_disk",
+                                          "weight":  6
+                                      },
+                                      {
+                                          "type":  "minecraft:item",
+                                          "name":  "cyberneticenhancements:memory_boost",
+                                          "weight":  6
+                                      },
+                                      {
+                                          "type":  "minecraft:item",
+                                          "name":  "cyberneticenhancements:newton_module",
+                                          "weight":  5
+                                      },
+                                      {
+                                          "type":  "minecraft:item",
+                                          "name":  "cyberneticenhancements:mining_accelerator",
+                                          "weight":  6
+                                      },
+                                      {
+                                          "type":  "minecraft:item",
+                                          "name":  "cyberneticenhancements:builder_grip",
+                                          "weight":  6
+                                      },
+                                      {
+                                          "type":  "minecraft:item",
+                                          "name":  "cyberneticenhancements:fall_damper",
+                                          "weight":  5
+                                      },
+                                      {
+                                          "type":  "minecraft:item",
+                                          "name":  "cyberneticenhancements:miner_skillchip",
+                                          "weight":  5
+                                      },
+                                      {
+                                          "type":  "minecraft:item",
+                                          "name":  "cyberneticenhancements:builder_skillchip",
+                                          "weight":  5
+                                      }
+                                  ]
+                  },
+                  {
+                      "rolls":  {
+                                    "type":  "minecraft:uniform",
+                                    "min":  1.0,
+                                    "max":  2.0
+                                },
+                      "entries":  [
+                                      {
+                                          "type":  "minecraft:item",
+                                          "name":  "cyberneticenhancements:common_item_components",
+                                          "weight":  10,
+                                          "functions":  [
+                                                            {
+                                                                "function":  "minecraft:set_count",
+                                                                "count":  {
+                                                                              "type":  "minecraft:uniform",
+                                                                              "min":  2.0,
+                                                                              "max":  5.0
+                                                                          }
+                                                            }
+                                                        ]
+                                      },
+                                      {
+                                          "type":  "minecraft:item",
+                                          "name":  "cyberneticenhancements:uncommon_item_components",
+                                          "weight":  8,
+                                          "functions":  [
+                                                            {
+                                                                "function":  "minecraft:set_count",
+                                                                "count":  {
+                                                                              "type":  "minecraft:uniform",
+                                                                              "min":  1.0,
+                                                                              "max":  3.0
+                                                                          }
+                                                            }
+                                                        ]
+                                      },
+                                      {
+                                          "type":  "minecraft:item",
+                                          "name":  "cyberneticenhancements:basic_circuit_plate",
+                                          "weight":  6,
+                                          "functions":  [
+                                                            {
+                                                                "function":  "minecraft:set_count",
+                                                                "count":  {
+                                                                              "type":  "minecraft:uniform",
+                                                                              "min":  1.0,
+                                                                              "max":  2.0
+                                                                          }
+                                                            }
+                                                        ]
+                                      },
+                                      {
+                                          "type":  "minecraft:item",
+                                          "name":  "cyberneticenhancements:sensor_lens",
+                                          "weight":  7,
+                                          "functions":  [
+                                                            {
+                                                                "function":  "minecraft:set_count",
+                                                                "count":  {
+                                                                              "type":  "minecraft:uniform",
+                                                                              "min":  1.0,
+                                                                              "max":  3.0
+                                                                          }
+                                                            }
+                                                        ]
+                                      },
+                                      {
+                                          "type":  "minecraft:item",
+                                          "name":  "cyberneticenhancements:micro_battery",
+                                          "weight":  5,
+                                          "functions":  [
+                                                            {
+                                                                "function":  "minecraft:set_count",
+                                                                "count":  {
+                                                                              "type":  "minecraft:uniform",
+                                                                              "min":  1.0,
+                                                                              "max":  2.0
+                                                                          }
+                                                            }
+                                                        ]
+                                      },
+                                      {
+                                          "type":  "minecraft:item",
+                                          "name":  "cyberneticenhancements:maxdoc_mk2",
+                                          "weight":  4
+                                      },
+                                      {
+                                          "type":  "minecraft:item",
+                                          "name":  "cyberneticenhancements:bounce_back_mk2",
+                                          "weight":  4
+                                      }
+                                  ]
+                  },
+                  {
+                      "rolls":  1,
+                      "entries":  [
+                                      {
+                                          "type":  "minecraft:loot_table",
+                                          "value":  "cyberneticenhancements:fabrication/discoveries_2"
+                                      }
+                                  ]
+                  }
+              ]
 }

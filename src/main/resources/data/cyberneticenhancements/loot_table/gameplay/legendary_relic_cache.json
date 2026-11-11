@@ -1,48 +1,148 @@
 {
-  "type": "minecraft:chest",
-  "pools": [
-    {
-      "rolls": 1,
-      "entries": [
-        { "type": "minecraft:item", "name": "cyberneticenhancements:quantum_tuner", "weight": 6 },
-        { "type": "minecraft:item", "name": "cyberneticenhancements:axolotl", "weight": 5 },
-        { "type": "minecraft:item", "name": "cyberneticenhancements:militech_canto", "weight": 2 },
-        { "type": "minecraft:item", "name": "cyberneticenhancements:militech_apogee", "weight": 3 },
-        { "type": "minecraft:item", "name": "cyberneticenhancements:chipware_socket_mk3", "weight": 4 },
-        { "type": "minecraft:item", "name": "cyberneticenhancements:behavioral_imprint_synced_faceplate", "weight": 3 },
-        { "type": "minecraft:item", "name": "cyberneticenhancements:second_heart", "weight": 4 },
-        { "type": "minecraft:item", "name": "cyberneticenhancements:chitin", "weight": 3 },
-        { "type": "minecraft:item", "name": "cyberneticenhancements:maxtac_mantis_blades", "weight": 2 },
-        { "type": "minecraft:item", "name": "cyberneticenhancements:pain_editor", "weight": 3 },
-        { "type": "minecraft:item", "name": "cyberneticenhancements:painducer", "weight": 3 },
-        { "type": "minecraft:item", "name": "cyberneticenhancements:cogito_lattice", "weight": 3 },
-        { "type": "minecraft:item", "name": "cyberneticenhancements:revulsor", "weight": 3 },
-        { "type": "minecraft:item", "name": "cyberneticenhancements:rara_avis", "weight": 3 },
-        { "type": "minecraft:item", "name": "cyberneticenhancements:leeroy_ligament_system", "weight": 3 }
-      ]
-    },
-    {
-      "rolls": {
-        "type": "minecraft:uniform",
-        "min": 1.0,
-        "max": 2.0
-      },
-      "entries": [
-        {
-          "type": "minecraft:item",
-          "name": "cyberneticenhancements:epic_item_components",
-          "weight": 9,
-          "functions": [{ "function": "minecraft:set_count", "count": { "type": "minecraft:uniform", "min": 2.0, "max": 4.0 } }]
-        },
-        {
-          "type": "minecraft:item",
-          "name": "cyberneticenhancements:legendary_item_components",
-          "weight": 6,
-          "functions": [{ "function": "minecraft:set_count", "count": { "type": "minecraft:uniform", "min": 1.0, "max": 2.0 } }]
-        },
-        { "type": "minecraft:item", "name": "cyberneticenhancements:immunoblockers", "weight": 4 },
-        { "type": "minecraft:item", "name": "cyberneticenhancements:black_lace", "weight": 4 }
-      ]
-    }
-  ]
+    "type":  "minecraft:chest",
+    "pools":  [
+                  {
+                      "rolls":  1,
+                      "entries":  [
+                                      {
+                                          "type":  "minecraft:item",
+                                          "name":  "cyberneticenhancements:quantum_tuner",
+                                          "weight":  6
+                                      },
+                                      {
+                                          "type":  "minecraft:item",
+                                          "name":  "cyberneticenhancements:axolotl",
+                                          "weight":  5
+                                      },
+                                      {
+                                          "type":  "minecraft:item",
+                                          "name":  "cyberneticenhancements:militech_canto",
+                                          "weight":  2
+                                      },
+                                      {
+                                          "type":  "minecraft:item",
+                                          "name":  "cyberneticenhancements:militech_apogee",
+                                          "weight":  3
+                                      },
+                                      {
+                                          "type":  "minecraft:item",
+                                          "name":  "cyberneticenhancements:militech_experimental_sandevistan",
+                                          "weight":  1
+                                      },
+                                      {
+                                          "type":  "minecraft:item",
+                                          "name":  "cyberneticenhancements:chipware_socket_mk3",
+                                          "weight":  4
+                                      },
+                                      {
+                                          "type":  "minecraft:item",
+                                          "name":  "cyberneticenhancements:behavioral_imprint_synced_faceplate",
+                                          "weight":  3
+                                      },
+                                      {
+                                          "type":  "minecraft:item",
+                                          "name":  "cyberneticenhancements:second_heart",
+                                          "weight":  4
+                                      },
+                                      {
+                                          "type":  "minecraft:item",
+                                          "name":  "cyberneticenhancements:chitin",
+                                          "weight":  3
+                                      },
+                                      {
+                                          "type":  "minecraft:item",
+                                          "name":  "cyberneticenhancements:maxtac_mantis_blades",
+                                          "weight":  2
+                                      },
+                                      {
+                                          "type":  "minecraft:item",
+                                          "name":  "cyberneticenhancements:pain_editor",
+                                          "weight":  3
+                                      },
+                                      {
+                                          "type":  "minecraft:item",
+                                          "name":  "cyberneticenhancements:painducer",
+                                          "weight":  3
+                                      },
+                                      {
+                                          "type":  "minecraft:item",
+                                          "name":  "cyberneticenhancements:cogito_lattice",
+                                          "weight":  3
+                                      },
+                                      {
+                                          "type":  "minecraft:item",
+                                          "name":  "cyberneticenhancements:revulsor",
+                                          "weight":  3
+                                      },
+                                      {
+                                          "type":  "minecraft:item",
+                                          "name":  "cyberneticenhancements:rara_avis",
+                                          "weight":  3
+                                      },
+                                      {
+                                          "type":  "minecraft:item",
+                                          "name":  "cyberneticenhancements:leeroy_ligament_system",
+                                          "weight":  3
+                                      }
+                                  ]
+                  },
+                  {
+                      "rolls":  {
+                                    "type":  "minecraft:uniform",
+                                    "min":  1.0,
+                                    "max":  2.0
+                                },
+                      "entries":  [
+                                      {
+                                          "type":  "minecraft:item",
+                                          "name":  "cyberneticenhancements:epic_item_components",
+                                          "weight":  9,
+                                          "functions":  [
+                                                            {
+                                                                "function":  "minecraft:set_count",
+                                                                "count":  {
+                                                                              "type":  "minecraft:uniform",
+                                                                              "min":  2.0,
+                                                                              "max":  4.0
+                                                                          }
+                                                            }
+                                                        ]
+                                      },
+                                      {
+                                          "type":  "minecraft:item",
+                                          "name":  "cyberneticenhancements:legendary_item_components",
+                                          "weight":  6,
+                                          "functions":  [
+                                                            {
+                                                                "function":  "minecraft:set_count",
+                                                                "count":  {
+                                                                              "type":  "minecraft:uniform",
+                                                                              "min":  1.0,
+                                                                              "max":  2.0
+                                                                          }
+                                                            }
+                                                        ]
+                                      },
+                                      {
+                                          "type":  "minecraft:item",
+                                          "name":  "cyberneticenhancements:immunoblockers",
+                                          "weight":  4
+                                      },
+                                      {
+                                          "type":  "minecraft:item",
+                                          "name":  "cyberneticenhancements:black_lace",
+                                          "weight":  4
+                                      }
+                                  ]
+                  },
+                  {
+                      "rolls":  1,
+                      "entries":  [
+                                      {
+                                          "type":  "minecraft:loot_table",
+                                          "value":  "cyberneticenhancements:fabrication/discoveries_5"
+                                      }
+                                  ]
+                  }
+              ]
 }

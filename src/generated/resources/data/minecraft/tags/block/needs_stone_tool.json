@@ -1,8 +1,10 @@
 {
   "values": [
+    "cyberneticenhancements:cyberware_fabricator",
     "cyberneticenhancements:relic_cache",
     "cyberneticenhancements:ripper_station",
     "cyberneticenhancements:tech_station",
+    "cyberneticenhancements:upgrade_station",
     "cyberneticenhancements:recycler_station"
   ]
 }

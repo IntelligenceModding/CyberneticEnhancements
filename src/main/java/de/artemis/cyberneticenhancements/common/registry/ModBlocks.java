@@ -24,6 +24,9 @@ import java.util.function.UnaryOperator;
 
 public final class ModBlocks {
     public static final DeferredRegister.Blocks BLOCKS = DeferredRegister.createBlocks(CyberneticEnhancements.MOD_ID);
+    public static final DeferredBlock<de.artemis.cyberneticenhancements.common.fabrication.FabricatorBlock> CYBERWARE_FABRICATOR = register(
+            "cyberware_fabricator", de.artemis.cyberneticenhancements.common.fabrication.FabricatorBlock::new,
+            properties -> properties.strength(3.5F).sound(SoundType.METAL));
 
     public static final DeferredBlock<RipperStationBlock> RIPPER_STATION = register(
             "ripper_station",
@@ -34,6 +37,11 @@ public final class ModBlocks {
     public static final DeferredBlock<TechStationBlock> TECH_STATION = register(
             "tech_station",
             TechStationBlock::new,
+            properties -> properties.strength(3.5F).sound(SoundType.METAL)
+    );
+
+    public static final DeferredBlock<TechStationBlock> UPGRADE_STATION = register(
+            "upgrade_station", TechStationBlock::new,
             properties -> properties.strength(3.5F).sound(SoundType.METAL)
     );
 

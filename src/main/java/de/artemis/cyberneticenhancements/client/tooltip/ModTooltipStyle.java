@@ -1,19 +1,18 @@
 package de.artemis.cyberneticenhancements.client.tooltip;
 
 import de.artemis.cyberneticenhancements.CyberneticEnhancements;
-import de.artemis.cyberneticenhancements.client.screen.RecyclerStationScreen;
-import de.artemis.cyberneticenhancements.client.screen.RipperStationScreen;
-import de.artemis.cyberneticenhancements.client.screen.TechStationScreen;
 import net.minecraft.client.Minecraft;
+import de.artemis.cyberneticenhancements.client.ui.UiRenderer;
+import de.artemis.cyberneticenhancements.client.ui.ResponsiveUi;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.world.item.ItemStack;
 import net.neoforged.neoforge.client.event.RenderTooltipEvent;
 
 public final class ModTooltipStyle {
-    public static final int BACKGROUND = 0xF0100010;
-    public static final int BORDER = 0xFF304250;
-    public static final int BORDER_HIGHLIGHT = 0xFF4C667A;
+    public static final int BACKGROUND = UiRenderer.PANEL;
+    public static final int BORDER = UiRenderer.PANEL_EDGE;
+    public static final int BORDER_HIGHLIGHT = UiRenderer.PANEL_EDGE_ACTIVE;
     public static final int CONTENT_PADDING = 6;
     public static final int LINE_SPACING = 2;
     public static final int BAR_GAP = 4;
@@ -46,15 +45,10 @@ public final class ModTooltipStyle {
     }
 
     public static void drawTooltipFrame(net.minecraft.client.gui.GuiGraphics guiGraphics, int x1, int y1, int x2, int y2) {
-        guiGraphics.fill(x1, y1, x2, y2, BORDER);
-        guiGraphics.fill(x1 + 1, y1 + 1, x2 - 1, y2 - 1, BACKGROUND);
-        guiGraphics.fill(x1, y1, x2, y1 + 1, BORDER_HIGHLIGHT);
-        guiGraphics.fill(x1, y1, x1 + 1, y2, BORDER_HIGHLIGHT);
+        UiRenderer.panel(guiGraphics, x1, y1, x2 - x1, y2 - y1, BACKGROUND, BORDER_HIGHLIGHT);
     }
 
     private static boolean isModScreen(Screen screen) {
-        return screen instanceof RipperStationScreen
-                || screen instanceof TechStationScreen
-                || screen instanceof RecyclerStationScreen;
+        return screen instanceof ResponsiveUi;
     }
 }

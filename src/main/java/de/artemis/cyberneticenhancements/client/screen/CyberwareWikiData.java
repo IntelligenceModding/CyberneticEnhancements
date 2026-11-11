@@ -52,7 +52,6 @@ import java.util.Map;
 
 final class CyberwareWikiData {
     private static final String WIKI_KEY = "wiki.cyberneticenhancements.";
-    private static final Map<String, List<RelicCacheLootSource>> RELIC_CACHE_SOURCES = createRelicCacheSources();
 
     private CyberwareWikiData() {
     }
@@ -70,6 +69,7 @@ final class CyberwareWikiData {
                         Component.translatable("screen.cyberneticenhancements.archive.navigation.wiki"),
                         buildWikiTopics()
                 ),
+                buildSchematicsTab(),
                 new ArchiveTab(
                         "banking",
                         Component.translatable("screen.cyberneticenhancements.archive.tab.banking"),
@@ -92,6 +92,13 @@ final class CyberwareWikiData {
                         buildLoreTopics()
                 ),
                 new ArchiveTab(
+                        "skill_tree",
+                        Component.translatable("screen.cyberneticenhancements.archive.tab.skill_tree"),
+                        Component.translatable("screen.cyberneticenhancements.archive.mode.skill_tree.subtitle"),
+                        Component.translatable("screen.cyberneticenhancements.archive.navigation.skill_tree"),
+                        buildSkillTreeTopics()
+                ),
+                new ArchiveTab(
                         "quests",
                         Component.translatable("screen.cyberneticenhancements.archive.tab.quests"),
                         Component.translatable("screen.cyberneticenhancements.archive.mode.quests.subtitle"),
@@ -101,9 +108,45 @@ final class CyberwareWikiData {
         );
     }
 
+    static ArchiveTab buildSchematicsTab() {
+        return new ArchiveTab("schematics", Component.literal("Schematics"), Component.literal("Collected and undiscovered fabrication designs"), Component.literal("Schematic collection"), List.of());
+    }
+
+    private static SectionVisual fabricationVisual(String id) {
+        return recipeVisual(new ItemStack(net.minecraft.core.registries.BuiltInRegistries.ITEM.get(
+                net.minecraft.resources.ResourceLocation.fromNamespaceAndPath("cyberneticenhancements", id))));
+    }
+
+    private static SectionVisual recipeVisual(ItemStack item) {
+        var level = net.minecraft.client.Minecraft.getInstance().level;
+        if (level == null) return null;
+        var fabrication = level.getRecipeManager().getAllRecipesFor(de.artemis.cyberneticenhancements.common.registry.ModRecipeTypes.FABRICATION.get()).stream()
+                .filter(holder -> holder.value().result().is(item.getItem()))
+                .sorted(Comparator.<net.minecraft.world.item.crafting.RecipeHolder<de.artemis.cyberneticenhancements.common.fabrication.FabricationRecipe>, Boolean>
+                        comparing(holder -> !holder.value().clientUnlocked()).thenComparing(holder -> holder.id().toString()))
+                .findFirst();
+        if (fabrication.isPresent()) {
+            var holder = fabrication.get();
+            var recipe = holder.value();
+            ItemStack[] grid = WikiRecipeLayouts.grid(recipe);
+            return new CraftingGridVisual(List.<ItemStack[]>of(grid), recipe.result().copy(), recipe.schematic(), holder.id());
+        }
+        return level.getRecipeManager().getAllRecipesFor(net.minecraft.world.item.crafting.RecipeType.CRAFTING).stream()
+                .filter(holder -> holder.value().getResultItem(level.registryAccess()).is(item.getItem()))
+                .sorted(Comparator.comparing(holder -> holder.id().toString()))
+                .filter(holder -> holder.value() instanceof net.minecraft.world.item.crafting.ShapedRecipe
+                        || holder.value() instanceof net.minecraft.world.item.crafting.ShapelessRecipe)
+                .map(holder -> {
+                    var recipe = holder.value();
+                    ItemStack[] grid = WikiRecipeLayouts.grid(recipe);
+                    return (SectionVisual) new CraftingGridVisual(List.<ItemStack[]>of(grid),
+                            recipe.getResultItem(level.registryAccess()).copy(), "", holder.id());
+                }).findFirst().orElse(null);
+    }
     private static List<WikiTopic> buildWikiTopics() {
         return List.of(
                 new WikiTopic("cyberware", Component.translatable("wiki.cyberneticenhancements.topic.cyberware"), buildCyberwareTopics(), null),
+                new WikiTopic("components", wiki("topic.components"), List.of(), new WikiSection("components", wiki("topic.components"), buildComponentEntries())),
                 new WikiTopic("modules", Component.translatable("wiki.cyberneticenhancements.topic.modules"), buildModuleTopics(), null),
                 new WikiTopic("chipware", Component.translatable("wiki.cyberneticenhancements.topic.chipware"), List.of(), new WikiSection("chipware", Component.translatable("wiki.cyberneticenhancements.topic.chipware"), buildChipwareEntries())),
                 new WikiTopic("consumables", Component.translatable("wiki.cyberneticenhancements.topic.consumables"), buildConsumableTopics(), null),
@@ -122,6 +165,24 @@ final class CyberwareWikiData {
                         new WikiSection("lore_world_notes", Component.translatable("wiki.cyberneticenhancements.lore.world_notes"), buildLoreEntries())
                 )
         );
+    }
+
+    private static List<WikiTopic> buildSkillTreeTopics() {
+        Component title = wiki("skill_tree.title");
+        WikiEntry preview = new WikiEntry(
+                "skill_tree_preview",
+                title,
+                new ItemStack(Items.EXPERIENCE_BOTTLE),
+                wiki("skill_tree.coming_soon").copy().withStyle(ChatFormatting.AQUA),
+                wiki("skill_tree.subtitle"),
+                List.of(),
+                Arrays.asList(
+                        sectionKey("overview", wiki("skill_tree.planned")),
+                        sectionKey("current_state", wiki("skill_tree.unavailable"), wiki("skill_tree.subject_to_change"))
+                )
+        );
+        return List.of(new WikiTopic("skill_tree_preview", title, List.of(),
+                new WikiSection("skill_tree_preview", title, List.of(preview))));
     }
 
     private static List<WikiTopic> buildQuestTopics() {
@@ -191,37 +252,111 @@ final class CyberwareWikiData {
 
     private static List<WikiTopic> buildStationTopics() {
         return List.of(
+                new WikiTopic("station_fabricator", Component.literal("Cyberware Fabricator"), List.of(), new WikiSection("station_fabricator", Component.literal("Cyberware Fabricator"), List.of(buildFabricatorEntry()))),
                 new WikiTopic("station_ripper", Component.translatable("block.cyberneticenhancements.ripper_station"), List.of(), new WikiSection("station_ripper", Component.translatable("block.cyberneticenhancements.ripper_station"), List.of(buildRipperStationEntry()))),
                 new WikiTopic("station_tech", Component.translatable("block.cyberneticenhancements.tech_station"), List.of(), new WikiSection("station_tech", Component.translatable("block.cyberneticenhancements.tech_station"), List.of(buildTechStationEntry()))),
+                new WikiTopic("station_upgrade", Component.translatable("block.cyberneticenhancements.upgrade_station"), List.of(), new WikiSection("station_upgrade", Component.translatable("block.cyberneticenhancements.upgrade_station"), List.of(buildUpgradeStationEntry()))),
                 new WikiTopic("station_recycler", Component.translatable("block.cyberneticenhancements.recycler_station"), List.of(), new WikiSection("station_recycler", Component.translatable("block.cyberneticenhancements.recycler_station"), List.of(buildRecyclerStationEntry()))),
                 new WikiTopic("station_relic_cache", wiki("station.relic_cache.title"), List.of(), new WikiSection("station_relic_cache", wiki("station.relic_cache.title"), List.of(buildRelicCacheEntry())))
         );
     }
 
+    private static WikiEntry buildFabricatorEntry() {
+        return buildStationEntry("station_fabricator", Component.translatable("block.cyberneticenhancements.cyberware_fabricator"),
+                new ItemStack(ModBlocks.CYBERWARE_FABRICATOR.get()), wiki("station.fabricator.subtitle"),
+                filterSections(Arrays.asList(
+                        sectionKey("overview", wiki("station.fabricator.operation"), wiki("station.fabricator.output")),
+                        sectionKey("functions", wiki("station.fabricator.tiers")),
+                        sectionKey("schematics", wiki("station.fabricator.schematics"), wiki("station.fabricator.collection")),
+                        section(wiki("section.crafting_recipe"), List.of(), recipeVisual(new ItemStack(ModBlocks.CYBERWARE_FABRICATOR.get()))))));
+    }
+    private static final int[] SHOP_OPTIONS = {
+            de.artemis.cyberneticenhancements.common.menu.FixerDialogMenu.OPTION_BUY_MAXDOC_MK2,
+            de.artemis.cyberneticenhancements.common.menu.FixerDialogMenu.OPTION_BUY_RAM_JOLT,
+            de.artemis.cyberneticenhancements.common.menu.FixerDialogMenu.OPTION_BUY_CHROME_SUPPRESSANT,
+            de.artemis.cyberneticenhancements.common.menu.FixerDialogMenu.OPTION_BUY_IMMUNOBLOCKERS
+    };
+
     private static List<WikiTopic> buildNpcTopics() {
-        return List.of(
-                new WikiTopic(
-                        "npc_general",
-                        Component.translatable("wiki.cyberneticenhancements.npc.general"),
-                        List.of(),
-                        new WikiSection("npc_general", Component.translatable("wiki.cyberneticenhancements.npc.general"), List.of(buildNpcGeneralEntry()))
-                ),
-                new WikiTopic(
-                        "npc_fixer",
-                        Component.translatable("wiki.cyberneticenhancements.npc.fixer"),
-                        List.of(),
-                        new WikiSection("npc_fixer", Component.translatable("wiki.cyberneticenhancements.npc.fixer"), List.of(buildFixerEntry()))
-                )
-        );
+        var topics = new ArrayList<WikiTopic>();
+        topics.add(new WikiTopic("npc_general", wiki("npc.general"), List.of(),
+                new WikiSection("npc_general", wiki("npc.general"), List.of(buildNpcGeneralEntry()))));
+        for (var type : de.artemis.cyberneticenhancements.common.entity.NpcType.values()) {
+            String id = "npc_" + type.id();
+            topics.add(new WikiTopic(id, type.displayName(), List.of(),
+                    new WikiSection(id, type.displayName(), List.of(buildNpcTypeEntry(type)))));
+        }
+        return topics;
     }
 
+    private static WikiEntry buildNpcTypeEntry(de.artemis.cyberneticenhancements.common.entity.NpcType type) {
+        var egg = switch (type) {
+            case FIXER -> ModItems.FIXER_SPAWN_EGG.get();
+            case RIPPERDOC -> ModItems.RIPPERDOC_SPAWN_EGG.get();
+            case TECHIE -> ModItems.TECHIE_SPAWN_EGG.get();
+            case NETRUNNER -> ModItems.NETRUNNER_SPAWN_EGG.get();
+            case MERC -> ModItems.MERC_SPAWN_EGG.get();
+        };
+        List<Component> stock = new ArrayList<>();
+        if (type.supportsShop()) for (int option : SHOP_OPTIONS) {
+            var stack = de.artemis.cyberneticenhancements.common.menu.FixerDialogMenu.shopItem(type, option);
+            if (!stack.isEmpty()) stock.add(wiki("npc.stock_entry", stack.getCount(), stack.getHoverName(),
+                    de.artemis.cyberneticenhancements.common.menu.FixerDialogMenu.requiredTrust(type, option)));
+        }
+        var sections = new ArrayList<ArticleSection>();
+        sections.add(sectionKey("overview", wiki("npc.role." + type.id()), wiki("npc.shared_relationship")));
+        sections.add(sectionKey("services", wiki("npc.services." + type.id()),
+                wiki("npc.secondary_service", de.artemis.cyberneticenhancements.common.menu.FixerDialogMenu.requiredTrust(type,
+                        de.artemis.cyberneticenhancements.common.menu.FixerDialogMenu.OPTION_PURGE))));
+        sections.add(sectionKey("account_and_stock", wiki("npc.currency"), wiki(type.supportsTrustDiscount() ? "npc.discounts" : "npc.fixed_prices")));
+        addSection(sections, wiki("section.stock"), stock);
+        sections.add(sectionKey("functions", wiki(type.supportsContracts() ? "npc.contracts_available" : "npc.no_contracts"),
+                wiki(type.supportsIntel() ? "npc.intel_available" : "npc.no_intel")));
+        sections.add(sectionKey("trust_model", wiki("npc.fixer.trust_model.1"), wiki("npc.fixer.trust_model.2"),
+                wiki("npc.fixer.trust_model.3"), wiki("npc.fixer.trust_model.4"), wiki("npc.fixer.trust_model.5"),
+                wiki("npc.fixer.trust_model.6"), wiki("npc.identity_unlock")));
+        return buildNpcEntry("npc_" + type.id(), type.displayName(), new ItemStack(egg), wiki("npc.role." + type.id()), sections);
+    }
     private static List<WikiTopic> buildSystemTopics() {
         return List.of(
+                new WikiTopic("system_controls", wiki("controls.title"), List.of(),
+                        new WikiSection("system_controls", wiki("controls.title"), List.of(buildControlsEntry()))),
+                new WikiTopic("system_banking", wiki("banking.title"), List.of(),
+                        new WikiSection("system_banking", wiki("banking.title"), List.of(buildBankingEntry()))),
+                new WikiTopic("system_sandevistan", wiki("sandevistan.title"), List.of(),
+                        new WikiSection("system_sandevistan", wiki("sandevistan.title"), List.of(buildSandevistanEntry()))),
                 new WikiTopic("system_cyberstrain", Component.translatable("wiki.cyberneticenhancements.system.cyberstrain"), List.of(), new WikiSection("system_cyberstrain", Component.translatable("wiki.cyberneticenhancements.system.cyberstrain"), List.of(buildCyberstrainEntry()))),
                 new WikiTopic("system_psychosis", Component.translatable("wiki.cyberneticenhancements.system.cyberpsychosis"), List.of(), new WikiSection("system_psychosis", Component.translatable("wiki.cyberneticenhancements.system.cyberpsychosis"), List.of(buildCyberpsychosisEntry()))),
                 new WikiTopic("system_statuses", Component.translatable("wiki.cyberneticenhancements.system.statuses"), List.of(), new WikiSection("system_statuses", Component.translatable("wiki.cyberneticenhancements.system.statuses"), buildStatusEntries())),
                 new WikiTopic("system_progression", Component.translatable("wiki.cyberneticenhancements.system.progression"), List.of(), new WikiSection("system_progression", Component.translatable("wiki.cyberneticenhancements.system.progression"), List.of(buildProgressionEntry())))
         );
+    }
+
+    private static WikiEntry buildControlsEntry() {
+        List<Component> bindings = new ArrayList<>();
+        for (var mapping : List.of(de.artemis.cyberneticenhancements.client.ModKeyMappings.ACTIVATE_CYBERWARE,
+                de.artemis.cyberneticenhancements.client.ModKeyMappings.ACTIVATE_AUXILIARY_CYBERWARE,
+                de.artemis.cyberneticenhancements.client.ModKeyMappings.ACTIVATE_ARM_CYBERWARE,
+                de.artemis.cyberneticenhancements.client.ModKeyMappings.ACTIVATE_FACE_CYBERWARE,
+                de.artemis.cyberneticenhancements.client.ModKeyMappings.OPEN_ARCHIVE,
+                de.artemis.cyberneticenhancements.client.ModKeyMappings.TOGGLE_HUD))
+            bindings.add(wiki("controls.binding", Component.translatable(mapping.getName()), mapping.getTranslatedKeyMessage()));
+        return buildSystemEntry("system_controls", wiki("controls.title"), new ItemStack(Items.COMPASS), wiki("controls.subtitle"),
+                List.of(section(wiki("section.functions"), bindings), sectionKey("overview", wiki("controls.archive"))));
+    }
+
+    private static WikiEntry buildBankingEntry() {
+        return buildSystemEntry("system_banking", wiki("banking.title"), new ItemStack(Items.GOLD_NUGGET), wiki("banking.subtitle"),
+                List.of(sectionKey("overview", wiki("banking.operations"), wiki("banking.authority"), wiki("banking.sources"))));
+    }
+
+    private static WikiEntry buildSandevistanEntry() {
+        return new WikiEntry("system_sandevistan", wiki("sandevistan.title"), new ItemStack(Items.CLOCK),
+                wiki("sandevistan.badge"), wiki("sandevistan.subtitle"), List.of(), Arrays.asList(
+                sectionKey("overview", wiki("sandevistan.controls"), wiki("sandevistan.dilation")),
+                sectionKey("special_behavior", wiki("sandevistan.models"), wiki("sandevistan.experimental")),
+                sectionKey("maintenance", wiki("sandevistan.maintenance"), wiki("sandevistan.overload"), wiki("sandevistan.recovery")),
+                sectionKey("notes", wiki("sandevistan.multiplayer"), wiki("sandevistan.options"))));
     }
 
     private static List<WikiEntry> buildStatusEntries() {
@@ -239,7 +374,7 @@ final class CyberwareWikiData {
                         Component.translatable("wiki.cyberneticenhancements.lore.world_notes"),
                         new ItemStack(Items.WRITABLE_BOOK),
                         wiki("lore.reserved"),
-                        List.of(
+                        Arrays.asList(
                                 sectionKey("current_state",
                                         wiki("lore.current_state.branch_ready"),
                                         wiki("lore.current_state.gameplay_authority"))
@@ -255,7 +390,7 @@ final class CyberwareWikiData {
                         Component.translatable("wiki.cyberneticenhancements.quests.contract_board"),
                         new ItemStack(Items.MAP),
                         wiki("quests.reserved"),
-                        List.of(
+                        Arrays.asList(
                                 sectionKey("current_state",
                                         wiki("quests.current_state.placeholder"),
                                         wiki("quests.current_state.progression")),
@@ -272,7 +407,7 @@ final class CyberwareWikiData {
         List<Component> chips = new ArrayList<>();
         chips.add(Component.translatable(definition.slotType().translationKey()).withStyle(ChatFormatting.AQUA));
         chips.add(Component.translatable(definition.tier().translationKey()).withStyle(definition.tier().getColor()));
-        chips.add(Component.translatable(definition.acquisitionMethod().translationKey()));
+
         chips.add(wiki("chip.chrome", definition.chromeCost()));
         chips.add(wiki("chip.integrity", CyberwareConditionHelper.getMaxIntegrity(definition)));
 
@@ -281,11 +416,15 @@ final class CyberwareWikiData {
                 Component.translatable(definition.descriptionKey()),
                 wiki("overview.slot", Component.translatable(definition.slotType().translationKey())),
                 wiki("overview.tier", Component.translatable(definition.tier().translationKey())),
-                wiki("overview.acquisition", Component.translatable(definition.acquisitionMethod().translationKey())),
+                wiki("overview.acquisition", acquisitionRoute(definition.id())),
                 wiki("overview.chrome_cost", definition.chromeCost()),
                 wiki("overview.integrity", CyberwareConditionHelper.getMaxIntegrity(definition))));
         addSection(sections, wiki("section.passive_effects"), buildCyberwarePassiveLines(definition));
         addSection(sections, wiki("section.special_behavior"), buildCyberwareBehaviorLines(definition));
+        if (de.artemis.cyberneticenhancements.common.cyberware.sandevistan.SandevistanProfile.supports(definition.id())) {
+            sections.add(section(wiki("sandevistan.title"), List.of(wiki("sandevistan.controls"),
+                    wiki("sandevistan.dilation"), wiki("sandevistan.maintenance"), wiki("sandevistan.recovery"), wiki("sandevistan.multiplayer"))));
+        }
         addSection(sections, wiki("section.acquisition"), buildAcquisitionLines(definition));
         addSection(sections, wiki("section.crafting"), buildCyberwareCraftingLines(definition), buildCyberwareCraftingVisual(definition));
         addSection(sections, wiki("section.repair_upgrade"), buildCyberwareServiceLines(definition), buildCyberwareServiceVisual(definition));
@@ -315,7 +454,7 @@ final class CyberwareWikiData {
                         Component.translatable(definition.tier().translationKey()).withStyle(definition.tier().getColor()),
                         wiki("chip.chrome", definition.chromeCost())
                 ),
-                filterSections(List.of(
+                filterSections(Arrays.asList(
                         sectionKey("overview",
                                 Component.translatable(definition.descriptionKey()),
                                 wiki("overview.category", Component.translatable(definition.category().translationKey())),
@@ -342,7 +481,7 @@ final class CyberwareWikiData {
                         Component.translatable(definition.tier().translationKey()).withStyle(definition.tier().getColor()),
                         wiki("chip.chrome", definition.chromeCost())
                 ),
-                filterSections(List.of(
+                filterSections(Arrays.asList(
                         sectionKey("overview",
                                 Component.translatable(definition.descriptionKey()),
                                 wiki("overview.tier", Component.translatable(definition.tier().translationKey())),
@@ -359,6 +498,26 @@ final class CyberwareWikiData {
         );
     }
 
+    private static List<WikiEntry> buildComponentEntries() {
+        var materials = new java.util.TreeMap<String, net.minecraft.world.item.Item>();
+        de.artemis.cyberneticenhancements.common.fabrication.FabricationContent.PARTS.forEach((id, item) -> materials.put(id, item.get()));
+        for (var item : List.of(ModItems.COPPER_WIRING, ModItems.CONDUCTIVE_PASTE, ModItems.SERVO_SCREWS,
+                ModItems.SENSOR_LENS, ModItems.MICRO_BATTERY, ModItems.REPLACEMENT_JOINT, ModItems.BASIC_CIRCUIT_PLATE,
+                ModItems.COMMON_ITEM_COMPONENTS, ModItems.UNCOMMON_ITEM_COMPONENTS, ModItems.RARE_ITEM_COMPONENTS,
+                ModItems.EPIC_ITEM_COMPONENTS, ModItems.LEGENDARY_ITEM_COMPONENTS))
+            materials.put(item.getId().getPath(), item.get());
+        return materials.entrySet().stream().map(entry -> {
+            ItemStack stack = new ItemStack(entry.getValue());
+            var sections = new ArrayList<ArticleSection>();
+            sections.add(sectionKey("overview", wiki("component.uses")));
+            addSection(sections, wiki("section.acquisition"), buildAcquisitionLines(entry.getKey()));
+            addSection(sections, wiki("section.crafting"), List.of(), recipeVisual(stack));
+            if (!recovery(stack).isEmpty())
+                addSection(sections, wiki("section.recycling"), List.of(wiki("recycle.no_refund")), new CompactTransformVisual(stack, recovery(stack)));
+            return new WikiEntry(entry.getKey(), stack.getHoverName(), stack, wiki("badge.component"),
+                    wiki("component.uses"), List.of(), sections);
+        }).toList();
+    }
     private static List<WikiEntry> buildChipwareEntries() {
         return ChipwareCatalog.definitions().stream()
                 .sorted(Comparator.comparing(ChipwareDefinition::tier).thenComparing(ChipwareDefinition::displayName))
@@ -379,7 +538,7 @@ final class CyberwareWikiData {
                         wiki("chip.cooldown_short", definition.cooldownTicks() / 20),
                         wiki("chip.overdose_short", definition.overdosePoints())
                 ),
-                filterSections(List.of(
+                filterSections(Arrays.asList(
                         sectionKey("overview",
                                 Component.translatable(definition.descriptionKey()),
                                 wiki("overview.category", Component.translatable(definition.category().translationKey())),
@@ -396,11 +555,11 @@ final class CyberwareWikiData {
 
     private static WikiEntry buildRipperStationEntry() {
         return buildStationEntry(
-                "ripper_station",
+                "station_ripper",
                 Component.translatable("block.cyberneticenhancements.ripper_station"),
                 new ItemStack(ModBlocks.RIPPER_STATION.get()),
                 wiki("station.ripper.subtitle"),
-                List.of(
+                Arrays.asList(
                         sectionKey("overview",
                                 wiki("station.ripper.overview.1"),
                                 wiki("station.ripper.overview.2")),
@@ -409,18 +568,18 @@ final class CyberwareWikiData {
                                 wiki("station.ripper.functions.2"),
                                 wiki("station.ripper.functions.3"),
                                 wiki("station.ripper.functions.4")),
-                        section(wiki("section.crafting_recipe"), List.of(), buildRipperStationCraftingVisual())
+                        section(wiki("section.crafting_recipe"), List.of(), recipeVisual(new ItemStack(ModBlocks.RIPPER_STATION.get())))
                 )
         );
     }
 
     private static WikiEntry buildTechStationEntry() {
         return buildStationEntry(
-                "tech_station",
+                "station_tech",
                 Component.translatable("block.cyberneticenhancements.tech_station"),
                 new ItemStack(ModBlocks.TECH_STATION.get()),
                 wiki("station.tech.subtitle"),
-                List.of(
+                Arrays.asList(
                         sectionKey("overview",
                                 wiki("station.tech.overview.1"),
                                 wiki("station.tech.overview.2"),
@@ -429,18 +588,25 @@ final class CyberwareWikiData {
                                 wiki("station.tech.functions.1"),
                                 wiki("station.tech.functions.2"),
                                 wiki("station.tech.functions.3")),
-                        section(wiki("section.crafting_recipe"), List.of(), buildTechStationCraftingVisual())
+                        section(wiki("section.crafting_recipe"), List.of(), recipeVisual(new ItemStack(ModBlocks.TECH_STATION.get())))
                 )
         );
     }
 
+    private static WikiEntry buildUpgradeStationEntry() {
+        return buildStationEntry("station_upgrade", Component.translatable("block.cyberneticenhancements.upgrade_station"),
+                new ItemStack(ModBlocks.UPGRADE_STATION.get()), wiki("station.upgrade.subtitle"), Arrays.asList(
+                        sectionKey("overview", wiki("station.upgrade.overview"), wiki("station.upgrade.condition")),
+                        sectionKey("functions", wiki("station.upgrade.cost"), wiki("station.upgrade.models"), wiki("station.upgrade.capacity")),
+                        section(wiki("section.crafting_recipe"), List.of(), recipeVisual(new ItemStack(ModBlocks.UPGRADE_STATION.get())))));
+    }
     private static WikiEntry buildRecyclerStationEntry() {
         return buildStationEntry(
-                "recycler_station",
+                "station_recycler",
                 Component.translatable("block.cyberneticenhancements.recycler_station"),
                 new ItemStack(ModBlocks.RECYCLER_STATION.get()),
                 wiki("station.recycler.subtitle"),
-                List.of(
+                Arrays.asList(
                         sectionKey("overview",
                                 wiki("station.recycler.overview.1"),
                                 wiki("station.recycler.overview.2")),
@@ -449,7 +615,7 @@ final class CyberwareWikiData {
                                 wiki("station.recycler.functions.2"),
                                 wiki("station.recycler.functions.3"),
                                 wiki("station.recycler.functions.4")),
-                        section(wiki("section.crafting_recipe"), List.of(), buildRecyclerStationCraftingVisual())
+                        section(wiki("section.crafting_recipe"), List.of(), recipeVisual(new ItemStack(ModBlocks.RECYCLER_STATION.get())))
                 )
         );
     }
@@ -460,7 +626,7 @@ final class CyberwareWikiData {
                 wiki("station.relic_cache.title"),
                 new ItemStack(ModBlocks.UNCOMMON_RELIC_CACHE.get()),
                 wiki("station.relic_cache.subtitle"),
-                List.of(
+                Arrays.asList(
                         sectionKey("overview",
                                 wiki("station.relic_cache.overview.1"),
                                 wiki("station.relic_cache.overview.2"),
@@ -470,7 +636,9 @@ final class CyberwareWikiData {
                                 wiki("station.relic_cache.spawn_sites.2"),
                                 wiki("station.relic_cache.spawn_sites.3"),
                                 wiki("station.relic_cache.spawn_sites.4"),
-                                wiki("station.relic_cache.spawn_sites.5")),
+                                wiki("station.relic_cache.spawn_sites.5"),
+                                wiki("station.relic_cache.spawn_sites.6"),
+                                wiki("station.relic_cache.spawn_sites.7")),
                         sectionKey("functions",
                                 wiki("station.relic_cache.functions.1"),
                                 wiki("station.relic_cache.functions.2"),
@@ -499,7 +667,7 @@ final class CyberwareWikiData {
                 Component.translatable("wiki.cyberneticenhancements.npc.general"),
                 new ItemStack(ModItems.FIXER_SPAWN_EGG.get()),
                 wiki("npc.general.subtitle"),
-                List.of(
+                Arrays.asList(
                         sectionKey("overview",
                                 wiki("npc.general.overview.1"),
                                 wiki("npc.general.overview.2"),
@@ -520,45 +688,6 @@ final class CyberwareWikiData {
         );
     }
 
-    private static WikiEntry buildFixerEntry() {
-        return buildNpcEntry(
-                "npc_fixer",
-                Component.translatable("wiki.cyberneticenhancements.npc.fixer"),
-                new ItemStack(ModItems.FIXER_SPAWN_EGG.get()),
-                wiki("npc.fixer.subtitle"),
-                List.of(
-                        sectionKey("overview",
-                                wiki("npc.fixer.overview.1"),
-                                wiki("npc.fixer.overview.2"),
-                                wiki("npc.fixer.overview.3")),
-                        sectionKey("field_presence",
-                                wiki("npc.fixer.field_presence.1"),
-                                wiki("npc.fixer.field_presence.2"),
-                                wiki("npc.fixer.field_presence.3")),
-                        sectionKey("trust_model",
-                                wiki("npc.fixer.trust_model.1"),
-                                wiki("npc.fixer.trust_model.2"),
-                                wiki("npc.fixer.trust_model.3"),
-                                wiki("npc.fixer.trust_model.4"),
-                                wiki("npc.fixer.trust_model.5"),
-                                wiki("npc.fixer.trust_model.6")),
-                        sectionKey("services",
-                                wiki("npc.fixer.services.1"),
-                                wiki("npc.fixer.services.2"),
-                                wiki("npc.fixer.services.3"),
-                                wiki("npc.fixer.services.4"),
-                                wiki("npc.fixer.services.5")),
-                        sectionKey("account_and_stock",
-                                wiki("npc.fixer.account_and_stock.1"),
-                                wiki("npc.fixer.account_and_stock.2"),
-                                wiki("npc.fixer.account_and_stock.3")),
-                        sectionKey("current_state",
-                                wiki("npc.fixer.current_state.1"),
-                                wiki("npc.fixer.current_state.2"))
-                )
-        );
-    }
-
     private static WikiEntry buildCyberstrainEntry() {
         int strained = CyberwareBalance.intValue("cyberstrain.threshold.strained");
         int unstable = CyberwareBalance.intValue("cyberstrain.threshold.unstable");
@@ -569,7 +698,7 @@ final class CyberwareWikiData {
                 Component.translatable("wiki.cyberneticenhancements.system.cyberstrain"),
                 new ItemStack(Items.REDSTONE),
                 wiki("system.cyberstrain.subtitle"),
-                List.of(
+                Arrays.asList(
                         sectionKey("thresholds",
                                 wiki("system.cyberstrain.threshold.strained", strained),
                                 wiki("system.cyberstrain.threshold.unstable", unstable),
@@ -593,7 +722,7 @@ final class CyberwareWikiData {
                 Component.translatable("wiki.cyberneticenhancements.system.cyberpsychosis"),
                 new ItemStack(Items.NETHER_STAR),
                 wiki("system.psychosis.subtitle"),
-                List.of(
+                Arrays.asList(
                         sectionKey("trigger_model",
                                 wiki("system.psychosis.trigger.1"),
                                 wiki("system.psychosis.trigger.2")),
@@ -616,7 +745,7 @@ final class CyberwareWikiData {
                 Component.translatable("wiki.cyberneticenhancements.system.progression"),
                 new ItemStack(Items.CHEST),
                 wiki("system.progression.subtitle"),
-                List.of(
+                Arrays.asList(
                         sectionKey("craftable_starter_layer",
                                 wiki("system.progression.craftable.1"),
                                 wiki("system.progression.craftable.2"),
@@ -641,7 +770,7 @@ final class CyberwareWikiData {
                 Component.translatable(type.translationKey()),
                 statusIcon(type),
                 Component.translatable(type.descriptionKey()),
-                List.of(
+                Arrays.asList(
                         sectionKey("overview",
                                 Component.translatable(type.descriptionKey()),
                                 wiki("overview.max_stacks", type.maxStacks())),
@@ -682,46 +811,48 @@ final class CyberwareWikiData {
     }
 
     private static List<Component> buildAcquisitionLines(CyberwareDefinition definition) {
-        return buildAcquisitionLines(definition.id(), definition.isCraftable(), definition.acquisitionMethod(), true);
+        return buildAcquisitionLines(definition.id());
     }
 
     private static List<Component> buildCyberwareCraftingLines(CyberwareDefinition definition) {
-        return definition.isCraftable() ? List.of() : List.of();
+        return List.of(Component.literal("Assemble at the Cyberware Fabricator. Inspect machine tier and schematic requirements in its recipe browser."));
     }
 
     private static SectionVisual buildCyberwareCraftingVisual(CyberwareDefinition definition) {
-        if (!definition.isCraftable()) {
-            return null;
-        }
-
-        ItemStack[] grid = emptyGrid();
-        fill(grid, 0, CyberwareServiceHelper.componentItem(definition.tier()), 1);
-        fill(grid, 1, CyberwareServiceHelper.slotSupportItem(definition.slotType()), 1);
-        fill(grid, 2, CyberwareServiceHelper.componentItem(definition.tier()), 1);
-        fill(grid, 3, auxiliarySupportItem(definition.slotType()), 1);
-        fill(grid, 4, definition.upgradeFromId() != null ? ModItems.cyberware(definition.upgradeFromId()).get() : definition.motifItem(), 1);
-        fill(grid, 5, auxiliarySupportItem(definition.slotType()), 1);
-        fill(grid, 6, CyberwareServiceHelper.componentItem(definition.tier()), 1);
-        fill(grid, 7, ModItems.BASIC_CIRCUIT_PLATE.get(), 1);
-        fill(grid, 8, CyberwareServiceHelper.componentItem(definition.tier()), 1);
-        return new CraftingGridVisual(List.<ItemStack[]>of(grid), new ItemStack(ModItems.cyberware(definition.id()).get()));
+        return fabricationVisual(definition.id());
     }
 
     private static List<Component> buildCyberwareServiceLines(CyberwareDefinition definition) {
-        return List.of();
+        var lines = new ArrayList<Component>();
+        lines.add(wiki("service.separate_stations"));
+        lines.add(wiki("service.preserve_data"));
+        lines.add(wiki("service.no_schematic"));
+        var service = de.artemis.cyberneticenhancements.common.cyberware.CyberwareUpgradeRegistry.get(definition.id());
+        if (service.repairMaterials().isEmpty()) lines.add(wiki("service.repair_disabled"));
+        if (service.levels().isEmpty()) lines.add(wiki("service.upgrade_disabled"));
+        return lines;
     }
 
     private static List<Component> buildCyberwareRecycleLines(CyberwareDefinition definition) {
-        return List.of();
+        if (recovery(new ItemStack(ModItems.cyberware(definition.id()).get())).isEmpty())
+            return List.of(wiki("recycle.unavailable"));
+        return List.of(wiki("recycle.condition",
+                formatNumber(de.artemis.cyberneticenhancements.common.recipe.RecyclerRecipe.GOOD_CONDITION_MINIMUM * 100),
+                formatNumber(de.artemis.cyberneticenhancements.common.recipe.RecyclerRecipe.WORN_CONDITION_MINIMUM * 100),
+                formatNumber(de.artemis.cyberneticenhancements.common.recipe.RecyclerRecipe.WORN_CONDITION_MINIMUM * 100)),
+                wiki("recycle.example_good"), wiki("recycle.no_refund"));
+    }
+
+    private static List<ItemStack> recovery(ItemStack input) {
+        var level = net.minecraft.client.Minecraft.getInstance().level;
+        return level == null ? List.of() : CyberwareRecycleHelper.resolve(level, input).outputs();
     }
 
     private static SectionVisual buildCyberwareRecycleVisual(CyberwareDefinition definition) {
+        if (recovery(new ItemStack(ModItems.cyberware(definition.id()).get())).isEmpty()) return null;
         return new CompactTransformVisual(
                 new ItemStack(ModItems.cyberware(definition.id()).get()),
-                List.of(
-                        CyberwareRecycleHelper.createCyberwareResult(definition),
-                        new ItemStack(CyberwareServiceHelper.slotSupportItem(definition.slotType()))
-                )
+                recovery(new ItemStack(ModItems.cyberware(definition.id()).get()))
         );
     }
 
@@ -734,33 +865,11 @@ final class CyberwareWikiData {
     }
 
     private static List<Component> buildModuleCraftingLines(CyberwareModuleDefinition definition) {
-        return List.of();
+        return List.of(Component.literal("Assemble at the Cyberware Fabricator. Inspect machine tier and schematic requirements in its recipe browser."));
     }
 
     private static SectionVisual buildModuleCraftingVisual(CyberwareModuleDefinition definition) {
-        ItemStack[] grid = emptyGrid();
-        if (definition.category() == CyberwareModuleCategory.ARMS) {
-            fill(grid, 0, CyberwareServiceHelper.componentItem(definition.tier()), 1);
-            fill(grid, 1, ModItems.COPPER_WIRING.get(), 1);
-            fill(grid, 2, CyberwareServiceHelper.componentItem(definition.tier()), 1);
-            fill(grid, 3, ModItems.BASIC_CIRCUIT_PLATE.get(), 1);
-            fill(grid, 4, definition.motifItem(), 1);
-            fill(grid, 5, ModItems.BASIC_CIRCUIT_PLATE.get(), 1);
-            fill(grid, 6, CyberwareServiceHelper.componentItem(definition.tier()), 1);
-            fill(grid, 7, ModItems.REPLACEMENT_JOINT.get(), 1);
-            fill(grid, 8, CyberwareServiceHelper.componentItem(definition.tier()), 1);
-        } else {
-            fill(grid, 0, CyberwareServiceHelper.componentItem(definition.tier()), 1);
-            fill(grid, 1, ModItems.REPLACEMENT_JOINT.get(), 1);
-            fill(grid, 2, CyberwareServiceHelper.componentItem(definition.tier()), 1);
-            fill(grid, 3, ModItems.BASIC_CIRCUIT_PLATE.get(), 1);
-            fill(grid, 4, definition.motifItem(), 1);
-            fill(grid, 5, ModItems.BASIC_CIRCUIT_PLATE.get(), 1);
-            fill(grid, 6, CyberwareServiceHelper.componentItem(definition.tier()), 1);
-            fill(grid, 7, ModItems.MICRO_BATTERY.get(), 1);
-            fill(grid, 8, CyberwareServiceHelper.componentItem(definition.tier()), 1);
-        }
-        return new CraftingGridVisual(List.<ItemStack[]>of(grid), new ItemStack(ModItems.module(definition.id()).get()));
+        return fabricationVisual(definition.id());
     }
 
     private static List<Component> buildModuleRecycleLines(CyberwareModuleDefinition definition) {
@@ -768,24 +877,19 @@ final class CyberwareWikiData {
     }
 
     private static SectionVisual buildModuleRecycleVisual(CyberwareModuleDefinition definition) {
+        if (recovery(new ItemStack(ModItems.module(definition.id()).get())).isEmpty()) return null;
         return new CompactTransformVisual(
                 new ItemStack(ModItems.module(definition.id()).get()),
-                List.of(CyberwareRecycleHelper.createModuleResult(definition))
+                recovery(new ItemStack(ModItems.module(definition.id()).get()))
         );
     }
 
     private static List<Component> buildChipwareCraftingLines(ChipwareDefinition definition) {
-        return List.of();
+        return List.of(Component.literal("Assemble at the Cyberware Fabricator. Inspect machine tier and schematic requirements in its recipe browser."));
     }
 
     private static SectionVisual buildChipwareCraftingVisual(ChipwareDefinition definition) {
-        ItemStack[] grid = emptyGrid();
-        fill(grid, 1, CyberwareServiceHelper.componentItem(definition.tier()), 1);
-        fill(grid, 3, ModItems.BASIC_CIRCUIT_PLATE.get(), 1);
-        fill(grid, 4, definition.motifItem(), 1);
-        fill(grid, 5, ModItems.BASIC_CIRCUIT_PLATE.get(), 1);
-        fill(grid, 7, Items.REDSTONE, 1);
-        return new CraftingGridVisual(List.<ItemStack[]>of(grid), new ItemStack(ModItems.chipware(definition.id()).get()));
+        return fabricationVisual(definition.id());
     }
 
     private static List<Component> buildChipwareRecycleLines(ChipwareDefinition definition) {
@@ -793,9 +897,10 @@ final class CyberwareWikiData {
     }
 
     private static SectionVisual buildChipwareRecycleVisual(ChipwareDefinition definition) {
+        if (recovery(new ItemStack(ModItems.chipware(definition.id()).get())).isEmpty()) return null;
         return new CompactTransformVisual(
                 new ItemStack(ModItems.chipware(definition.id()).get()),
-                List.of(CyberwareRecycleHelper.createChipwareResult(definition))
+                recovery(new ItemStack(ModItems.chipware(definition.id()).get()))
         );
     }
 
@@ -820,7 +925,8 @@ final class CyberwareWikiData {
                 lines.add(wiki("consumable.break_speed", formatPercent(CyberwareBalance.doubleValue("consumable.stamina_booster.break_speed"))));
                 lines.add(wiki("consumable.duration_seconds", ticksToSeconds(CyberwareBalance.intValue("consumable.stamina_booster.duration_ticks"))));
             }
-            case OXY_BOOSTER -> lines.add(wiki("consumable.water_breathing", ticksToSeconds(CyberwareBalance.intValue("consumable.oxy_booster.duration_ticks"))));
+            case OXY_BOOSTER ->
+                    lines.add(wiki("consumable.water_breathing", ticksToSeconds(CyberwareBalance.intValue("consumable.oxy_booster.duration_ticks"))));
             case CAPACITY_BOOSTER -> {
                 lines.add(wiki("consumable.chrome_capacity", formatNumber(CyberwareBalance.doubleValue("consumable.capacity_booster.chrome_capacity"))));
                 lines.add(wiki("consumable.duration_seconds", ticksToSeconds(CyberwareBalance.intValue("consumable.capacity_booster.duration_ticks"))));
@@ -870,7 +976,7 @@ final class CyberwareWikiData {
     }
 
     private static SectionVisual buildConsumableCraftingVisual(CyberConsumableDefinition definition) {
-        return new CraftingGridVisual(List.<ItemStack[]>of(consumableRecipeGrid(definition.id())), new ItemStack(ModItems.consumable(definition.id()).get()));
+        return recipeVisual(new ItemStack(ModItems.consumable(definition.id()).get()));
     }
 
     private static List<Component> buildConsumableRecycleLines(CyberConsumableDefinition definition) {
@@ -878,49 +984,62 @@ final class CyberwareWikiData {
     }
 
     private static List<Component> buildCraftedItemAcquisitionLines(String itemId) {
-        return buildAcquisitionLines(itemId, true, null, false);
+        return buildAcquisitionLines(itemId);
+    }
+
+    private static Component acquisitionRoute(String itemId) {
+        var level = net.minecraft.client.Minecraft.getInstance().level;
+        if (level == null) return wiki("acquisition.server_recipes");
+        var item = net.minecraft.core.registries.BuiltInRegistries.ITEM.get(
+                net.minecraft.resources.ResourceLocation.fromNamespaceAndPath("cyberneticenhancements", itemId));
+        var designs = level.getRecipeManager().getAllRecipesFor(de.artemis.cyberneticenhancements.common.registry.ModRecipeTypes.FABRICATION.get()).stream()
+                .filter(holder -> holder.value().result().is(item)).toList();
+        if (!designs.isEmpty()) return wiki(designs.stream().anyMatch(holder -> holder.value().schematic().isEmpty())
+                ? "acquisition.route_public" : "acquisition.route_schematic");
+        return wiki(level.getRecipeManager().getAllRecipesFor(net.minecraft.world.item.crafting.RecipeType.CRAFTING).stream()
+                .anyMatch(holder -> holder.value().getResultItem(level.registryAccess()).is(item))
+                ? "acquisition.route_crafting" : "acquisition.route_exploration");
     }
 
     private static List<Component> buildAcquisitionLines(
-            String itemId,
-            boolean craftable,
-            CyberwareAcquisitionMethod acquisitionMethod,
-            boolean includeMethodLine
+            String itemId
     ) {
-        List<Component> lines = new ArrayList<>();
-        if (includeMethodLine && acquisitionMethod != null) {
-            lines.add(wiki("acquisition.method", Component.translatable(acquisitionMethod.translationKey())));
-        }
-        if (craftable) {
+        var lines = new ArrayList<Component>();
+        var level = net.minecraft.client.Minecraft.getInstance().level;
+        if (level == null) return List.of(wiki("acquisition.server_recipes"));
+        var item = net.minecraft.core.registries.BuiltInRegistries.ITEM.get(
+                net.minecraft.resources.ResourceLocation.fromNamespaceAndPath("cyberneticenhancements", itemId));
+        var fabrication = level.getRecipeManager().getAllRecipesFor(de.artemis.cyberneticenhancements.common.registry.ModRecipeTypes.FABRICATION.get()).stream()
+                .filter(holder -> holder.value().result().is(item)).toList();
+        if (!fabrication.isEmpty()) {
+            lines.add(wiki("acquisition.fabricator"));
+            if (fabrication.stream().anyMatch(holder -> holder.value().schematic().isEmpty()))
+                lines.add(wiki("acquisition.public_design"));
+            else lines.add(wiki("acquisition.schematic_design"));
+        } else if (level.getRecipeManager().getAllRecipesFor(net.minecraft.world.item.crafting.RecipeType.CRAFTING).stream()
+                .anyMatch(holder -> holder.value().getResultItem(level.registryAccess()).is(item))) {
             lines.add(wiki("acquisition.craftable"));
+        } else lines.add(wiki("acquisition.no_recipe"));
+        if (de.artemis.cyberneticenhancements.common.fabrication.FabricationContent.SCHEMATICS.containsKey(itemId)) {
+            var definition = CyberwareCatalog.get(itemId);
+            lines.add(wiki(definition.acquisitionMethod() == CyberwareAcquisitionMethod.QUEST
+                    ? "acquisition.quest" : "acquisition.discovery"));
         }
-
-        List<RelicCacheLootSource> lootSources = RELIC_CACHE_SOURCES.getOrDefault(itemId, List.of());
-        for (RelicCacheLootSource source : lootSources) {
-            lines.add(wiki("acquisition.cache_tier", cacheTierName(source.tier())));
-            lines.add(wiki("acquisition.cache_sites", joinComponents(cacheStructureNames(source.tier()))));
-            String chance = formatPercent(source.weight() / (double) source.totalWeight());
-            if (source.pool() == RelicCacheLootPool.PRIMARY) {
-                lines.add(wiki("acquisition.cache_chance_primary", chance, source.weight(), source.totalWeight()));
-            } else {
-                lines.add(wiki("acquisition.cache_chance_support", chance, source.weight(), source.totalWeight()));
+        for (var type : de.artemis.cyberneticenhancements.common.entity.NpcType.values())
+            for (int option : SHOP_OPTIONS) {
+                var stock = de.artemis.cyberneticenhancements.common.menu.FixerDialogMenu.shopItem(type, option);
+                if (stock.is(item))
+                    lines.add(wiki("acquisition.shop", type.displayName(),
+                            de.artemis.cyberneticenhancements.common.menu.FixerDialogMenu.requiredTrust(type, option)));
             }
-        }
-
-        if (!craftable && lootSources.isEmpty()) {
-            if (acquisitionMethod == CyberwareAcquisitionMethod.LOOT) {
-                lines.add(wiki("acquisition.live_source_missing"));
-            } else if (acquisitionMethod == CyberwareAcquisitionMethod.QUEST) {
-                lines.add(wiki("acquisition.quest"));
-            }
-        }
+        lines.add(wiki("acquisition.loot_configured"));
         return lines;
     }
-
     private static SectionVisual buildConsumableRecycleVisual(CyberConsumableDefinition definition) {
+        if (recovery(new ItemStack(ModItems.consumable(definition.id()).get())).isEmpty()) return null;
         return new CompactTransformVisual(
                 new ItemStack(ModItems.consumable(definition.id()).get()),
-                List.of(CyberwareRecycleHelper.createConsumableResult(definition))
+                recovery(new ItemStack(ModItems.consumable(definition.id()).get()))
         );
     }
 
@@ -1053,55 +1172,6 @@ final class CyberwareWikiData {
                 || LegCyberwareManager.hasSpecialBehavior(id);
     }
 
-    private static ItemLike auxiliarySupportItem(CyberwareSlotType slotType) {
-        return switch (slotType) {
-            case FRONTAL_CORTEX, OPERATING_SYSTEM, NERVOUS_SYSTEM, FACE -> ModItems.MICRO_BATTERY.get();
-            case ARMS, LEGS, SKELETON, HANDS -> ModItems.SERVO_SCREWS.get();
-            case CIRCULATORY_SYSTEM, INTEGUMENTARY_SYSTEM -> ModItems.CONDUCTIVE_PASTE.get();
-        };
-    }
-
-    private static SectionVisual buildRipperStationCraftingVisual() {
-        ItemStack[] grid = emptyGrid();
-        fill(grid, 0, Items.IRON_INGOT, 1);
-        fill(grid, 1, ModItems.SENSOR_LENS.get(), 1);
-        fill(grid, 2, Items.IRON_INGOT, 1);
-        fill(grid, 3, ModItems.BASIC_CIRCUIT_PLATE.get(), 1);
-        fill(grid, 4, Items.SMOOTH_STONE, 1);
-        fill(grid, 5, ModItems.BASIC_CIRCUIT_PLATE.get(), 1);
-        fill(grid, 6, Items.IRON_INGOT, 1);
-        fill(grid, 7, ModItems.CONDUCTIVE_PASTE.get(), 1);
-        fill(grid, 8, Items.IRON_INGOT, 1);
-        return new CraftingGridVisual(List.<ItemStack[]>of(grid), new ItemStack(ModBlocks.RIPPER_STATION.get()));
-    }
-
-    private static SectionVisual buildTechStationCraftingVisual() {
-        ItemStack[] grid = emptyGrid();
-        fill(grid, 0, Items.IRON_INGOT, 1);
-        fill(grid, 1, ModItems.BASIC_CIRCUIT_PLATE.get(), 1);
-        fill(grid, 2, Items.IRON_INGOT, 1);
-        fill(grid, 3, ModItems.REPLACEMENT_JOINT.get(), 1);
-        fill(grid, 4, Items.SMOOTH_STONE, 1);
-        fill(grid, 5, ModItems.REPLACEMENT_JOINT.get(), 1);
-        fill(grid, 6, ModItems.UNCOMMON_ITEM_COMPONENTS.get(), 1);
-        fill(grid, 7, ModItems.CONDUCTIVE_PASTE.get(), 1);
-        fill(grid, 8, ModItems.UNCOMMON_ITEM_COMPONENTS.get(), 1);
-        return new CraftingGridVisual(List.<ItemStack[]>of(grid), new ItemStack(ModBlocks.TECH_STATION.get()));
-    }
-
-    private static SectionVisual buildRecyclerStationCraftingVisual() {
-        ItemStack[] grid = emptyGrid();
-        fill(grid, 0, Items.IRON_INGOT, 1);
-        fill(grid, 1, ModItems.SERVO_SCREWS.get(), 1);
-        fill(grid, 2, Items.IRON_INGOT, 1);
-        fill(grid, 3, ModItems.BASIC_CIRCUIT_PLATE.get(), 1);
-        fill(grid, 4, Items.SMOOTH_STONE, 1);
-        fill(grid, 5, ModItems.BASIC_CIRCUIT_PLATE.get(), 1);
-        fill(grid, 6, ModItems.REPLACEMENT_JOINT.get(), 1);
-        fill(grid, 7, ModItems.CONDUCTIVE_PASTE.get(), 1);
-        fill(grid, 8, ModItems.REPLACEMENT_JOINT.get(), 1);
-        return new CraftingGridVisual(List.<ItemStack[]>of(grid), new ItemStack(ModBlocks.RECYCLER_STATION.get()));
-    }
 
     private static SectionVisual buildRelicCacheExampleVisual() {
         int[] gridTokens = {
@@ -1118,107 +1188,6 @@ final class CyberwareWikiData {
                 {7, 5, 6}
         };
         return new RelicCacheExampleVisual(5, gridTokens, pathCells, daemonTokens);
-    }
-
-    private static ItemStack[] consumableRecipeGrid(String id) {
-        ItemStack[] grid = emptyGrid();
-        switch (id) {
-            case "maxdoc_mk1" -> {
-                fill(grid, 1, Items.GLASS_BOTTLE, 1);
-                fill(grid, 4, Items.REDSTONE, 1);
-                fill(grid, 7, ModItems.CONDUCTIVE_PASTE.get(), 1);
-            }
-            case "maxdoc_mk2" -> {
-                fill(grid, 1, Items.GLASS_BOTTLE, 1);
-                fill(grid, 4, Items.GOLDEN_APPLE, 1);
-                fill(grid, 7, ModItems.COMMON_ITEM_COMPONENTS.get(), 1);
-            }
-            case "maxdoc_mk3" -> {
-                fill(grid, 1, Items.GLASS_BOTTLE, 1);
-                fill(grid, 4, Items.GHAST_TEAR, 1);
-                fill(grid, 7, ModItems.UNCOMMON_ITEM_COMPONENTS.get(), 1);
-            }
-            case "bounce_back_mk1" -> {
-                fill(grid, 1, Items.GLASS_BOTTLE, 1);
-                fill(grid, 4, Items.SUGAR, 1);
-                fill(grid, 7, ModItems.CONDUCTIVE_PASTE.get(), 1);
-            }
-            case "bounce_back_mk2" -> {
-                fill(grid, 1, Items.GLASS_BOTTLE, 1);
-                fill(grid, 4, Items.REDSTONE, 1);
-                fill(grid, 6, Items.GHAST_TEAR, 1);
-                fill(grid, 7, ModItems.COMMON_ITEM_COMPONENTS.get(), 1);
-            }
-            case "bounce_back_mk3" -> {
-                fill(grid, 1, Items.GLASS_BOTTLE, 1);
-                fill(grid, 4, Items.GOLDEN_APPLE, 1);
-                fill(grid, 7, ModItems.UNCOMMON_ITEM_COMPONENTS.get(), 1);
-            }
-            case "health_booster" -> {
-                fill(grid, 1, Items.GOLDEN_APPLE, 1);
-                fill(grid, 4, Items.GLASS_BOTTLE, 1);
-                fill(grid, 7, ModItems.COMMON_ITEM_COMPONENTS.get(), 1);
-            }
-            case "stamina_booster" -> {
-                fill(grid, 1, Items.SUGAR, 1);
-                fill(grid, 4, Items.GLASS_BOTTLE, 1);
-                fill(grid, 7, ModItems.COMMON_ITEM_COMPONENTS.get(), 1);
-            }
-            case "oxy_booster" -> {
-                fill(grid, 1, Items.GHAST_TEAR, 1);
-                fill(grid, 4, Items.GLASS_BOTTLE, 1);
-                fill(grid, 7, ModItems.COMMON_ITEM_COMPONENTS.get(), 1);
-            }
-            case "capacity_booster" -> {
-                fill(grid, 1, Items.GOLDEN_APPLE, 1);
-                fill(grid, 4, ModItems.MICRO_BATTERY.get(), 1);
-                fill(grid, 7, ModItems.UNCOMMON_ITEM_COMPONENTS.get(), 1);
-            }
-            case "ram_jolt" -> {
-                fill(grid, 1, Items.REDSTONE, 1);
-                fill(grid, 4, ModItems.MICRO_BATTERY.get(), 1);
-                fill(grid, 7, ModItems.UNCOMMON_ITEM_COMPONENTS.get(), 1);
-            }
-            case "immunoblockers" -> {
-                fill(grid, 1, Items.FERMENTED_SPIDER_EYE, 1);
-                fill(grid, 4, Items.GHAST_TEAR, 1);
-                fill(grid, 7, ModItems.RARE_ITEM_COMPONENTS.get(), 1);
-            }
-            case "chrome_suppressant" -> {
-                fill(grid, 1, Items.GHAST_TEAR, 1);
-                fill(grid, 4, ModItems.CONDUCTIVE_PASTE.get(), 1);
-                fill(grid, 7, ModItems.UNCOMMON_ITEM_COMPONENTS.get(), 1);
-            }
-            case "black_lace" -> {
-                fill(grid, 1, Items.BLAZE_POWDER, 1);
-                fill(grid, 4, Items.SUGAR, 1);
-                fill(grid, 6, Items.FERMENTED_SPIDER_EYE, 1);
-                fill(grid, 7, ModItems.RARE_ITEM_COMPONENTS.get(), 1);
-            }
-            case "asskick" -> {
-                fill(grid, 1, Items.GOLDEN_APPLE, 1);
-                fill(grid, 4, Items.SUGAR, 1);
-                fill(grid, 7, ModItems.UNCOMMON_ITEM_COMPONENTS.get(), 1);
-            }
-            case "jellytricity" -> {
-                fill(grid, 1, Items.SUGAR, 1);
-                fill(grid, 4, Items.REDSTONE, 1);
-                fill(grid, 7, ModItems.UNCOMMON_ITEM_COMPONENTS.get(), 1);
-            }
-            default -> {
-            }
-        }
-        return grid;
-    }
-
-    private static void fill(ItemStack[] grid, int index, ItemLike itemLike, int count) {
-        grid[index] = new ItemStack(itemLike, count);
-    }
-
-    private static ItemStack[] emptyGrid() {
-        ItemStack[] grid = new ItemStack[9];
-        Arrays.fill(grid, ItemStack.EMPTY);
-        return grid;
     }
 
     private static List<ItemStack> requirementsToStacks(CyberwareServicePlan plan) {
@@ -1267,7 +1236,7 @@ final class CyberwareWikiData {
     }
 
     private static WikiEntry buildStationEntry(String id, Component title, ItemStack icon, Component subtitle, List<ArticleSection> sections) {
-        return new WikiEntry(id, title, icon, Component.translatable("wiki.cyberneticenhancements.badge.station"), subtitle, List.of(Component.translatable("wiki.cyberneticenhancements.chip.infrastructure")), sections);
+        return new WikiEntry(id, title, icon, Component.translatable("wiki.cyberneticenhancements.badge.station"), subtitle, List.of(Component.translatable("wiki.cyberneticenhancements.chip.infrastructure")), filterSections(sections));
     }
 
     private static WikiEntry buildNpcEntry(String id, Component title, ItemStack icon, Component subtitle, List<ArticleSection> sections) {
@@ -1283,7 +1252,7 @@ final class CyberwareWikiData {
     }
 
     private static WikiEntry buildQuestEntry(String id, Component title, ItemStack icon, Component subtitle, List<ArticleSection> sections) {
-        return new WikiEntry(id, title, icon, Component.translatable("wiki.cyberneticenhancements.badge.quest"), subtitle, List.of(Component.translatable("wiki.cyberneticenhancements.chip.infrastructure")), sections);
+        return new WikiEntry(id, title, icon, Component.translatable("wiki.cyberneticenhancements.badge.quest"), subtitle, List.of(Component.translatable("wiki.cyberneticenhancements.chip.infrastructure")), filterSections(sections));
     }
 
     private static ItemStack statusIcon(CombatStatusType type) {
@@ -1316,163 +1285,8 @@ final class CyberwareWikiData {
         return formatNumber(ticks / 20.0D);
     }
 
-    private static Component cacheTierName(RelicCacheTier tier) {
-        return switch (tier) {
-            case UNCOMMON -> Component.translatable("block.cyberneticenhancements.uncommon_relic_cache");
-            case RARE -> Component.translatable("block.cyberneticenhancements.rare_relic_cache");
-            case EPIC -> Component.translatable("block.cyberneticenhancements.epic_relic_cache");
-            case LEGENDARY -> Component.translatable("block.cyberneticenhancements.legendary_relic_cache");
-        };
-    }
-
-    private static List<Component> cacheStructureNames(RelicCacheTier tier) {
-        return switch (tier) {
-            case UNCOMMON -> List.of(
-                    wiki("structure.igloo_basement"),
-                    wiki("structure.jungle_temple"),
-                    wiki("structure.pillager_outpost")
-            );
-            case RARE -> List.of(
-                    wiki("structure.desert_pyramid"),
-                    wiki("structure.woodland_mansion"),
-                    wiki("structure.stronghold")
-            );
-            case EPIC -> List.of(
-                    wiki("structure.trial_chambers"),
-                    wiki("structure.ancient_city"),
-                    wiki("structure.bastion_remnant")
-            );
-            case LEGENDARY -> List.of(wiki("structure.end_city"));
-        };
-    }
-
-    private static Component joinComponents(List<Component> parts) {
-        MutableComponent joined = Component.empty();
-        for (int index = 0; index < parts.size(); index++) {
-            if (index > 0) {
-                joined.append(", ");
-            }
-            joined.append(parts.get(index));
-        }
-        return joined;
-    }
-
-    private static String friendly(String raw) {
-        return raw.toLowerCase(Locale.ROOT).replace('_', ' ');
-    }
-
-    private static Map<String, List<RelicCacheLootSource>> createRelicCacheSources() {
-        Map<String, List<RelicCacheLootSource>> sources = new LinkedHashMap<>();
-        registerLootSources(sources, RelicCacheTier.UNCOMMON, RelicCacheLootPool.PRIMARY, 91,
-                "precision_miner", 9,
-                "masons_grip", 9,
-                "forager_lens", 8,
-                "cargo_spine", 7,
-                "fortified_ankles", 7,
-                "basic_kiroshi_optics", 7,
-                "ex_disk", 6,
-                "memory_boost", 6,
-                "newton_module", 5,
-                "mining_accelerator", 6,
-                "builder_grip", 6,
-                "fall_damper", 5,
-                "miner_skillchip", 5,
-                "builder_skillchip", 5
-        );
-        registerLootSources(sources, RelicCacheTier.UNCOMMON, RelicCacheLootPool.SUPPORT, 44,
-                "maxdoc_mk2", 4,
-                "bounce_back_mk2", 4
-        );
-        registerLootSources(sources, RelicCacheTier.RARE, RelicCacheLootPool.PRIMARY, 89,
-                "harvester_hands", 9,
-                "hydrolung", 8,
-                "kiroshi_retrieval_suite", 8,
-                "vein_reader_optics", 7,
-                "brushstep_legs", 7,
-                "reach_extender", 7,
-                "combat_actuator", 7,
-                "dash_piston", 6,
-                "sprint_motor", 6,
-                "climbing_servo", 6,
-                "scout_skillchip", 5,
-                "combat_skillchip", 5,
-                "runner_skillchip", 5,
-                "relic_scanner", 3
-        );
-        registerLootSources(sources, RelicCacheTier.RARE, RelicCacheLootPool.SUPPORT, 44,
-                "maxdoc_mk3", 4,
-                "bounce_back_mk3", 4,
-                "ram_jolt", 4,
-                "capacity_booster", 3
-        );
-        registerLootSources(sources, RelicCacheTier.EPIC, RelicCacheLootPool.PRIMARY, 94,
-                "self_ice", 8,
-                "clairvoyant", 7,
-                "biomonitor", 7,
-                "synaptic_accelerator", 7,
-                "tyrosine_injector", 6,
-                "para_bellum", 6,
-                "blood_pump", 6,
-                "ram_reallocator", 5,
-                "raven_microcyber", 4,
-                "tetratronic_rippler", 4,
-                "excavator_arms", 4,
-                "the_oracle", 4,
-                "cockatrice", 3,
-                "epimorphic_skeleton", 3,
-                "immovable_force", 3,
-                "adreno_trigger", 3,
-                "reflex_tuner", 3,
-                "shock_palm", 4,
-                "stealth_foot", 4,
-                "trader_skillchip", 3
-        );
-        registerLootSources(sources, RelicCacheTier.EPIC, RelicCacheLootPool.SUPPORT, 22,
-                "immunoblockers", 3,
-                "black_lace", 2
-        );
-        registerLootSources(sources, RelicCacheTier.LEGENDARY, RelicCacheLootPool.PRIMARY, 50,
-                "quantum_tuner", 6,
-                "axolotl", 5,
-                "militech_canto", 2,
-                "militech_apogee", 3,
-                "chipware_socket_mk3", 4,
-                "behavioral_imprint_synced_faceplate", 3,
-                "second_heart", 4,
-                "chitin", 3,
-                "maxtac_mantis_blades", 2,
-                "pain_editor", 3,
-                "painducer", 3,
-                "cogito_lattice", 3,
-                "revulsor", 3,
-                "rara_avis", 3,
-                "leeroy_ligament_system", 3
-        );
-        registerLootSources(sources, RelicCacheTier.LEGENDARY, RelicCacheLootPool.SUPPORT, 23,
-                "immunoblockers", 4,
-                "black_lace", 4
-        );
-        return sources;
-    }
-
-    private static void registerLootSources(
-            Map<String, List<RelicCacheLootSource>> sources,
-            RelicCacheTier tier,
-            RelicCacheLootPool pool,
-            int totalWeight,
-            Object... idWeightPairs
-    ) {
-        if ((idWeightPairs.length & 1) != 0) {
-            throw new IllegalArgumentException("Loot source pairs must be id/weight");
-        }
-        for (int index = 0; index < idWeightPairs.length; index += 2) {
-            String id = (String) idWeightPairs[index];
-            int weight = (Integer) idWeightPairs[index + 1];
-            sources.computeIfAbsent(id, ignored -> new ArrayList<>()).add(new RelicCacheLootSource(tier, pool, weight, totalWeight));
-        }
-    }
-
-    record ArchiveTab(String id, Component title, Component subtitle, Component navigationTitle, List<WikiTopic> topics) {
+    record ArchiveTab(String id, Component title, Component subtitle, Component navigationTitle,
+                      List<WikiTopic> topics) {
     }
 
     record WikiTopic(String id, Component title, List<WikiTopic> children, WikiSection section) {
@@ -1498,30 +1312,46 @@ final class CyberwareWikiData {
     sealed interface SectionVisual permits CraftingGridVisual, CompactTransformVisual, ServiceOperationsVisual, RelicCacheExampleVisual {
     }
 
-    record CraftingGridVisual(List<ItemStack[]> grids, ItemStack output) implements SectionVisual {
+    record CraftingGridVisual(List<ItemStack[]> grids, ItemStack output, String schematic,
+                              net.minecraft.resources.ResourceLocation recipeId) implements SectionVisual {
+        CraftingGridVisual(List<ItemStack[]> grids, ItemStack output) {
+            this(grids, output, "", null);
+        }
+
+        CraftingGridVisual(List<ItemStack[]> grids, ItemStack output, String schematic) {
+            this(grids, output, schematic, null);
+        }
+
+        boolean unlocked() {
+            if (recipeId != null) {
+                var level = net.minecraft.client.Minecraft.getInstance().level;
+                if (level == null) return false;
+                var current = level.getRecipeManager().byKey(recipeId).orElse(null);
+                if (current == null) return false;
+                if (current.value() instanceof de.artemis.cyberneticenhancements.common.fabrication.FabricationRecipe recipe) {
+                    if (!recipe.clientUnlocked()) return false;
+                } else if (!(current.value() instanceof net.minecraft.world.item.crafting.CraftingRecipe)) return false;
+            }
+            return de.artemis.cyberneticenhancements.common.fabrication.SchematicKnowledge.clientKnows(schematic);
+        }
     }
 
     record CompactTransformVisual(ItemStack input, List<ItemStack> outputs) implements SectionVisual {
     }
 
-    record ServiceOperationVisual(Component label, Component note, ItemStack input, List<ItemStack> materials, ItemStack output) {
+    record ServiceOperationVisual(Component label, Component note, ItemStack input, List<ItemStack> materials,
+                                  ItemStack output) {
     }
 
     record UpgradeStageVisual(Component label, List<ItemStack> materials, List<Component> changes) {
     }
 
-    record ServiceOperationsVisual(List<Component> summaryChips, List<ServiceOperationVisual> operations, List<UpgradeStageVisual> upgradeStages) implements SectionVisual {
+    record ServiceOperationsVisual(List<Component> summaryChips, List<ServiceOperationVisual> operations,
+                                   List<UpgradeStageVisual> upgradeStages) implements SectionVisual {
     }
 
-    record RelicCacheExampleVisual(int gridSize, int[] gridTokens, int[] pathCells, int[][] daemonTokens) implements SectionVisual {
-    }
-
-    enum RelicCacheLootPool {
-        PRIMARY,
-        SUPPORT
-    }
-
-    record RelicCacheLootSource(RelicCacheTier tier, RelicCacheLootPool pool, int weight, int totalWeight) {
+    record RelicCacheExampleVisual(int gridSize, int[] gridTokens, int[] pathCells,
+                                   int[][] daemonTokens) implements SectionVisual {
     }
 
     record ArticleSection(Component title, List<Component> lines, SectionVisual visual) {

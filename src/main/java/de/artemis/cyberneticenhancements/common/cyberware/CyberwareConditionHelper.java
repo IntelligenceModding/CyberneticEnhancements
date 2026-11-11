@@ -78,7 +78,8 @@ public final class CyberwareConditionHelper {
     }
 
     public static ItemStack createServiceCopy(ItemStack sourceStack, CyberwareDefinition targetDefinition, boolean fullyRepair) {
-        ItemStack output = new ItemStack(de.artemis.cyberneticenhancements.common.registry.ModItems.cyberware(targetDefinition.id()).get());
+        var target = de.artemis.cyberneticenhancements.common.registry.ModItems.cyberware(targetDefinition.id()).get();
+        ItemStack output = sourceStack.is(target) ? sourceStack.copyWithCount(1) : new ItemStack(target);
         if (sourceStack.has(DataComponents.CUSTOM_DATA)) {
             CompoundTag tag = sourceStack.get(DataComponents.CUSTOM_DATA).copyTag();
             output.set(DataComponents.CUSTOM_DATA, CustomData.of(tag));

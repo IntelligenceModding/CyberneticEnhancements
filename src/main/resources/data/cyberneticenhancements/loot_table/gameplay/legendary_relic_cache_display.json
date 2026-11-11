@@ -8,6 +8,7 @@
         { "type": "minecraft:item", "name": "cyberneticenhancements:axolotl", "weight": 5 },
         { "type": "minecraft:item", "name": "cyberneticenhancements:militech_canto", "weight": 2 },
         { "type": "minecraft:item", "name": "cyberneticenhancements:militech_apogee", "weight": 3 },
+        { "type": "minecraft:item", "name": "cyberneticenhancements:militech_experimental_sandevistan", "weight": 1 },
         { "type": "minecraft:item", "name": "cyberneticenhancements:chipware_socket_mk3", "weight": 4 },
         { "type": "minecraft:item", "name": "cyberneticenhancements:behavioral_imprint_synced_faceplate", "weight": 3 },
         { "type": "minecraft:item", "name": "cyberneticenhancements:second_heart", "weight": 4 },

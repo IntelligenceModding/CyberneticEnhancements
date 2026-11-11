@@ -1,0 +1,85 @@
+{
+  "type": "cyberneticenhancements:fabrication",
+  "category": "OPERATING SYSTEM",
+  "parts": [
+    {
+      "ingredient": {
+        "item": "cyberneticenhancements:thermal_regulator"
+      },
+      "slot": 2
+    },
+    {
+      "ingredient": {
+        "item": "cyberneticenhancements:neural_processor"
+      },
+      "slot": 6
+    },
+    {
+      "ingredient": {
+        "item": "cyberneticenhancements:copper_wiring"
+      },
+      "slot": 7
+    },
+    {
+      "ingredient": {
+        "item": "cyberneticenhancements:neural_processor"
+      },
+      "slot": 8
+    },
+    {
+      "ingredient": {
+        "item": "cyberneticenhancements:alloy_plate"
+      },
+      "slot": 10
+    },
+    {
+      "ingredient": {
+        "item": "cyberneticenhancements:neural_interface"
+      },
+      "slot": 11
+    },
+    {
+      "ingredient": {
+        "item": "cyberneticenhancements:precision_chassis"
+      },
+      "slot": 12
+    },
+    {
+      "ingredient": {
+        "item": "cyberneticenhancements:neural_interface"
+      },
+      "slot": 13
+    },
+    {
+      "ingredient": {
+        "item": "cyberneticenhancements:alloy_plate"
+      },
+      "slot": 14
+    },
+    {
+      "ingredient": {
+        "item": "cyberneticenhancements:firmware_module"
+      },
+      "slot": 16
+    },
+    {
+      "ingredient": {
+        "item": "cyberneticenhancements:micro_battery"
+      },
+      "slot": 17
+    },
+    {
+      "ingredient": {
+        "item": "cyberneticenhancements:firmware_module"
+      },
+      "slot": 18
+    }
+  ],
+  "result": {
+    "count": 1,
+    "id": "cyberneticenhancements:biodyn_berserk"
+  },
+  "schematic": "biodyn_berserk",
+  "ticks": 200,
+  "tier": 2
+}

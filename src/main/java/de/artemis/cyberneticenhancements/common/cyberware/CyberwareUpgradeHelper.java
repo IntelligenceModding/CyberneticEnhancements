@@ -9,16 +9,28 @@ import net.minecraft.world.item.component.CustomData;
 
 import java.util.ArrayList;
 import java.util.EnumMap;
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
 public final class CyberwareUpgradeHelper {
     private static final String UPGRADE_LEVEL_KEY = "CyberwareUpgradeLevel";
-    private static final Map<String, UpgradeTemplate> TEMPLATES = createTemplates();
 
     private CyberwareUpgradeHelper() {
     }
+
+    public static boolean supportsFunction(String id) {
+        return FUNCTION_UPGRADES.contains(id);
+    }
+
+    private static final java.util.Set<String> FUNCTION_UPGRADES = java.util.Set.of(
+            "bioconductor", "cox_2_cybersomatic_optimizer", "kerenzikov_boost_system", "memory_boost",
+            "newton_module", "axolotl", "quantum_tuner", "self_ice", "excavator_arms", "basic_kiroshi_optics",
+            "clairvoyant", "doomsayer", "sentry", "stalker", "the_oracle", "cockatrice",
+            "behavioral_imprint_synced_faceplate", "forager_lens", "vein_reader_optics", "relic_scanner",
+            "feen_x", "ram_recoup", "cargo_spine", "microgenerator", "precision_miner", "kiroshi_retrieval_suite",
+            "black_mamba", "feedback_circuit", "electromag_recycler", "heal_on_kill", "optical_camo",
+            "shock_n_awe", "brushstep_legs", "blood_pump", "biomonitor", "second_heart", "atomic_sensors",
+            "hydrolung");
 
     public static int getUpgradeLevel(ItemStack stack) {
         if (!(stack.getItem() instanceof CyberwareItem cyberwareItem)) {
@@ -35,12 +47,7 @@ public final class CyberwareUpgradeHelper {
     }
 
     public static int getMaxUpgrades(CyberwareDefinition definition) {
-        return switch (definition.tier()) {
-            case TIER_1 -> 2;
-            case TIER_2 -> 3;
-            case TIER_3 -> 4;
-            case TIER_4, TIER_5 -> 5;
-        };
+        return CyberwareUpgradeRegistry.get(definition.id()).levels().size();
     }
 
     public static boolean canUpgrade(ItemStack stack) {
@@ -49,7 +56,7 @@ public final class CyberwareUpgradeHelper {
     }
 
     public static ItemStack createUpgradedCopy(ItemStack sourceStack, CyberwareDefinition definition) {
-        ItemStack upgraded = CyberwareConditionHelper.createServiceCopy(sourceStack, definition, true);
+        ItemStack upgraded = CyberwareConditionHelper.createServiceCopy(sourceStack, definition, false);
         setUpgradeLevel(upgraded, getUpgradeLevel(sourceStack) + 1, definition);
         return upgraded;
     }
@@ -105,7 +112,11 @@ public final class CyberwareUpgradeHelper {
     }
 
     public static List<Component> getUpgradeBonusTooltipLines(ItemStack stack, CyberwareDefinition definition) {
-        return describeUpgradeState(getUpgradeState(definition, getUpgradeLevel(stack)));
+        int level = getUpgradeLevel(stack);
+        List<Component> lines = describeUpgradeState(getUpgradeState(definition, level));
+        appendSandevistanTuning(lines, definition, 0, level);
+        appendFunctionTuning(lines, definition, 0, level);
+        return lines;
     }
 
     public static List<Component> getUpgradePreviewLines(ItemStack stack, CyberwareDefinition definition) {
@@ -117,7 +128,50 @@ public final class CyberwareUpgradeHelper {
 
         UpgradeState current = getUpgradeState(definition, currentLevel);
         UpgradeState next = getUpgradeState(definition, currentLevel + 1);
-        return describeUpgradeState(diff(next, current));
+        List<Component> lines = describeUpgradeState(diff(next, current));
+        appendSandevistanTuning(lines, definition, currentLevel, currentLevel + 1);
+        appendFunctionTuning(lines, definition, currentLevel, currentLevel + 1);
+        return lines;
+    }
+
+    public static double functionMultiplier(PlayerCyberwareInventory inventory, String id) {
+        double multiplier = 1;
+        for (int slot = 0; slot < inventory.getSlots(); slot++) {
+            ItemStack stack = inventory.getStackInSlot(slot);
+            if (stack.getItem() instanceof CyberwareItem item && item.getDefinition().id().equals(id)
+                    && CyberwareConditionHelper.getIntegrity(stack, item.getDefinition()) > 0)
+                multiplier = Math.max(multiplier, CyberwareUpgradeRegistry.get(id).at(getUpgradeLevel(stack)).functionMultiplier());
+        }
+        return multiplier;
+    }
+
+    public static double performance(PlayerCyberwareInventory inventory, String id, String balanceKey) {
+        return CyberwareBalance.doubleValue(balanceKey) * functionMultiplier(inventory, id);
+    }
+
+    private static void appendFunctionTuning(List<Component> lines, CyberwareDefinition definition, int from, int to) {
+        var data = CyberwareUpgradeRegistry.get(definition.id());
+        double before = data.at(from).functionMultiplier(), after = data.at(to).functionMultiplier();
+        if (Math.abs(after - before) < 0.0001) return;
+        lines.add(Component.translatable("tooltip.cyberneticenhancements.function." + definition.id())
+                .append(Component.literal(String.format(java.util.Locale.ROOT, ": %.0f%% -> %.0f%%", before * 100, after * 100))));
+    }
+
+    private static void appendSandevistanTuning(List<Component> lines, CyberwareDefinition definition, int from, int to) {
+        var data = CyberwareUpgradeRegistry.get(definition.id());
+        var current = data.at(from);
+        var next = data.at(to);
+        double duration = next.durationMultiplier() - current.durationMultiplier();
+        double cooldown = next.cooldownMultiplier() - current.cooldownMultiplier();
+        double instability = next.instabilityMultiplier() - current.instabilityMultiplier();
+        if (Math.abs(duration) + Math.abs(cooldown) + Math.abs(instability) > 0.0001) {
+            lines.add(Component.translatable("tooltip.cyberneticenhancements.sandevistan_tuning",
+                    percent(duration), percent(cooldown), percent(instability)));
+        }
+    }
+
+    private static String percent(double value) {
+        return String.format(java.util.Locale.ROOT, "%+.1f", value * 100);
     }
 
     private static void setUpgradeLevel(ItemStack stack, int level, CyberwareDefinition definition) {
@@ -137,32 +191,13 @@ public final class CyberwareUpgradeHelper {
     }
 
     private static UpgradeState getUpgradeState(CyberwareDefinition definition, int level) {
-        int maxUpgrades = getMaxUpgrades(definition);
-        int clampedLevel = Math.max(0, Math.min(level, maxUpgrades));
-        UpgradeTemplate template = TEMPLATES.getOrDefault(definition.id(), UpgradeTemplate.EMPTY);
-
-        EnumMap<CyberwareEffectType, Double> scaledEffects = new EnumMap<>(CyberwareEffectType.class);
-        for (var entry : template.effectCaps().entrySet()) {
-            double scaledAmount = entry.getValue() * clampedLevel / (double) maxUpgrades;
-            if (Math.abs(scaledAmount) > 0.0001D) {
-                scaledEffects.put(entry.getKey(), scaledAmount);
-            }
-        }
-
+        var data = CyberwareUpgradeRegistry.get(definition.id()).at(level);
         List<CyberwareEffect> effects = new ArrayList<>();
-        for (CyberwareEffectType type : CyberwareEffectType.values()) {
-            Double amount = scaledEffects.get(type);
-            if (amount != null) {
-                effects.add(new CyberwareEffect(type, amount));
-            }
+        for (var type : CyberwareEffectType.values()) {
+            Double amount = data.effects().get(type.id());
+            if (amount != null && Math.abs(amount) > 0.0001) effects.add(new CyberwareEffect(type, amount));
         }
-
-        return new UpgradeState(
-                effects,
-                scaleIntegerBonus(template.capacityBonusCap(), clampedLevel, maxUpgrades),
-                scaleIntegerBonus(template.chipSlotCap(), clampedLevel, maxUpgrades),
-                scaleIntegerBonus(template.moduleSlotCap(), clampedLevel, maxUpgrades)
-        );
+        return new UpgradeState(effects, data.capacityBonus(), data.chipSlotBonus(), data.moduleSlotBonus());
     }
 
     private static UpgradeState diff(UpgradeState target, UpgradeState current) {
@@ -205,110 +240,6 @@ public final class CyberwareUpgradeHelper {
             lines.add(Component.literal("-> ").append(Component.translatable("tooltip.cyberneticenhancements.upgrade_module_slots", state.moduleSlotBonus())));
         }
         return lines;
-    }
-
-    private static int scaleIntegerBonus(int cap, int level, int maxUpgrades) {
-        if (cap <= 0 || level <= 0 || maxUpgrades <= 0) {
-            return 0;
-        }
-        return (int) Math.floor((double) cap * (double) level / (double) maxUpgrades + 1.0E-6D);
-    }
-
-    private static Map<String, UpgradeTemplate> createTemplates() {
-        Map<String, UpgradeTemplate> templates = new LinkedHashMap<>();
-        for (CyberwareDefinition definition : CyberwareCatalog.definitions()) {
-            templates.put(definition.id(), buildTemplate(definition));
-        }
-        return templates;
-    }
-
-    private static UpgradeTemplate buildTemplate(CyberwareDefinition definition) {
-        UpgradeTemplate explicit = explicitTemplate(definition);
-        if (explicit != null) {
-            return explicit;
-        }
-
-        return buildSameModelTemplate(definition);
-    }
-
-    private static UpgradeTemplate explicitTemplate(CyberwareDefinition definition) {
-        return switch (definition.id()) {
-            case "chipware_socket" -> singleEffectTemplate(CyberwareEffectType.CHROME_CAPACITY, 3.0D);
-            case "chipware_socket_mk2" -> singleEffectTemplate(CyberwareEffectType.CHROME_CAPACITY, 4.0D);
-            case "chipware_socket_mk3" -> singleEffectTemplate(CyberwareEffectType.CHROME_CAPACITY, 5.0D);
-            default -> null;
-        };
-    }
-
-    private static UpgradeTemplate singleEffectTemplate(CyberwareEffectType type, double cap) {
-        EnumMap<CyberwareEffectType, Double> effectCaps = new EnumMap<>(CyberwareEffectType.class);
-        if (Math.abs(cap) > 0.0001D) {
-            effectCaps.put(type, cap);
-        }
-        return new UpgradeTemplate(effectCaps, 0, 0, 0);
-    }
-
-    private static UpgradeTemplate buildSameModelTemplate(CyberwareDefinition definition) {
-        EnumMap<CyberwareEffectType, Double> effectCaps = new EnumMap<>(CyberwareEffectType.class);
-        for (CyberwareEffect effect : definition.effects()) {
-            if (effect.type().isMobEffect()) {
-                continue;
-            }
-            double cap = getGenericEffectCap(effect);
-            if (Math.abs(cap) > 0.0001D) {
-                effectCaps.put(effect.type(), cap);
-            }
-        }
-
-        int capacityBonusCap = definition.capacityBonus() > 0
-                ? Math.max(2, (int) Math.round(definition.capacityBonus() * 0.35D))
-                : 0;
-
-        if (effectCaps.isEmpty() && capacityBonusCap <= 0) {
-            addFallbackEffect(effectCaps, definition.slotType());
-        }
-        return new UpgradeTemplate(effectCaps, capacityBonusCap, 0, 0);
-    }
-
-    private static void addFallbackEffect(EnumMap<CyberwareEffectType, Double> effectCaps, CyberwareSlotType slotType) {
-        switch (slotType) {
-            case FRONTAL_CORTEX, OPERATING_SYSTEM -> effectCaps.put(CyberwareEffectType.CHROME_CAPACITY, 4.0D);
-            case ARMS -> effectCaps.put(CyberwareEffectType.ATTACK_DAMAGE, 0.5D);
-            case FACE -> effectCaps.put(CyberwareEffectType.ENTITY_REACH, 0.25D);
-            case SKELETON -> effectCaps.put(CyberwareEffectType.ARMOR, 1.0D);
-            case HANDS -> effectCaps.put(CyberwareEffectType.ATTACK_SPEED, 0.08D);
-            case NERVOUS_SYSTEM -> effectCaps.put(CyberwareEffectType.MOVEMENT_SPEED, 0.06D);
-            case CIRCULATORY_SYSTEM -> effectCaps.put(CyberwareEffectType.HEALTH_REGEN, 0.2D);
-            case INTEGUMENTARY_SYSTEM -> effectCaps.put(CyberwareEffectType.DAMAGE_REDUCTION, 0.03D);
-            case LEGS -> effectCaps.put(CyberwareEffectType.MOVEMENT_SPEED, 0.06D);
-        }
-    }
-
-    private static double getGenericEffectCap(CyberwareEffect effect) {
-        double baseAmount = effect.amount();
-        double magnitude = Math.abs(baseAmount);
-        double minimum = switch (effect.type()) {
-            case MAX_HEALTH, BONUS_ABSORPTION -> 1.0D;
-            case ARMOR, ATTACK_DAMAGE, SAFE_FALL_DISTANCE, CHROME_CAPACITY -> 0.5D;
-            case ATTACK_SPEED, BLOCK_REACH, ENTITY_REACH, STEP_HEIGHT, HEALTH_REGEN -> 0.10D;
-            case MOVEMENT_SPEED, BLOCK_BREAK_SPEED, FALL_DAMAGE_REDUCTION, KNOCKBACK_RESISTANCE, DAMAGE_REDUCTION, JUMP_POWER -> 0.03D;
-            case NIGHT_VISION, FIRE_RESISTANCE, WATER_BREATHING, DOLPHINS_GRACE -> 0.0D;
-        };
-
-        double scaledMagnitude = Math.max(minimum, magnitude * 0.35D);
-        double signAwareBase = effect.type() == CyberwareEffectType.FALL_DAMAGE_REDUCTION
-                ? -scaledMagnitude
-                : Math.copySign(scaledMagnitude, baseAmount);
-        return magnitude <= 0.0001D ? 0.0D : signAwareBase;
-    }
-
-    private record UpgradeTemplate(
-            EnumMap<CyberwareEffectType, Double> effectCaps,
-            int capacityBonusCap,
-            int chipSlotCap,
-            int moduleSlotCap
-    ) {
-        private static final UpgradeTemplate EMPTY = new UpgradeTemplate(new EnumMap<>(CyberwareEffectType.class), 0, 0, 0);
     }
 
     private record UpgradeState(

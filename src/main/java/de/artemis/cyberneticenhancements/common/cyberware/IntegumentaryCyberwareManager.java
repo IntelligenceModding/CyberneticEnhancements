@@ -306,7 +306,7 @@ public final class IntegumentaryCyberwareManager {
                 && event.getSource().getEntity() instanceof LivingEntity attacker
                 && player.distanceToSqr(attacker) <= 25.0D) {
             retaliateShock(player, attacker, shockNAweCount);
-            SHOCK_N_AWE_READY_UNTIL_TICK.put(player.getUUID(), gameTime + 8L * 20L);
+            SHOCK_N_AWE_READY_UNTIL_TICK.put(player.getUUID(), gameTime + Math.round(8L * 20L / CyberwareUpgradeHelper.functionMultiplier(inventory, SHOCK_N_AWE_ID)));
         }
 
         if (refreshRequired) {
@@ -338,7 +338,8 @@ public final class IntegumentaryCyberwareManager {
 
         if (canCloak) {
             player.addEffect(new MobEffectInstance(MobEffects.INVISIBILITY, 30, 0, true, false, false));
-            suppressOpticalCamoAggro(player, OPTICAL_CAMO_SCRAMBLE_RADIUS + installedCount * 2.0D);
+            suppressOpticalCamoAggro(player, (OPTICAL_CAMO_SCRAMBLE_RADIUS + installedCount * 2.0D)
+                    * CyberwareUpgradeHelper.functionMultiplier(new PlayerCyberwareInventory(player), OPTICAL_CAMO_ID));
         } else {
             clearManagedOpticalCamo(player);
         }

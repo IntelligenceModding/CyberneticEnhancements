@@ -14,26 +14,30 @@ import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.HorizontalDirectionalBlock;
 import net.minecraft.world.level.block.entity.BlockEntity;
+import net.minecraft.world.level.block.entity.RandomizableContainerBlockEntity;
+import net.minecraft.world.level.block.state.properties.ChestType;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.properties.BlockStateProperties;
 import net.minecraft.world.level.chunk.LevelChunk;
 import net.minecraft.world.level.levelgen.structure.BoundingBox;
 import net.minecraft.world.level.levelgen.structure.Structure;
 import net.minecraft.world.level.levelgen.structure.StructureStart;
+import net.minecraft.world.level.levelgen.structure.StructurePiece;
+import net.minecraft.world.level.levelgen.structure.structures.DesertPyramidPiece;
+import net.minecraft.world.level.levelgen.structure.structures.JungleTemplePiece;
 import net.neoforged.neoforge.event.level.ChunkEvent;
 import net.neoforged.neoforge.event.level.LevelEvent;
 import net.neoforged.neoforge.event.tick.LevelTickEvent;
 
 import java.util.ArrayList;
 import java.util.Comparator;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
 public final class RelicCacheWorldgen {
     private static final Map<ResourceLocation, PlacementRule> RULES = Map.ofEntries(
             Map.entry(ResourceLocation.withDefaultNamespace("igloo"), new PlacementRule(ModBlocks.UNCOMMON_RELIC_CACHE.get())),
-            Map.entry(ResourceLocation.withDefaultNamespace("jungle_temple"), new PlacementRule(ModBlocks.UNCOMMON_RELIC_CACHE.get())),
+            Map.entry(ResourceLocation.withDefaultNamespace("jungle_pyramid"), new PlacementRule(ModBlocks.UNCOMMON_RELIC_CACHE.get())),
             Map.entry(ResourceLocation.withDefaultNamespace("pillager_outpost"), new PlacementRule(ModBlocks.UNCOMMON_RELIC_CACHE.get())),
             Map.entry(ResourceLocation.withDefaultNamespace("desert_pyramid"), new PlacementRule(ModBlocks.RARE_RELIC_CACHE.get())),
             Map.entry(ResourceLocation.withDefaultNamespace("woodland_mansion"), new PlacementRule(ModBlocks.RARE_RELIC_CACHE.get())),
@@ -43,16 +47,16 @@ public final class RelicCacheWorldgen {
             Map.entry(ResourceLocation.withDefaultNamespace("bastion_remnant"), new PlacementRule(ModBlocks.EPIC_RELIC_CACHE.get())),
             Map.entry(ResourceLocation.withDefaultNamespace("end_city"), new PlacementRule(ModBlocks.LEGENDARY_RELIC_CACHE.get()))
     );
-    private static final Map<ResourceLocation, List<LevelChunk>> PENDING_CHUNKS = new HashMap<>();
+    private static final DeferredWorkQueue<ServerLevel, LevelChunk> PENDING_CHUNKS = new DeferredWorkQueue<>();
 
     private RelicCacheWorldgen() {
     }
 
     public static void onChunkLoad(ChunkEvent.Load event) {
-        if (!event.isNewChunk() || !(event.getLevel() instanceof ServerLevel serverLevel) || !(event.getChunk() instanceof LevelChunk chunk)) {
+        if (!(event.getLevel() instanceof ServerLevel serverLevel) || !(event.getChunk() instanceof LevelChunk chunk)) {
             return;
         }
-        PENDING_CHUNKS.computeIfAbsent(serverLevel.dimension().location(), ignored -> new ArrayList<>()).add(chunk);
+        PENDING_CHUNKS.add(serverLevel, chunk);
     }
 
     public static void onLevelTick(LevelTickEvent.Post event) {
@@ -60,8 +64,8 @@ public final class RelicCacheWorldgen {
             return;
         }
 
-        List<LevelChunk> pending = PENDING_CHUNKS.get(serverLevel.dimension().location());
-        if (pending == null || pending.isEmpty()) {
+        List<LevelChunk> pending = PENDING_CHUNKS.takeBatch(serverLevel, 8);
+        if (pending.isEmpty()) {
             return;
         }
 
@@ -71,25 +75,29 @@ public final class RelicCacheWorldgen {
                 deferred.add(chunk);
                 continue;
             }
+            if (serverLevel.getChunkSource().getChunkNow(chunk.getPos().x, chunk.getPos().z) != chunk) {
+                continue;
+            }
             tryPlaceCaches(serverLevel, chunk);
         }
 
-        if (deferred.isEmpty()) {
-            PENDING_CHUNKS.remove(serverLevel.dimension().location());
-        } else {
-            PENDING_CHUNKS.put(serverLevel.dimension().location(), deferred);
-        }
+        PENDING_CHUNKS.defer(serverLevel, deferred);
     }
 
     public static void onLevelUnload(LevelEvent.Unload event) {
         if (event.getLevel() instanceof ServerLevel serverLevel) {
-            PENDING_CHUNKS.remove(serverLevel.dimension().location());
+            PENDING_CHUNKS.clear(serverLevel);
         }
     }
 
-    private static void tryPlaceCaches(ServerLevel level, LevelChunk chunk) {
+    static void tryPlaceCaches(ServerLevel level, LevelChunk chunk) {
         Registry<Structure> structureRegistry = level.registryAccess().registryOrThrow(Registries.STRUCTURE);
         RelicCacheStructurePlacementSavedData savedData = RelicCacheStructurePlacementSavedData.get(level);
+        for (BlockPos pos : chunk.getBlockEntitiesPos()) {
+            if (chunk.getBlockState(pos).getBlock() instanceof RelicCacheBlock cache) {
+                savedData.register(pos, cache.tier());
+            }
+        }
         ChunkPos chunkPos = chunk.getPos();
 
         for (StructureStart start : level.structureManager().startsForStructure(chunkPos, structure -> true)) {
@@ -114,6 +122,7 @@ public final class RelicCacheWorldgen {
             }
 
             placeCache(level, placementPos, rule.block());
+            savedData.register(placementPos, rule.block().tier());
             savedData.markPlaced(placementKey);
         }
     }
@@ -123,13 +132,20 @@ public final class RelicCacheWorldgen {
         BlockPos center = box.getCenter();
 
         return chunk.getBlockEntitiesPos().stream()
-                .filter(box::isInside)
-                .filter(pos -> level.structureManager().structureHasPieceAt(pos, start))
-                .filter(pos -> isSupportedContainer(level.getBlockState(pos)))
+                .filter(pos -> start.getPieces().stream().anyMatch(piece -> isInsideCacheSite(piece, pos)))
+                .filter(pos -> isEligibleContainer(chunk.getBlockState(pos), chunk.getBlockEntity(pos)))
                 .min(Comparator
                         .comparingInt((BlockPos pos) -> horizontalDistanceSquared(pos, center))
                         .thenComparingInt(BlockPos::getY))
                 .orElse(null);
+    }
+
+    static boolean isInsideCacheSite(StructurePiece piece, BlockPos pos) {
+        BoundingBox box = piece.getBoundingBox();
+        int basementDepth = piece instanceof DesertPyramidPiece ? 11 : piece instanceof JungleTemplePiece ? 3 : 0;
+        return pos.getX() >= box.minX() && pos.getX() <= box.maxX()
+                && pos.getZ() >= box.minZ() && pos.getZ() <= box.maxZ()
+                && pos.getY() >= box.minY() - basementDepth && pos.getY() <= box.maxY();
     }
 
     private static void placeCache(ServerLevel level, BlockPos pos, RelicCacheBlock cacheBlock) {
@@ -149,6 +165,14 @@ public final class RelicCacheWorldgen {
     private static boolean isSupportedContainer(BlockState state) {
         Block block = state.getBlock();
         return block == Blocks.CHEST || block == Blocks.TRAPPED_CHEST || block == Blocks.BARREL;
+    }
+
+    static boolean isEligibleContainer(BlockState state, BlockEntity entity) {
+        return isSupportedContainer(state)
+                && (!state.hasProperty(BlockStateProperties.CHEST_TYPE)
+                    || state.getValue(BlockStateProperties.CHEST_TYPE) == ChestType.SINGLE)
+                && entity instanceof RandomizableContainerBlockEntity container
+                && container.getLootTable() != null;
     }
 
     private static int horizontalDistanceSquared(BlockPos a, BlockPos b) {

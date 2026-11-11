@@ -1,0 +1,103 @@
+{
+  "type": "cyberneticenhancements:fabrication",
+  "category": "FRONTAL CORTEX",
+  "parts": [
+    {
+      "ingredient": {
+        "item": "cyberneticenhancements:thermal_regulator"
+      },
+      "slot": 2
+    },
+    {
+      "ingredient": {
+        "item": "cyberneticenhancements:neural_processor"
+      },
+      "slot": 6
+    },
+    {
+      "ingredient": {
+        "item": "cyberneticenhancements:copper_wiring"
+      },
+      "slot": 7
+    },
+    {
+      "ingredient": {
+        "item": "cyberneticenhancements:neural_processor"
+      },
+      "slot": 8
+    },
+    {
+      "ingredient": {
+        "item": "cyberneticenhancements:reinforced_alloy"
+      },
+      "slot": 10
+    },
+    {
+      "ingredient": {
+        "item": "cyberneticenhancements:neural_interface"
+      },
+      "slot": 11
+    },
+    {
+      "ingredient": {
+        "item": "cyberneticenhancements:precision_chassis"
+      },
+      "slot": 12
+    },
+    {
+      "ingredient": {
+        "item": "cyberneticenhancements:neural_interface"
+      },
+      "slot": 13
+    },
+    {
+      "ingredient": {
+        "item": "cyberneticenhancements:reinforced_alloy"
+      },
+      "slot": 14
+    },
+    {
+      "ingredient": {
+        "item": "cyberneticenhancements:firmware_module"
+      },
+      "slot": 16
+    },
+    {
+      "ingredient": {
+        "item": "cyberneticenhancements:micro_battery"
+      },
+      "slot": 17
+    },
+    {
+      "ingredient": {
+        "item": "cyberneticenhancements:firmware_module"
+      },
+      "slot": 18
+    },
+    {
+      "ingredient": {
+        "item": "cyberneticenhancements:reinforced_alloy"
+      },
+      "slot": 21
+    },
+    {
+      "ingredient": {
+        "item": "cyberneticenhancements:proprietary_neural_core"
+      },
+      "slot": 22
+    },
+    {
+      "ingredient": {
+        "item": "cyberneticenhancements:reinforced_alloy"
+      },
+      "slot": 23
+    }
+  ],
+  "result": {
+    "count": 1,
+    "id": "cyberneticenhancements:quantum_tuner"
+  },
+  "schematic": "quantum_tuner",
+  "ticks": 1000,
+  "tier": 5
+}

@@ -39,7 +39,6 @@ public final class RecyclerStationMenu extends AbstractBaseMenu implements Named
     private final String blockDisplayName;
     private final Level level;
     private int supportedTierClient = CyberwareTier.TIER_1.ordinal();
-    private boolean suppressResultRefresh;
 
     public RecyclerStationMenu(int containerId, Inventory playerInventory, RegistryFriendlyByteBuf extraData) {
         this(containerId, playerInventory, extraData.readBlockPos());
@@ -53,13 +52,7 @@ public final class RecyclerStationMenu extends AbstractBaseMenu implements Named
         this.blockPos = blockPos.immutable();
         this.blockDisplayName = ModBlocks.RECYCLER_STATION.get().getName().getString();
         this.stationBlockEntity = this.level.getBlockEntity(blockPos) instanceof RecyclerStationBlockEntity blockEntity ? blockEntity : null;
-        this.inputInventory = new SimpleContainer(1) {
-            @Override
-            public void setChanged() {
-                super.setChanged();
-                RecyclerStationMenu.this.slotsChanged(this);
-            }
-        };
+        this.inputInventory = new SimpleContainer(1);
         this.resultInventory = new SimpleContainer(RESULT_SLOT_COUNT);
 
         if (!clientSide && stationBlockEntity != null) {
@@ -70,14 +63,14 @@ public final class RecyclerStationMenu extends AbstractBaseMenu implements Named
         addPlayerInventorySlots(playerInventory, RecyclerStationLayout.PLAYER_INVENTORY_X, RecyclerStationLayout.PLAYER_INVENTORY_Y);
         addPlayerHotbarSlots(playerInventory, RecyclerStationLayout.PLAYER_INVENTORY_X, RecyclerStationLayout.PLAYER_HOTBAR_Y);
         addTierSlot();
-        updateResult();
+        broadcastChanges();
     }
 
     private void addStationSlots() {
         this.addSlot(new Slot(inputInventory, INPUT_SLOT, RecyclerStationLayout.INPUT_X, RecyclerStationLayout.INPUT_Y) {
             @Override
             public boolean mayPlace(ItemStack stack) {
-                return isRecyclable(stack) && canAcceptTier(stack, getSupportedTier());
+                return isRecyclable(stack);
             }
         });
 
@@ -89,12 +82,6 @@ public final class RecyclerStationMenu extends AbstractBaseMenu implements Named
                     return false;
                 }
 
-                @Override
-                public void onTake(Player player, ItemStack stack) {
-                    beginResultExtraction();
-                    super.onTake(player, stack);
-                    finishResultExtraction();
-                }
             });
         }
     }
@@ -114,45 +101,34 @@ public final class RecyclerStationMenu extends AbstractBaseMenu implements Named
     }
 
     @Override
-    public void slotsChanged(Container container) {
-        super.slotsChanged(container);
-        if (!suppressResultRefresh) {
-            updateResult();
-        }
-    }
-
-    private void updateResult() {
-        if (suppressResultRefresh) {
-            return;
-        }
+    public boolean clickMenuButton(Player player, int button) {
+        if (clientSide || player != this.player || !stillValid(player)) return false;
+        if (button == 1) return tryUpgradeSupportedTier();
+        if (button != 0 || !canRecycle()) return false;
 
         List<ItemStack> outputs = getRecyclePlan().outputs();
-        for (int slotIndex = 0; slotIndex < RESULT_SLOT_COUNT; slotIndex++) {
-            ItemStack stack = slotIndex < outputs.size() ? outputs.get(slotIndex).copy() : ItemStack.EMPTY;
-            resultInventory.setItem(slotIndex, stack);
-        }
-        broadcastChanges();
-    }
-
-    private void beginResultExtraction() {
-        if (inputInventory.getItem(INPUT_SLOT).isEmpty()) {
-            return;
-        }
-
-        suppressResultRefresh = true;
+        if (outputs.size() > RESULT_SLOT_COUNT) return false;
         inputInventory.removeItem(INPUT_SLOT, 1);
-        suppressResultRefresh = false;
+        for (int i = 0; i < outputs.size(); i++) resultInventory.setItem(i, outputs.get(i).copy());
+        player.playNotifySound(net.minecraft.sounds.SoundEvents.GRINDSTONE_USE, net.minecraft.sounds.SoundSource.BLOCKS, 0.6F, 1.0F);
+        broadcastChanges();
+        return true;
     }
 
-    private void finishResultExtraction() {
-        if (hasPendingResultStacks()) {
-            broadcastChanges();
-            return;
-        }
-        updateResult();
+    public boolean canRecycle() {
+        return !hasPendingResultStacks() && !getRecyclePlan().outputs().isEmpty()
+                && getRecyclePlan().outputs().size() <= RESULT_SLOT_COUNT
+                && canAcceptTier(getInputStack(), getSupportedTier());
     }
 
-    private boolean hasPendingResultStacks() {
+    public net.minecraft.network.chat.Component status() {
+        String key = hasPendingResultStacks() ? "collect_salvage" : getInputStack().isEmpty() ? "insert_scrap"
+                : !canAcceptTier(getInputStack(), getSupportedTier()) ? "tier_locked"
+                : !getRecyclePlan().isAvailable() ? "no_salvage" : "ready_recycle";
+        return net.minecraft.network.chat.Component.translatable("screen.cyberneticenhancements.workshop." + key);
+    }
+
+    public boolean hasPendingResultStacks() {
         for (int slotIndex = 0; slotIndex < RESULT_SLOT_COUNT; slotIndex++) {
             if (!resultInventory.getItem(slotIndex).isEmpty()) {
                 return true;
@@ -174,19 +150,11 @@ public final class RecyclerStationMenu extends AbstractBaseMenu implements Named
         ItemStack sourceStack = sourceSlot.getItem();
         ItemStack copiedStack = sourceStack.copy();
 
-        if (index >= RESULT_SLOT_START && index < MACHINE_SLOT_COUNT) {
-            if (!this.moveItemStackTo(sourceStack, MACHINE_SLOT_COUNT, this.slots.size(), true)) {
-                return ItemStack.EMPTY;
-            }
-            sourceSlot.onTake(player, sourceStack);
-            return copiedStack;
-        }
-
         if (index < MACHINE_SLOT_COUNT) {
             if (!this.moveItemStackTo(sourceStack, MACHINE_SLOT_COUNT, this.slots.size(), true)) {
                 return ItemStack.EMPTY;
             }
-        } else if (isRecyclable(sourceStack) && canAcceptTier(sourceStack, getSupportedTier())) {
+        } else if (isRecyclable(sourceStack)) {
             if (!this.moveItemStackTo(sourceStack, INPUT_SLOT, INPUT_SLOT + 1, false)
                     && !moveWithinPlayerInventory(index, sourceStack)) {
                 return ItemStack.EMPTY;
@@ -204,6 +172,7 @@ public final class RecyclerStationMenu extends AbstractBaseMenu implements Named
         if (sourceStack.getCount() == copiedStack.getCount()) {
             return ItemStack.EMPTY;
         }
+        sourceSlot.onTake(player, sourceStack);
         return copiedStack;
     }
 
@@ -225,7 +194,7 @@ public final class RecyclerStationMenu extends AbstractBaseMenu implements Named
     public void removed(Player player) {
         super.removed(player);
         clearContainer(player, inputInventory);
-        resultInventory.clearContent();
+        clearContainer(player, resultInventory);
     }
 
     @Override
@@ -247,14 +216,10 @@ public final class RecyclerStationMenu extends AbstractBaseMenu implements Named
     }
 
     public List<ItemStack> getDisplayedResultStacks() {
-        List<ItemStack> displayed = new ArrayList<>(RESULT_SLOT_COUNT);
-        for (int slotIndex = 0; slotIndex < RESULT_SLOT_COUNT; slotIndex++) {
-            ItemStack stack = resultInventory.getItem(slotIndex);
-            if (!stack.isEmpty()) {
-                displayed.add(stack.copy());
-            }
-        }
-        if (!displayed.isEmpty()) {
+        if (hasPendingResultStacks()) {
+            List<ItemStack> displayed = new ArrayList<>(RESULT_SLOT_COUNT);
+            for (int slotIndex = 0; slotIndex < RESULT_SLOT_COUNT; slotIndex++)
+                displayed.add(resultInventory.getItem(slotIndex).copy());
             return displayed;
         }
         return getRecyclePlan().outputs();
@@ -263,10 +228,10 @@ public final class RecyclerStationMenu extends AbstractBaseMenu implements Named
     private boolean isRecyclable(ItemStack stack) {
         return !stack.isEmpty()
                 && level.getRecipeManager().getRecipeFor(
-                        ModRecipeTypes.RECYCLING.get(),
-                        new SingleRecipeInput(stack),
-                        level
-                ).isPresent();
+                ModRecipeTypes.RECYCLING.get(),
+                new SingleRecipeInput(stack),
+                level
+        ).isPresent();
     }
 
     private boolean canAcceptTier(ItemStack stack, CyberwareTier supportedTier) {

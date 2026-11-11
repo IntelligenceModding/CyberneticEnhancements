@@ -60,7 +60,7 @@ public final class SkeletonCyberwareManager {
             return;
         }
 
-        vacuumNearbyDrops(player, CyberwareBalance.doubleValue("skeleton.cargo_spine.pickup_radius") * cargoSpineCount);
+        vacuumNearbyDrops(player, CyberwareUpgradeHelper.performance(inventory, "cargo_spine", "skeleton.cargo_spine.pickup_radius") * cargoSpineCount);
     }
 
     public static void mergePassiveEffects(Player player, PlayerCyberwareInventory inventory, EnumMap<CyberwareEffectType, Double> totals) {
@@ -114,7 +114,7 @@ public final class SkeletonCyberwareManager {
                 && healthAfterHit > 0.0F
                 && healthAfterHit <= lowHealthThreshold
                 && FEEN_X_READY_UNTIL_TICK.getOrDefault(player.getUUID(), 0L) <= gameTime) {
-            long flatRefundTicks = 100L * feenXCount;
+            long flatRefundTicks = Math.round(100L * feenXCount * CyberwareUpgradeHelper.functionMultiplier(inventory, FEEN_X_ID));
             double percentRefund = Math.min(0.30D, 0.10D * feenXCount);
             refundTrackedCooldowns(player, flatRefundTicks, percentRefund);
             TemporaryCyberwareEffectManager.addEffects(player, 100L,
@@ -140,7 +140,8 @@ public final class SkeletonCyberwareManager {
             return;
         }
 
-        long flatRefundTicks = Math.min(100L * ramRecoupCount, Math.round(incomingDamage * 10.0F) * ramRecoupCount);
+        long flatRefundTicks = Math.round(Math.min(100L * ramRecoupCount, Math.round(incomingDamage * 10.0F) * ramRecoupCount)
+                * CyberwareUpgradeHelper.functionMultiplier(inventory, RAM_RECOUP_ID));
         double percentRefund = Math.min(0.18D, incomingDamage * 0.008D * ramRecoupCount);
         if (flatRefundTicks <= 0L && percentRefund <= 0.0D) {
             return;

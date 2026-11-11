@@ -1,10 +1,24 @@
 {
   "type": "cyberneticenhancements:recycling",
+  "damaged_outputs": [
+    {
+      "count": 1,
+      "id": "cyberneticenhancements:firmware_module"
+    }
+  ],
   "ingredient": {
     "item": "cyberneticenhancements:builder_skillchip"
   },
-  "result": {
-    "count": 1,
-    "id": "cyberneticenhancements:common_item_components"
-  }
+  "outputs": [
+    {
+      "count": 1,
+      "id": "cyberneticenhancements:firmware_module"
+    }
+  ],
+  "worn_outputs": [
+    {
+      "count": 1,
+      "id": "cyberneticenhancements:firmware_module"
+    }
+  ]
 }

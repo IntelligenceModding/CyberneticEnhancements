@@ -1,0 +1,52 @@
+{
+  "type": "cyberneticenhancements:fabrication",
+  "parts": [
+    {
+      "ingredient": {
+        "item": "minecraft:copper_ingot"
+      },
+      "slot": 6
+    },
+    {
+      "ingredient": {
+        "item": "minecraft:glass"
+      },
+      "slot": 7
+    },
+    {
+      "ingredient": {
+        "item": "minecraft:copper_ingot"
+      },
+      "slot": 8
+    },
+    {
+      "ingredient": {
+        "item": "cyberneticenhancements:polymer_shell"
+      },
+      "slot": 11
+    },
+    {
+      "ingredient": {
+        "item": "cyberneticenhancements:micro_actuator"
+      },
+      "slot": 12
+    },
+    {
+      "ingredient": {
+        "item": "cyberneticenhancements:polymer_shell"
+      },
+      "slot": 13
+    },
+    {
+      "ingredient": {
+        "item": "cyberneticenhancements:copper_wiring"
+      },
+      "slot": 17
+    }
+  ],
+  "result": {
+    "count": 2,
+    "id": "cyberneticenhancements:microfluidic_pump"
+  },
+  "ticks": 80
+}

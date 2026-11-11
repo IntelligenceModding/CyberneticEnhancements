@@ -1,0 +1,89 @@
+{
+  "levels": [
+    {
+      "effects": {
+        "knockback_resistance": 0.01
+      },
+      "materials": [
+        {
+          "count": 1,
+          "item": "cyberneticenhancements:epic_item_components"
+        },
+        {
+          "count": 1,
+          "item": "cyberneticenhancements:microfluidic_pump"
+        }
+      ]
+    },
+    {
+      "effects": {
+        "knockback_resistance": 0.02
+      },
+      "materials": [
+        {
+          "count": 1,
+          "item": "cyberneticenhancements:epic_item_components"
+        },
+        {
+          "count": 1,
+          "item": "cyberneticenhancements:microfluidic_pump"
+        }
+      ]
+    },
+    {
+      "effects": {
+        "knockback_resistance": 0.03
+      },
+      "materials": [
+        {
+          "count": 1,
+          "item": "cyberneticenhancements:epic_item_components"
+        },
+        {
+          "count": 1,
+          "item": "cyberneticenhancements:microfluidic_pump"
+        }
+      ]
+    },
+    {
+      "effects": {
+        "knockback_resistance": 0.04
+      },
+      "materials": [
+        {
+          "count": 1,
+          "item": "cyberneticenhancements:epic_item_components"
+        },
+        {
+          "count": 2,
+          "item": "cyberneticenhancements:microfluidic_pump"
+        }
+      ]
+    },
+    {
+      "effects": {
+        "knockback_resistance": 0.05
+      },
+      "materials": [
+        {
+          "count": 2,
+          "item": "cyberneticenhancements:epic_item_components"
+        },
+        {
+          "count": 2,
+          "item": "cyberneticenhancements:microfluidic_pump"
+        }
+      ]
+    }
+  ],
+  "repair_materials": [
+    {
+      "count": 2,
+      "item": "cyberneticenhancements:epic_item_components"
+    },
+    {
+      "count": 2,
+      "item": "cyberneticenhancements:biocompatible_mesh"
+    }
+  ]
+}

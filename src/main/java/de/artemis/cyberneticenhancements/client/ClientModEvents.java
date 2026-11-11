@@ -3,6 +3,7 @@ package de.artemis.cyberneticenhancements.client;
 import de.artemis.cyberneticenhancements.client.ArchiveBankingClientState;
 import de.artemis.cyberneticenhancements.client.render.FixerEntityRenderer;
 import de.artemis.cyberneticenhancements.client.render.RelicCacheBlockEntityRenderer;
+import de.artemis.cyberneticenhancements.client.render.RipperStationBlockEntityRenderer;
 import de.artemis.cyberneticenhancements.client.screen.CyberwareWikiScreen;
 import de.artemis.cyberneticenhancements.client.screen.FixerDialogScreen;
 import de.artemis.cyberneticenhancements.client.screen.RelicCacheHackScreen;
@@ -30,6 +31,11 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.client.MouseHandler;
 import net.minecraft.client.Options;
 import net.minecraft.client.gui.Font;
+import net.minecraft.client.gui.GuiGraphics;
+import de.artemis.cyberneticenhancements.client.ui.ResponsiveUi;
+import de.artemis.cyberneticenhancements.client.ui.UiViewport;
+import de.artemis.cyberneticenhancements.client.ui.UiGraphics;
+import de.artemis.cyberneticenhancements.client.ui.UiRenderer;
 import net.minecraft.client.gui.components.EditBox;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen;
@@ -87,10 +93,12 @@ public final class ClientModEvents {
     }
 
     public static void onClientSetup(FMLClientSetupEvent event) {
+        event.enqueueWork(SandevistanClientOptions::initialize);
         event.enqueueWork(() -> ModBlocks.allRelicCaches().forEach(block -> ItemBlockRenderTypes.setRenderLayer(block.get(), RenderType.translucent())));
     }
 
     public static void registerRenderers(EntityRenderersEvent.RegisterRenderers event) {
+        event.registerBlockEntityRenderer(ModBlockEntities.RIPPER_STATION.get(), RipperStationBlockEntityRenderer::new);
         event.registerBlockEntityRenderer(ModBlockEntities.RELIC_CACHE.get(), RelicCacheBlockEntityRenderer::new);
         event.registerEntityRenderer(ModEntityTypes.FIXER.get(), FixerEntityRenderer::new);
         event.registerEntityRenderer(ModEntityTypes.RIPPERDOC.get(), FixerEntityRenderer::new);
@@ -100,8 +108,10 @@ public final class ClientModEvents {
     }
 
     public static void registerScreens(RegisterMenuScreensEvent event) {
+        event.register(ModMenuTypes.FABRICATOR.get(), de.artemis.cyberneticenhancements.client.screen.FabricatorScreen::new);
         event.register(ModMenuTypes.RIPPER_STATION.get(), RipperStationScreen::new);
         event.register(ModMenuTypes.TECH_STATION.get(), TechStationScreen::new);
+        event.register(ModMenuTypes.UPGRADE_STATION.get(), TechStationScreen::new);
         event.register(ModMenuTypes.RECYCLER_STATION.get(), RecyclerStationScreen::new);
         event.register(ModMenuTypes.FIXER_DIALOG.get(), FixerDialogScreen::new);
         event.register(ModMenuTypes.RELIC_CACHE_HACK.get(), RelicCacheHackScreen::new);
@@ -113,6 +123,7 @@ public final class ClientModEvents {
 
     public static void onClientTick(ClientTickEvent.Post event) {
         Minecraft minecraft = Minecraft.getInstance();
+        SandevistanClientEffects.tick();
         if (minecraft.player == null) {
             return;
         }
@@ -232,12 +243,22 @@ public final class ClientModEvents {
     }
 
     public static void onRenderGuiLayer(RenderGuiLayerEvent.Post event) {
+        if (VanillaGuiLayers.HOTBAR.equals(event.getName())) {
+            SandevistanClientEffects.renderOverlay(event.getGuiGraphics(), event.getPartialTick().getGameTimeDeltaPartialTick(false));
+        }
         if (VanillaGuiLayers.HOTBAR.equals(event.getName()) && HudVisibilityController.isHudEnabled()) {
             CyberwareHudOverlay.render(event.getGuiGraphics());
         }
     }
 
     public static void onRenderLevelStage(RenderLevelStageEvent event) {
+        if (event.getStage() == RenderLevelStageEvent.Stage.AFTER_BLOCK_ENTITIES
+                && !de.artemis.cyberneticenhancements.client.render.RipperStationBlockEntityRenderer.isShadowPass()) {
+
+            Minecraft.getInstance().renderBuffers().bufferSource().endBatch();
+            de.artemis.cyberneticenhancements.client.render.RipperStationBlockEntityRenderer.flushProjections();
+            de.artemis.cyberneticenhancements.client.render.SandevistanEchoRenderer.render(event);
+        }
         Minecraft minecraft = Minecraft.getInstance();
         if (CyberpsychosisClientState.isControlLocked() && minecraft.player != null && minecraft.screen == null) {
             CyberpsychosisClientState.tickSmoothing();
@@ -302,6 +323,10 @@ public final class ClientModEvents {
     }
 
     public static void onClientLogout(ClientPlayerNetworkEvent.LoggingOut event) {
+        de.artemis.cyberneticenhancements.client.render.RipperStationBlockEntityRenderer.clearPending();
+        de.artemis.cyberneticenhancements.common.fabrication.SchematicKnowledge.clearClient();
+        de.artemis.cyberneticenhancements.common.cyberware.CyberwareUpgradeRegistry.clearClient();
+        SandevistanClientEffects.clear();
         CyberpsychosisClientState.setControlLocked(false);
         ArchiveBankingClientState.clear();
         ArchiveContactsClientState.clear();
@@ -323,10 +348,11 @@ public final class ClientModEvents {
             return;
         }
 
-        int width = 78;
-        int height = 18;
-        int x = screen.width - width - 12;
-        int y = 10;
+        double scale = screen instanceof ResponsiveUi ? 1 : ResponsiveUi.referenceViewport().renderScale();
+        int width = Math.max(1, (int) Math.ceil(78 * scale));
+        int height = Math.max(1, (int) Math.ceil(18 * scale));
+        int x = screen.width - width - (int) Math.ceil(12 * scale);
+        int y = (int) Math.ceil(10 * scale);
         event.addListener(new WikiLaunchButton(
                 x,
                 y,
@@ -352,11 +378,15 @@ public final class ClientModEvents {
         Font font = Minecraft.getInstance().font;
         Component hint = Component.translatable("screen.cyberneticenhancements.archive.hover_hint", ModKeyMappings.OPEN_ARCHIVE.getTranslatedKeyMessage());
         int width = font.width(hint) + 10;
-        int x = event.getScreen().width - width - 12;
-        int y = event.getScreen().height - 18;
-        event.getGuiGraphics().fill(x, y, x + width, y + 14, 0xCC0D1319);
-        event.getGuiGraphics().fill(x, y, x + width, y + 1, 0xFF1EE2B5);
-        event.getGuiGraphics().drawString(font, hint, x + 5, y + 3, 0xFFE5F2FF, false);
+        UiViewport viewport = event.getScreen() instanceof ResponsiveUi responsive
+                ? responsive.viewport() : ResponsiveUi.referenceViewport();
+        event.getGuiGraphics().flush();
+        GuiGraphics graphics = new UiGraphics(event.getGuiGraphics(), viewport);
+        int x = viewport.width() - width - 12;
+        int y = 34;
+        UiRenderer.panel(graphics, x, y, width, 16, UiRenderer.PANEL, UiRenderer.FIELD_EDGE);
+        graphics.drawString(font, hint, x + 5, y + 4, UiRenderer.ACCENT, false);
+        graphics.flush();
     }
 
     public static void onScreenKeyPressed(ScreenEvent.KeyPressed.Pre event) {

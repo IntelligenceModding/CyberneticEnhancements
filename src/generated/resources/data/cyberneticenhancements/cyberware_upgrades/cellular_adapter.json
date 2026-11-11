@@ -1,0 +1,59 @@
+{
+  "levels": [
+    {
+      "effects": {
+        "health_regen": 0.05
+      },
+      "materials": [
+        {
+          "count": 1,
+          "item": "cyberneticenhancements:uncommon_item_components"
+        },
+        {
+          "count": 1,
+          "item": "cyberneticenhancements:biocompatible_mesh"
+        }
+      ]
+    },
+    {
+      "effects": {
+        "health_regen": 0.1
+      },
+      "materials": [
+        {
+          "count": 1,
+          "item": "cyberneticenhancements:uncommon_item_components"
+        },
+        {
+          "count": 1,
+          "item": "cyberneticenhancements:biocompatible_mesh"
+        }
+      ]
+    },
+    {
+      "effects": {
+        "health_regen": 0.15000000000000002
+      },
+      "materials": [
+        {
+          "count": 2,
+          "item": "cyberneticenhancements:uncommon_item_components"
+        },
+        {
+          "count": 1,
+          "item": "cyberneticenhancements:biocompatible_mesh"
+        }
+      ]
+    }
+  ],
+  "repair_materials": [
+    {
+      "count": 3,
+      "item": "cyberneticenhancements:uncommon_item_components"
+    },
+    {
+      "count": 1,
+      "item": "cyberneticenhancements:polymer_shell"
+    }
+  ]
+}

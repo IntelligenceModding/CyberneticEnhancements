@@ -1,0 +1,40 @@
+{
+  "levels": [
+    {
+      "function_multiplier": 1.1,
+      "materials": [
+        {
+          "count": 3,
+          "item": "cyberneticenhancements:common_item_components"
+        },
+        {
+          "count": 1,
+          "item": "cyberneticenhancements:sensor_lens"
+        }
+      ]
+    },
+    {
+      "function_multiplier": 1.2,
+      "materials": [
+        {
+          "count": 4,
+          "item": "cyberneticenhancements:common_item_components"
+        },
+        {
+          "count": 1,
+          "item": "cyberneticenhancements:sensor_lens"
+        }
+      ]
+    }
+  ],
+  "repair_materials": [
+    {
+      "count": 3,
+      "item": "cyberneticenhancements:common_item_components"
+    },
+    {
+      "count": 1,
+      "item": "cyberneticenhancements:sensor_lens"
+    }
+  ]
+}

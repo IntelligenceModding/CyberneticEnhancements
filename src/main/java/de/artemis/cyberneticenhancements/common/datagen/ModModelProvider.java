@@ -37,6 +37,13 @@ public final class ModModelProvider implements DataProvider {
     @Override
     public @NotNull CompletableFuture<?> run(@NotNull CachedOutput output) {
         List<CompletableFuture<?>> futures = new ArrayList<>();
+        futures.add(saveSimpleBlockstate(output, "cyberware_fabricator"));
+        JsonObject fabricatorModel = new JsonObject();
+        fabricatorModel.addProperty("parent", "minecraft:block/smithing_table");
+        futures.add(DataProvider.saveStable(output, fabricatorModel, blockModelPathProvider.json(id("cyberware_fabricator"))));
+        futures.add(saveAliasedItemModel(output, "cyberware_fabricator", "minecraft:item/smithing_table"));
+        de.artemis.cyberneticenhancements.common.fabrication.FabricationContent.PART_MODELS.forEach((name, parent) -> futures.add(saveAliasedItemModel(output, name, parent)));
+        de.artemis.cyberneticenhancements.common.fabrication.FabricationContent.SCHEMATICS.keySet().forEach(name -> futures.add(saveAliasedItemModel(output, name + "_schematic", "minecraft:item/paper")));
 
         futures.add(saveHorizontalFacingBlockstate(output, "relic_cache"));
         futures.add(saveBlockItemDefinition(output, "relic_cache"));
@@ -65,6 +72,9 @@ public final class ModModelProvider implements DataProvider {
         futures.add(saveCubeBlockModel(output, "tech_station", "minecraft:block/gray_concrete"));
         futures.add(saveSimpleBlockstate(output, "tech_station"));
         futures.add(saveBlockItemDefinition(output, "tech_station"));
+        futures.add(saveCubeBlockModel(output, "upgrade_station", "minecraft:block/smithing_table_top"));
+        futures.add(saveSimpleBlockstate(output, "upgrade_station"));
+        futures.add(saveBlockItemDefinition(output, "upgrade_station"));
 
         futures.add(saveCubeBlockModel(output, "recycler_station", "minecraft:block/deepslate_tiles"));
         futures.add(saveSimpleBlockstate(output, "recycler_station"));

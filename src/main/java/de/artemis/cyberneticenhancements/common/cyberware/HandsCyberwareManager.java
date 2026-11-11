@@ -163,7 +163,7 @@ public final class HandsCyberwareManager {
             return;
         }
 
-        float multiplier = 1.0F + (float) (CyberwareBalance.doubleValue("hands.precision_miner.break_speed_bonus") * precisionMinerCount);
+        float multiplier = 1.0F + (float) (CyberwareUpgradeHelper.performance(inventory, "precision_miner", "hands.precision_miner.break_speed_bonus") * precisionMinerCount);
         event.setNewSpeed(event.getNewSpeed() * multiplier);
     }
 
@@ -233,7 +233,7 @@ public final class HandsCyberwareManager {
         }
 
         MICROGENERATOR_READY_UNTIL_TICK.put(player.getUUID(), gameTime + MICROGENERATOR_COOLDOWN_TICKS);
-        event.setAmount(event.getAmount() + (float) (CyberwareBalance.doubleValue("hands.microgenerator.extra_damage") * installedCount));
+        event.setAmount(event.getAmount() + (float) (CyberwareUpgradeHelper.performance(new PlayerCyberwareInventory(player), "microgenerator", "hands.microgenerator.extra_damage") * installedCount));
 
         TemporaryCyberwareEffectManager.addEffects(player, MICROGENERATOR_SURGE_TICKS,
                 CyberwareEffect.bonusAbsorption(CyberwareBalance.doubleValue("hands.microgenerator.absorption_bonus") * installedCount),

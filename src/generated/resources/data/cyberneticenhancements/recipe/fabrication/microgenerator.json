@@ -1,0 +1,78 @@
+{
+  "type": "cyberneticenhancements:fabrication",
+  "category": "HANDS",
+  "parts": [
+    {
+      "ingredient": {
+        "item": "cyberneticenhancements:micro_actuator"
+      },
+      "slot": 2
+    },
+    {
+      "ingredient": {
+        "item": "cyberneticenhancements:micro_actuator"
+      },
+      "slot": 6
+    },
+    {
+      "ingredient": {
+        "item": "cyberneticenhancements:neural_interface"
+      },
+      "slot": 7
+    },
+    {
+      "ingredient": {
+        "item": "cyberneticenhancements:micro_actuator"
+      },
+      "slot": 8
+    },
+    {
+      "ingredient": {
+        "item": "cyberneticenhancements:copper_wiring"
+      },
+      "slot": 11
+    },
+    {
+      "ingredient": {
+        "item": "cyberneticenhancements:precision_chassis"
+      },
+      "slot": 12
+    },
+    {
+      "ingredient": {
+        "item": "cyberneticenhancements:copper_wiring"
+      },
+      "slot": 13
+    },
+    {
+      "ingredient": {
+        "item": "cyberneticenhancements:alloy_plate"
+      },
+      "slot": 16
+    },
+    {
+      "ingredient": {
+        "item": "cyberneticenhancements:firmware_module"
+      },
+      "slot": 17
+    },
+    {
+      "ingredient": {
+        "item": "cyberneticenhancements:alloy_plate"
+      },
+      "slot": 18
+    },
+    {
+      "ingredient": {
+        "item": "cyberneticenhancements:micro_battery"
+      },
+      "slot": 22
+    }
+  ],
+  "result": {
+    "count": 1,
+    "id": "cyberneticenhancements:microgenerator"
+  },
+  "ticks": 200,
+  "tier": 2
+}

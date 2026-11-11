@@ -1,0 +1,25 @@
+{
+  "type": "cyberneticenhancements:recycling",
+  "damaged_outputs": [
+    {
+      "count": 1,
+      "id": "minecraft:copper_ingot"
+    }
+  ],
+  "group": "fabrication",
+  "ingredient": {
+    "item": "cyberneticenhancements:thermal_regulator"
+  },
+  "outputs": [
+    {
+      "count": 1,
+      "id": "minecraft:copper_ingot"
+    }
+  ],
+  "worn_outputs": [
+    {
+      "count": 1,
+      "id": "minecraft:copper_ingot"
+    }
+  ]
+}

@@ -1,11 +1,24 @@
 {
   "type": "cyberneticenhancements:recycling",
-  "damage_sensitive": true,
+  "damaged_outputs": [
+    {
+      "count": 1,
+      "id": "cyberneticenhancements:alloy_plate"
+    }
+  ],
   "ingredient": {
     "item": "cyberneticenhancements:bionic_joints"
   },
-  "result": {
-    "count": 1,
-    "id": "cyberneticenhancements:common_item_components"
-  }
+  "outputs": [
+    {
+      "count": 1,
+      "id": "cyberneticenhancements:alloy_plate"
+    }
+  ],
+  "worn_outputs": [
+    {
+      "count": 1,
+      "id": "cyberneticenhancements:alloy_plate"
+    }
+  ]
 }

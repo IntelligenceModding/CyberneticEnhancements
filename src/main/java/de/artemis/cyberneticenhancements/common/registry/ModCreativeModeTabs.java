@@ -21,6 +21,9 @@ public final class ModCreativeModeTabs {
                     .title(Component.translatable("itemGroup.cyberneticenhancements"))
                     .displayItems((parameters, output) -> {
                         ModItems.MATERIALS.forEach(item -> output.accept(item.get()));
+                        output.accept(ModBlocks.CYBERWARE_FABRICATOR.get());
+                        de.artemis.cyberneticenhancements.common.fabrication.FabricationContent.PARTS.values().forEach(item -> output.accept(item.get()));
+                        de.artemis.cyberneticenhancements.common.fabrication.FabricationContent.SCHEMATICS.values().forEach(item -> output.accept(item.get()));
                         ModItems.consumableItems().forEach(item -> output.accept(item.get()));
                         output.accept(ModBlocks.UNCOMMON_RELIC_CACHE.get());
                         output.accept(ModBlocks.RARE_RELIC_CACHE.get());
@@ -28,6 +31,7 @@ public final class ModCreativeModeTabs {
                         output.accept(ModBlocks.LEGENDARY_RELIC_CACHE.get());
                         output.accept(ModBlocks.RIPPER_STATION.get());
                         output.accept(ModBlocks.TECH_STATION.get());
+                        output.accept(ModBlocks.UPGRADE_STATION.get());
                         output.accept(ModBlocks.RECYCLER_STATION.get());
                         output.accept(ModItems.FIXER_SPAWN_EGG.get());
                     })

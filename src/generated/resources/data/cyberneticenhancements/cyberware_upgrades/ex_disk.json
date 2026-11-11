@@ -1,0 +1,40 @@
+{
+  "levels": [
+    {
+      "capacity_bonus": 2,
+      "materials": [
+        {
+          "count": 3,
+          "item": "cyberneticenhancements:common_item_components"
+        },
+        {
+          "count": 1,
+          "item": "cyberneticenhancements:neural_interface"
+        }
+      ]
+    },
+    {
+      "capacity_bonus": 4,
+      "materials": [
+        {
+          "count": 4,
+          "item": "cyberneticenhancements:common_item_components"
+        },
+        {
+          "count": 1,
+          "item": "cyberneticenhancements:neural_interface"
+        }
+      ]
+    }
+  ],
+  "repair_materials": [
+    {
+      "count": 3,
+      "item": "cyberneticenhancements:common_item_components"
+    },
+    {
+      "count": 1,
+      "item": "cyberneticenhancements:basic_circuit_plate"
+    }
+  ]
+}

@@ -542,6 +542,7 @@ public final class CyberwareBalance {
         defaults.put("militech_canto", cyberware(12, 0, CyberwareEffect.damage(1.0D), CyberwareEffect.damageReduction(0.08D)));
         defaults.put("dynalar_sandevistan", cyberware(0, 0, CyberwareEffect.moveSpeed(0.10D), CyberwareEffect.attackSpeed(0.08D)));
         defaults.put("militech_apogee", cyberware(0, 0, CyberwareEffect.moveSpeed(0.18D), CyberwareEffect.attackSpeed(0.16D)));
+        defaults.put("militech_experimental_sandevistan", cyberware(0, 0, CyberwareEffect.moveSpeed(0.18D), CyberwareEffect.attackSpeed(0.16D)));
         defaults.put("militech_falcon", cyberware(0, 0, CyberwareEffect.moveSpeed(0.14D), CyberwareEffect.attackSpeed(0.12D)));
         defaults.put("qiant_warp_dancer", cyberware(0, 0, CyberwareEffect.moveSpeed(0.16D), CyberwareEffect.attackSpeed(0.14D)));
         defaults.put("zetatech_sandevistan", cyberware(0, 0, CyberwareEffect.moveSpeed(0.10D), CyberwareEffect.attackSpeed(0.08D)));
@@ -701,6 +702,7 @@ public final class CyberwareBalance {
         defaults.put("militech_falcon", operatingSystem(OperatingSystemFamily.SANDEVISTAN, "hud.cyberneticenhancements.ability.militech_falcon", 10, 30));
         defaults.put("qiant_warp_dancer", operatingSystem(OperatingSystemFamily.SANDEVISTAN, "hud.cyberneticenhancements.ability.qiant_warp_dancer", 8, 32));
         defaults.put("militech_apogee", operatingSystem(OperatingSystemFamily.SANDEVISTAN, "hud.cyberneticenhancements.ability.militech_apogee", 12, 34));
+        defaults.put("militech_experimental_sandevistan", operatingSystem(OperatingSystemFamily.SANDEVISTAN, "hud.cyberneticenhancements.ability.militech_experimental_sandevistan", 8, 30));
         defaults.put("chrome_compressor", operatingSystem(OperatingSystemFamily.NONE, "", 0, 0));
         return Map.copyOf(defaults);
     }
@@ -855,6 +857,7 @@ public final class CyberwareBalance {
 
     private static Map<String, Double> createDoubleDefaults() {
         Map<String, Double> defaults = new LinkedHashMap<>();
+        de.artemis.cyberneticenhancements.common.cyberware.sandevistan.SandevistanProfile.addBalanceDefaults(defaults);
         defaults.put("combat_status.shock.move_speed_per_stack", -0.08D);
         defaults.put("combat_status.shock.attack_speed_per_stack", -0.12D);
         defaults.put("combat_status.shock.ability_cooldown_per_stack", 0.30D);

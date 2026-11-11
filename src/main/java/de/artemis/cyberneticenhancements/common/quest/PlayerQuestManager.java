@@ -389,6 +389,7 @@ public final class PlayerQuestManager {
         issuer.raiseTrust(player, active.rewardTrust());
         issuer.recordPaidTransaction(player);
         ItemStack rewardItem = active.rewardItemStack();
+        de.artemis.cyberneticenhancements.common.fabrication.FabricationDiscoveries.reward(player, active.tier());
         if (!rewardItem.isEmpty()) {
             ItemStack rewardCopy = rewardItem.copy();
             if (!player.addItem(rewardCopy)) {

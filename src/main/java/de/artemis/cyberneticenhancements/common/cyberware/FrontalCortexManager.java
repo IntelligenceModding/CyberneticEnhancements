@@ -126,7 +126,8 @@ public final class FrontalCortexManager {
 
     public static int getReflexExtensionTicks(PlayerCyberwareInventory inventory) {
         return hasReflexPair(inventory)
-                ? inventory.countInstalledCyberware(KERENZIKOV_BOOST_SYSTEM_ID) * CyberwareBalance.intValue("frontal.kerenzikov_boost_system.reflex_extension_ticks")
+                ? (int) Math.round(inventory.countInstalledCyberware(KERENZIKOV_BOOST_SYSTEM_ID) * CyberwareBalance.intValue("frontal.kerenzikov_boost_system.reflex_extension_ticks")
+                        * CyberwareUpgradeHelper.functionMultiplier(inventory, KERENZIKOV_BOOST_SYSTEM_ID))
                 : 0;
     }
 
@@ -143,12 +144,12 @@ public final class FrontalCortexManager {
             return;
         }
 
-        long flatRefundTicks = Math.round(memoryBoostCount * CyberwareBalance.doubleValue("frontal.memory_boost.flat_refund_ticks"));
-        double percentRefund = newtonCount * CyberwareBalance.doubleValue("frontal.newton_module.percent_refund");
+        long flatRefundTicks = Math.round(memoryBoostCount * CyberwareUpgradeHelper.performance(inventory, "memory_boost", "frontal.memory_boost.flat_refund_ticks"));
+        double percentRefund = newtonCount * CyberwareUpgradeHelper.performance(inventory, "newton_module", "frontal.newton_module.percent_refund");
         if (axolotlCount > 0) {
             percentRefund += axolotlCount * (isEliteTarget(target)
-                    ? CyberwareBalance.doubleValue("frontal.axolotl.elite_percent_refund")
-                    : CyberwareBalance.doubleValue("frontal.axolotl.percent_refund"));
+                    ? CyberwareUpgradeHelper.performance(inventory, "axolotl", "frontal.axolotl.elite_percent_refund")
+                    : CyberwareUpgradeHelper.performance(inventory, "axolotl", "frontal.axolotl.percent_refund"));
         }
         percentRefund = Math.min(percentRefund, CyberwareBalance.doubleValue("frontal.max_kill_refund_percent"));
 
@@ -235,7 +236,7 @@ public final class FrontalCortexManager {
         player.removeEffect(MobEffects.DARKNESS);
         player.removeEffect(MobEffects.WEAKNESS);
         player.removeEffect(MobEffects.MOVEMENT_SLOWDOWN);
-        CyberstrainManager.reduceInstability(player, CyberwareBalance.doubleValue("frontal.self_ice.instability_reduction"));
+        CyberstrainManager.reduceInstability(player, CyberwareUpgradeHelper.performance(inventory, "self_ice", "frontal.self_ice.instability_reduction"));
         TemporaryCyberwareEffectManager.addEffects(player, CyberwareBalance.intValue("frontal.self_ice.effect_ticks"),
                 CyberwareEffect.damageReduction(CyberwareBalance.doubleValue("frontal.self_ice.damage_reduction_bonus")),
                 CyberwareEffect.knockbackResistance(CyberwareBalance.doubleValue("frontal.self_ice.knockback_resistance_bonus")),
@@ -274,9 +275,9 @@ public final class FrontalCortexManager {
         double reduction = 0.0D;
         reduction += inventory.countInstalledCyberware(RAM_UPGRADE_ID) * CyberwareBalance.doubleValue("frontal.ram_upgrade.cooldown_reduction");
         reduction += inventory.countInstalledCyberware(EX_DISK_ID) * CyberwareBalance.doubleValue("frontal.ex_disk.cooldown_reduction");
-        reduction += inventory.countInstalledCyberware(BIOCONDUCTOR_ID) * CyberwareBalance.doubleValue("frontal.bioconductor.cooldown_reduction");
-        reduction += inventory.countInstalledCyberware(COX_2_ID) * CyberwareBalance.doubleValue("frontal.cox_2_cybersomatic_optimizer.cooldown_reduction");
-        reduction += inventory.countInstalledCyberware(QUANTUM_TUNER_ID) * CyberwareBalance.doubleValue("frontal.quantum_tuner.cooldown_reduction");
+        reduction += inventory.countInstalledCyberware(BIOCONDUCTOR_ID) * CyberwareUpgradeHelper.performance(inventory, "bioconductor", "frontal.bioconductor.cooldown_reduction");
+        reduction += inventory.countInstalledCyberware(COX_2_ID) * CyberwareUpgradeHelper.performance(inventory, "cox_2_cybersomatic_optimizer", "frontal.cox_2_cybersomatic_optimizer.cooldown_reduction");
+        reduction += inventory.countInstalledCyberware(QUANTUM_TUNER_ID) * CyberwareUpgradeHelper.performance(inventory, "quantum_tuner", "frontal.quantum_tuner.cooldown_reduction");
         return Math.min(reduction, CyberwareBalance.doubleValue("frontal.max_cooldown_reduction"));
     }
 

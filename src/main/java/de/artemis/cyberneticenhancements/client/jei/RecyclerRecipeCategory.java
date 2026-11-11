@@ -1,12 +1,10 @@
 package de.artemis.cyberneticenhancements.client.jei;
 
 import de.artemis.cyberneticenhancements.common.recipe.RecyclerRecipe;
-import de.artemis.cyberneticenhancements.common.item.CyberwareItem;
-import de.artemis.cyberneticenhancements.common.cyberware.CyberwareServiceHelper;
 import de.artemis.cyberneticenhancements.common.registry.ModBlocks;
 import mezz.jei.api.gui.builder.IRecipeLayoutBuilder;
 import mezz.jei.api.gui.drawable.IDrawable;
-import mezz.jei.api.gui.drawable.IDrawableStatic;
+import de.artemis.cyberneticenhancements.client.ui.UiRenderer;
 import mezz.jei.api.gui.ingredient.IRecipeSlotsView;
 import mezz.jei.api.helpers.IGuiHelper;
 import mezz.jei.api.recipe.IFocusGroup;
@@ -16,7 +14,6 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.crafting.RecipeHolder;
 
-import java.util.ArrayList;
 import java.util.List;
 
 public final class RecyclerRecipeCategory implements IRecipeCategory<RecipeHolder<RecyclerRecipe>> {
@@ -26,11 +23,9 @@ public final class RecyclerRecipeCategory implements IRecipeCategory<RecipeHolde
     private static final int[] OUTPUT_SLOT_X = {86, 108, 130};
 
     private final IDrawable icon;
-    private final IDrawableStatic arrow;
 
     public RecyclerRecipeCategory(IGuiHelper guiHelper) {
         this.icon = guiHelper.createDrawableItemLike(ModBlocks.RECYCLER_STATION.get());
-        this.arrow = guiHelper.getRecipeArrow();
     }
 
     @Override
@@ -63,28 +58,28 @@ public final class RecyclerRecipeCategory implements IRecipeCategory<RecipeHolde
         RecyclerRecipe recipe = recipeHolder.value();
         List<List<ItemStack>> outputSlots = buildDisplayOutputs(recipe);
         builder.addInputSlot(1, 18)
-                .setStandardSlotBackground()
                 .addIngredients(recipe.getInputIngredient());
         for (int slotIndex = 0; slotIndex < Math.min(outputSlots.size(), OUTPUT_SLOT_X.length); slotIndex++) {
             builder.addOutputSlot(OUTPUT_SLOT_X[slotIndex], OUTPUT_SLOT_Y)
-                    .setStandardSlotBackground()
                     .addItemStacks(outputSlots.get(slotIndex));
         }
     }
 
     @Override
     public void draw(RecipeHolder<RecyclerRecipe> recipeHolder, IRecipeSlotsView recipeSlotsView, GuiGraphics guiGraphics, double mouseX, double mouseY) {
-        this.arrow.draw(guiGraphics, 41, 18);
+        UiRenderer.panel(guiGraphics, 0, 0, WIDTH, HEIGHT, UiRenderer.PANEL);
+        UiRenderer.panel(guiGraphics, 0, 17, 18, 18, UiRenderer.FIELD, UiRenderer.FIELD_EDGE);
+        for (int slot = 0; slot < Math.min(buildDisplayOutputs(recipeHolder.value()).size(), OUTPUT_SLOT_X.length); slot++) {
+            UiRenderer.panel(guiGraphics, OUTPUT_SLOT_X[slot] - 1, OUTPUT_SLOT_Y - 1, 18, 18, UiRenderer.FIELD, UiRenderer.FIELD_EDGE);
+        }
+        UiRenderer.arrow(guiGraphics, 42, 22, UiRenderer.ACCENT);
+        guiGraphics.drawString(net.minecraft.client.Minecraft.getInstance().font,
+                Component.translatable("screen.cyberneticenhancements.workshop." +
+                        (recipeHolder.value().isDamageSensitive() ? "condition_hint" : "recycle")),
+                4, 46, UiRenderer.TEXT_SECONDARY, false);
     }
 
     private List<List<ItemStack>> buildDisplayOutputs(RecyclerRecipe recipe) {
-        List<List<ItemStack>> outputSlots = new ArrayList<>();
-        outputSlots.add(recipe.getDisplayResults());
-
-        ItemStack[] ingredientStacks = recipe.getInputIngredient().getItems();
-        if (ingredientStacks.length > 0 && ingredientStacks[0].getItem() instanceof CyberwareItem cyberwareItem) {
-            outputSlots.add(List.of(new ItemStack(CyberwareServiceHelper.slotSupportItem(cyberwareItem.getDefinition().slotType()))));
-        }
-        return outputSlots;
+        return recipe.displayOutputs();
     }
 }

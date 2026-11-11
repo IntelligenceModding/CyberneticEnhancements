@@ -1,0 +1,25 @@
+{
+  "type": "cyberneticenhancements:recycling",
+  "damaged_outputs": [
+    {
+      "count": 1,
+      "id": "minecraft:string"
+    }
+  ],
+  "group": "fabrication",
+  "ingredient": {
+    "item": "cyberneticenhancements:polymer_shell"
+  },
+  "outputs": [
+    {
+      "count": 1,
+      "id": "minecraft:string"
+    }
+  ],
+  "worn_outputs": [
+    {
+      "count": 1,
+      "id": "minecraft:string"
+    }
+  ]
+}

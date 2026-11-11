@@ -1,0 +1,40 @@
+{
+  "levels": [
+    {
+      "function_multiplier": 1.1,
+      "materials": [
+        {
+          "count": 3,
+          "item": "cyberneticenhancements:common_item_components"
+        },
+        {
+          "count": 1,
+          "item": "cyberneticenhancements:biocompatible_mesh"
+        }
+      ]
+    },
+    {
+      "function_multiplier": 1.2,
+      "materials": [
+        {
+          "count": 4,
+          "item": "cyberneticenhancements:common_item_components"
+        },
+        {
+          "count": 1,
+          "item": "cyberneticenhancements:biocompatible_mesh"
+        }
+      ]
+    }
+  ],
+  "repair_materials": [
+    {
+      "count": 3,
+      "item": "cyberneticenhancements:common_item_components"
+    },
+    {
+      "count": 1,
+      "item": "cyberneticenhancements:polymer_shell"
+    }
+  ]
+}

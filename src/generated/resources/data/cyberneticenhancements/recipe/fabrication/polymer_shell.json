@@ -1,0 +1,46 @@
+{
+  "type": "cyberneticenhancements:fabrication",
+  "parts": [
+    {
+      "ingredient": {
+        "item": "minecraft:slime_ball"
+      },
+      "slot": 6
+    },
+    {
+      "ingredient": {
+        "item": "minecraft:leather"
+      },
+      "slot": 7
+    },
+    {
+      "ingredient": {
+        "item": "minecraft:slime_ball"
+      },
+      "slot": 8
+    },
+    {
+      "ingredient": {
+        "item": "minecraft:leather"
+      },
+      "slot": 11
+    },
+    {
+      "ingredient": {
+        "item": "minecraft:honeycomb"
+      },
+      "slot": 12
+    },
+    {
+      "ingredient": {
+        "item": "minecraft:leather"
+      },
+      "slot": 13
+    }
+  ],
+  "result": {
+    "count": 4,
+    "id": "cyberneticenhancements:polymer_shell"
+  },
+  "ticks": 80
+}

@@ -1,6 +1,6 @@
 package de.artemis.cyberneticenhancements.common.cyberware;
 
-import de.artemis.cyberneticenhancements.common.registry.ModBlocks;
+import de.artemis.cyberneticenhancements.common.block.RelicCacheBlock;
 import de.artemis.cyberneticenhancements.common.network.FaceHazardHighlightPayload;
 import de.artemis.cyberneticenhancements.common.item.CyberwareItem;
 import net.minecraft.ChatFormatting;
@@ -361,6 +361,11 @@ public final class FaceCyberwareManager {
         notify(player, messageKey, Component.translatable(itemTranslationKey(id)), activeSeconds);
     }
 
+    private static double opticsMultiplier(Player player) {
+        var inventory = new PlayerCyberwareInventory(player);
+        var face = inventory.getInstalledCyberwareBySlotType(CyberwareSlotType.FACE);
+        return face == null ? 1 : CyberwareUpgradeHelper.functionMultiplier(inventory, face.getDefinition().id());
+    }
     private static void pulseBasicKiroshi(Player player) {
         revealHostiles(player, 14.0D, 4, 0.05D, false, false, 50, false, true);
         spawnEyePulse(player, ParticleTypes.END_ROD, 10, 0.02D);
@@ -396,7 +401,7 @@ public final class FaceCyberwareManager {
     private static void pulseCockatrice(Player player) {
         LivingEntity target = resolveTrackedTarget(player);
         if (target == null) {
-            target = findViewTarget(player, COCKATRICE_TARGET_RANGE, -0.35D, true);
+            target = findViewTarget(player, COCKATRICE_TARGET_RANGE * opticsMultiplier(player), -0.35D, true);
             if (target != null) {
                 ACTIVE_FACE_TARGETS.put(player.getUUID(), target.getUUID());
                 CombatStatusManager.applyStatus(target, CombatStatusType.MARK, COCKATRICE_LOCK_TICKS, 2, true);
@@ -413,7 +418,7 @@ public final class FaceCyberwareManager {
     }
 
     private static void pulseFaceplate(Player player) {
-        scrambleNearbyAggro(player, FACEPLATE_SCRAMBLE_RADIUS, true);
+        scrambleNearbyAggro(player, FACEPLATE_SCRAMBLE_RADIUS * opticsMultiplier(player), true);
         player.addEffect(new MobEffectInstance(MobEffects.INVISIBILITY, 30, 0, false, false, false));
         spawnDisguisePulse(player);
         spawnEyePulse(player, ParticleTypes.CLOUD, 8, 0.02D);
@@ -427,7 +432,7 @@ public final class FaceCyberwareManager {
         List<BlockPos> targets = collectMatchingBlocks(
                 level,
                 player,
-                CyberwareBalance.intValue("face.forager.range"),
+                (int) Math.round(CyberwareBalance.intValue("face.forager.range") * opticsMultiplier(player)),
                 CyberwareBalance.intValue("face.forager.vertical_scan"),
                 CyberwareBalance.intValue("face.forager.max_blocks"),
                 FaceCyberwareManager::isForagerTarget
@@ -445,7 +450,7 @@ public final class FaceCyberwareManager {
         List<BlockPos> highlightedBlocks = scanBlocks(
                 level,
                 player,
-                CyberwareBalance.intValue("face.vein_reader.radius"),
+                (int) Math.round(CyberwareBalance.intValue("face.vein_reader.radius") * opticsMultiplier(player)),
                 CyberwareBalance.intValue("face.vein_reader.vertical_scan"),
                 CyberwareBalance.intValue("face.vein_reader.max_blocks"),
                 FaceCyberwareManager::isOreBlock,
@@ -465,7 +470,7 @@ public final class FaceCyberwareManager {
         List<BlockPos> highlightedBlocks = scanBlocks(
                 level,
                 player,
-                CyberwareBalance.intValue("face.relic_scanner.radius"),
+                (int) Math.round(CyberwareBalance.intValue("face.relic_scanner.radius") * opticsMultiplier(player)),
                 CyberwareBalance.intValue("face.relic_scanner.vertical_scan"),
                 CyberwareBalance.intValue("face.relic_scanner.max_blocks"),
                 FaceCyberwareManager::isRelicTarget,
@@ -488,7 +493,7 @@ public final class FaceCyberwareManager {
             boolean mark,
             boolean outline
     ) {
-        List<LivingEntity> targets = findHostiles(player, range, maxTargets, dotThreshold, hiddenOnly, throughWalls);
+        List<LivingEntity> targets = findHostiles(player, range * opticsMultiplier(player), maxTargets, dotThreshold, hiddenOnly, throughWalls);
         List<UUID> highlightedEntities = outline ? new ArrayList<>() : null;
         for (LivingEntity target : targets) {
             if (mark) {
@@ -505,6 +510,7 @@ public final class FaceCyberwareManager {
     }
 
     private static void revealExplosives(Player player, int radius, int vertical, int maxBlocks) {
+        radius = (int) Math.round(radius * opticsMultiplier(player));
         if (!(player.level() instanceof ServerLevel level)) {
             return;
         }
@@ -548,6 +554,7 @@ public final class FaceCyberwareManager {
     }
 
     private static void revealSentries(Player player, int radius, int vertical, int maxBlocks) {
+        radius = (int) Math.round(radius * opticsMultiplier(player));
         if (!(player.level() instanceof ServerLevel level)) {
             return;
         }
@@ -641,7 +648,7 @@ public final class FaceCyberwareManager {
                 || state.is(Blocks.DECORATED_POT)
                 || state.is(Blocks.TRIAL_SPAWNER)
                 || state.is(Blocks.VAULT)
-                || state.is(ModBlocks.RELIC_CACHE.get());
+                || state.getBlock() instanceof RelicCacheBlock;
     }
 
     private static void scrambleNearbyAggro(Player player, double radius, boolean immediate) {
@@ -871,26 +878,25 @@ public final class FaceCyberwareManager {
             boolean audible
     ) {
         BlockPos origin = player.blockPosition();
-        int emitted = 0;
-        List<BlockPos> results = new ArrayList<>();
+        List<BlockPos> matches = new ArrayList<>();
         for (BlockPos pos : BlockPos.betweenClosed(
                 origin.offset(-radius, -vertical, -radius),
                 origin.offset(radius, vertical, radius))) {
-            BlockState state = level.getBlockState(pos);
-            if (!matcher.test(state)) {
-                continue;
+            if (level.hasChunkAt(pos) && matcher.test(level.getBlockState(pos))) {
+                matches.add(pos.immutable());
             }
-
-            Vec3 point = hazardPulsePosition(pos, state);
+        }
+        matches.sort(Comparator
+                .comparingInt((BlockPos pos) -> level.getBlockState(pos).getBlock()
+                        instanceof RelicCacheBlock ? 0 : 1)
+                .thenComparingDouble(pos -> pos.distSqr(origin)));
+        List<BlockPos> results = new ArrayList<>(matches.subList(0, Math.min(Math.max(0, maxResults), matches.size())));
+        int emitted = 0;
+        for (BlockPos pos : results) {
+            Vec3 point = hazardPulsePosition(pos, level.getBlockState(pos));
             spawnPointPulse(level, point, particle, 5, 0.02D);
-            if (audible) {
-                highlightHazardPoint(level, point, emitted < 4);
-            }
-            results.add(pos.immutable());
+            if (audible) highlightHazardPoint(level, point, emitted < 4);
             emitted++;
-            if (emitted >= maxResults) {
-                return results;
-            }
         }
         return results;
     }

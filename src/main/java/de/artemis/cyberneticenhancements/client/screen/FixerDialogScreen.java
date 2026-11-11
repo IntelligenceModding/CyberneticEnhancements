@@ -22,9 +22,13 @@ import de.artemis.cyberneticenhancements.common.ui.Icons;
 import de.artemis.cyberneticenhancements.common.world.NpcIdentityConfig.NpcCategory;
 import com.mojang.math.Axis;
 import net.minecraft.client.gui.GuiGraphics;
+import de.artemis.cyberneticenhancements.client.ui.UiRenderer;
+import de.artemis.cyberneticenhancements.client.ui.UiScrollbar;
+import de.artemis.cyberneticenhancements.client.ui.UiMotion;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.components.EditBox;
-import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen;
+import de.artemis.cyberneticenhancements.client.ui.UiEditBox;
+import de.artemis.cyberneticenhancements.client.ui.ResponsiveContainerScreen;
 import net.minecraft.client.gui.screens.inventory.InventoryScreen;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.FormattedText;
@@ -41,8 +45,8 @@ import org.joml.Vector3f;
 import java.util.ArrayList;
 import java.util.List;
 
-public final class FixerDialogScreen extends AbstractContainerScreen<FixerDialogMenu> {
-    private static final int OUTER_BG = 0xEE091016;
+public final class FixerDialogScreen extends ResponsiveContainerScreen<FixerDialogMenu> {
+    private static final int OUTER_BG = UiRenderer.PANEL;
     private static final int PANEL_BG = StationScreenStyle.PANEL_BG;
     private static final int PANEL_ALT = StationScreenStyle.PANEL_ALT;
     private static final int PANEL_EDGE = StationScreenStyle.PANEL_EDGE;
@@ -77,9 +81,9 @@ public final class FixerDialogScreen extends AbstractContainerScreen<FixerDialog
     private static final int IDENTITY_TILE_MIN_HEIGHT = 70;
     private static final int IDENTITY_TILE_GAP = 8;
     private static final int IDENTITY_VISIBLE_SKINS = 4;
-    private static final int IDENTITY_SCROLLBAR_HEIGHT = 8;
+    private static final int IDENTITY_SCROLLBAR_HEIGHT = UiScrollbar.WIDTH;
     private static final int IDENTITY_SCROLLBAR_GAP = 10;
-    private static final int IMAGE_W = 420;
+    private static final int IMAGE_W = 640;
     private static final int IMAGE_H = 484;
 
     private final List<ChoiceButton> choiceButtons = new ArrayList<>();
@@ -100,6 +104,7 @@ public final class FixerDialogScreen extends AbstractContainerScreen<FixerDialog
     private String localNpcLineKey;
     private String selectedAppearanceId = "";
     private String selectedNameColorId = "aqua";
+    private final UiScrollbar shopScrollbar = new UiScrollbar(), identityScrollbar = new UiScrollbar();
     private int skinPage;
     private int selectedShopSlot;
     private int shopScrollOffset;
@@ -121,9 +126,10 @@ public final class FixerDialogScreen extends AbstractContainerScreen<FixerDialog
 
     @Override
     protected void init() {
+        String nicknameDraft = nicknameField == null ? null : nicknameField.getValue();
         super.init();
         choiceButtons.clear();
-        nicknameField = new EditBox(font, identityFieldX(), identityFieldY(), identityFieldWidth(), 18, Component.translatable("screen.cyberneticenhancements.npc.identity.nickname"));
+        nicknameField = new UiEditBox(font, identityFieldX(), identityFieldY(), identityFieldWidth(), 18, Component.translatable("screen.cyberneticenhancements.npc.identity.nickname"));
         nicknameField.setMaxLength(32);
         nicknameField.setVisible(false);
         addRenderableWidget(nicknameField);
@@ -142,7 +148,11 @@ public final class FixerDialogScreen extends AbstractContainerScreen<FixerDialog
             choiceButtons.add(button);
             addRenderableWidget(button);
         }
-        syncIdentityEditorFromNpc();
+        if (nicknameDraft == null) {
+            syncIdentityEditorFromNpc();
+        } else {
+            nicknameField.setValue(nicknameDraft);
+        }
         refreshChoices();
     }
 
@@ -206,18 +216,17 @@ public final class FixerDialogScreen extends AbstractContainerScreen<FixerDialog
     }
 
     @Override
-    public void render(GuiGraphics guiGraphics, int mouseX, int mouseY, float partialTick) {
+    protected void renderContent(GuiGraphics guiGraphics, int mouseX, int mouseY, float partialTick) {
         lastMouseX = mouseX;
         lastMouseY = mouseY;
-        renderBackground(guiGraphics, mouseX, mouseY, partialTick);
-        super.render(guiGraphics, mouseX, mouseY, partialTick);
+        super.renderContent(guiGraphics, mouseX, mouseY, partialTick);
         renderTooltip(guiGraphics, mouseX, mouseY);
         renderChoiceTooltip(guiGraphics, mouseX, mouseY);
         renderShopTooltip(guiGraphics, mouseX, mouseY);
     }
 
     @Override
-    public boolean mouseClicked(double mouseX, double mouseY, int button) {
+    protected boolean mouseClickedContent(double mouseX, double mouseY, int button) {
         if (button == 0
                 && mode == ConversationMode.IDENTITY
                 && nicknameField != null
@@ -262,9 +271,23 @@ public final class FixerDialogScreen extends AbstractContainerScreen<FixerDialog
                 return true;
             }
         }
-        return super.mouseClicked(mouseX, mouseY, button);
+        return super.mouseClickedContent(mouseX, mouseY, button);
     }
 
+    @Override
+    protected boolean mouseDraggedContent(double x,double y,int button,double dx,double dy) {
+        if(button==0&&mode==ConversationMode.SHOP&&shopScrollbar.dragging()){
+            shopScrollOffset=(int)Math.round(shopScrollbar.value(shopTrack(),x,y));return true;
+        }
+        if(button==0&&mode==ConversationMode.IDENTITY&&identityScrollbar.dragging()){
+            skinPage=(int)Math.round(identityScrollbar.value(identityTrack(),x,y));return true;
+        }
+        return super.mouseDraggedContent(x,y,button,dx,dy);
+    }
+    @Override
+    protected boolean mouseReleasedContent(double x,double y,int button) {
+        shopScrollbar.release();identityScrollbar.release();return super.mouseReleasedContent(x,y,button);
+    }
     @Override
     public boolean keyPressed(int keyCode, int scanCode, int modifiers) {
         if (mode == ConversationMode.IDENTITY
@@ -274,9 +297,8 @@ public final class FixerDialogScreen extends AbstractContainerScreen<FixerDialog
             if (keyCode == 256) {
                 sendNicknameUpdate();
                 TextFieldFocusHelper.clearFocus(this, List.of(nicknameField));
-                return true;
-            }
-            if (keyCode == 257 || keyCode == 335) {
+                return super.keyPressed(keyCode,scanCode,modifiers);
+            }            if (keyCode == 257 || keyCode == 335) {
                 sendNicknameUpdate();
                 TextFieldFocusHelper.clearFocus(this, List.of(nicknameField));
                 return true;
@@ -302,7 +324,7 @@ public final class FixerDialogScreen extends AbstractContainerScreen<FixerDialog
     }
 
     @Override
-    public boolean mouseScrolled(double mouseX, double mouseY, double scrollX, double scrollY) {
+    protected boolean mouseScrolledContent(double mouseX, double mouseY, double scrollX, double scrollY) {
         if (mode == ConversationMode.SHOP && scrollY != 0.0D) {
             scrollShop(scrollY < 0.0D ? 1 : -1);
             return true;
@@ -311,7 +333,7 @@ public final class FixerDialogScreen extends AbstractContainerScreen<FixerDialog
             scrollSkinGallery(scrollY < 0.0D ? 1 : -1);
             return true;
         }
-        return super.mouseScrolled(mouseX, mouseY, scrollX, scrollY);
+        return super.mouseScrolledContent(mouseX, mouseY, scrollX, scrollY);
     }
 
     private void refreshChoices() {
@@ -784,22 +806,14 @@ public final class FixerDialogScreen extends AbstractContainerScreen<FixerDialog
         return -1;
     }
 
-    private boolean clickedIdentityScrollbar(double mouseX, double mouseY) {
-        int x = identityScrollbarX();
-        int y = identityScrollbarY();
-        int width = identityScrollbarWidth();
-        if (mouseX < x || mouseX >= x + width || mouseY < y || mouseY >= y + IDENTITY_SCROLLBAR_HEIGHT) {
-            return false;
-        }
-        int maxOffset = maxSkinScrollOffset();
-        if (maxOffset <= 0) {
-            return true;
-        }
-        float ratio = (float) ((mouseX - x) / Math.max(1.0D, width - 1.0D));
-        skinPage = Math.max(0, Math.min(maxOffset, Math.round(ratio * maxOffset)));
-        return true;
+    private UiScrollbar.Track identityTrack() {
+        int total=availableSkins().size(), visible=Math.min(IDENTITY_VISIBLE_SKINS,total);
+        return UiScrollbar.layout(identityScrollbarX(),identityScrollbarY(),identityScrollbarWidth(),IDENTITY_SCROLLBAR_HEIGHT,true,visible,maxSkinScrollOffset(),skinPage);
     }
-
+    private boolean clickedIdentityScrollbar(double mouseX,double mouseY) {
+        var track=identityTrack();if(!identityScrollbar.begin(track,mouseX,mouseY))return false;
+        skinPage=(int)Math.round(identityScrollbar.value(track,mouseX,mouseY));return true;
+    }
     private void renderHeader(GuiGraphics guiGraphics) {
         int x = headerX() + PANEL_TEXT_PADDING_X;
         int y = headerY() + PANEL_TEXT_PADDING_Y;
@@ -907,14 +921,7 @@ public final class FixerDialogScreen extends AbstractContainerScreen<FixerDialog
     private void renderShopRow(GuiGraphics guiGraphics, int x, int y, int width, int height, int slot, boolean selected) {
         ShopEntry entry = shopEntry(slot);
         boolean hovered = hoveredShopSlot(lastMouseX, lastMouseY) == slot;
-        int fill = selected ? 0xFF173B39 : hovered ? 0xFF142833 : PANEL_BG;
-        int edge = selected ? ACCENT : hovered ? TEXT_PRIMARY : PANEL_EDGE;
-        int lowEdge = selected ? ACCENT : hovered ? TEXT_PRIMARY : PANEL_DEEP;
-        guiGraphics.fill(x, y, x + width, y + height, fill);
-        guiGraphics.fill(x, y, x + width, y + 1, edge);
-        guiGraphics.fill(x, y, x + 1, y + height, edge);
-        guiGraphics.fill(x + width - 1, y, x + width, y + height, lowEdge);
-        guiGraphics.fill(x, y + height - 1, x + width, y + height, lowEdge);
+        UiRenderer.control(guiGraphics, x, y, width, height, true, selected, hovered, 0xFFFFFFFF);
 
         int iconBoxX = x + 8;
         int iconBoxY = y + 4;
@@ -943,24 +950,12 @@ public final class FixerDialogScreen extends AbstractContainerScreen<FixerDialog
         guiGraphics.drawString(font, stateLine, rightX - stateWidth, y + 14, menu.isOptionAvailable(entry.optionId()) ? TEXT_SECONDARY : 0xFFD08A8A, false);
     }
 
-    private void renderShopScrollbar(GuiGraphics guiGraphics) {
-        if (shopItemCount() <= visibleShopRowCount()) {
-            return;
-        }
-        int x = shopScrollbarX();
-        int y = shopScrollbarY();
-        int height = shopScrollbarHeight();
-        drawPanel(guiGraphics, x, y, shopScrollbarWidth(), height, PANEL_BG);
-        guiGraphics.fill(x + 1, y + 1, x + shopScrollbarWidth() - 1, y + height - 1, PANEL_DEEP);
-        int trackHeight = height - 2;
-        int thumbHeight = Math.max(18, Math.round(trackHeight * (visibleShopRowCount() / (float) shopItemCount())));
-        int thumbY = y + 1;
-        if (maxShopScrollOffset() > 0) {
-            thumbY += Math.round((trackHeight - thumbHeight) * (shopScrollOffset / (float) maxShopScrollOffset()));
-        }
-        guiGraphics.fill(x + 1, thumbY, x + shopScrollbarWidth() - 1, thumbY + thumbHeight, ACCENT);
+    private UiScrollbar.Track shopTrack() {
+        return UiScrollbar.layout(shopScrollbarX(),shopScrollbarY(),shopScrollbarWidth(),shopScrollbarHeight(),false,visibleShopRowCount(),maxShopScrollOffset(),shopScrollOffset);
     }
-
+    private void renderShopScrollbar(GuiGraphics graphics) {
+        UiScrollbar.draw(graphics,shopTrack(),lastMouseX,lastMouseY,shopScrollbar.dragging());
+    }
     private void renderIdentityEditor(GuiGraphics guiGraphics) {
         int x = transcriptX() + PANEL_TEXT_PADDING_X;
         int y = transcriptY() + PANEL_TEXT_PADDING_Y;
@@ -994,13 +989,12 @@ public final class FixerDialogScreen extends AbstractContainerScreen<FixerDialog
     }
 
     private void renderIdentityTileBackground(GuiGraphics guiGraphics, int x, int y, int width, int height, boolean selected, boolean hovered) {
-        int fill = selected ? 0xFF173B39 : hovered ? 0xFF142833 : PANEL_BG;
-        guiGraphics.fill(x, y, x + width, y + height, fill);
+        UiRenderer.control(guiGraphics, x, y, width, height, true, selected, hovered, 0xFFFFFFFF);
     }
 
     private void renderIdentityTileOverlay(GuiGraphics guiGraphics, int x, int y, int width, int height, boolean selected, boolean hovered) {
-        int activeEdge = selected ? ACCENT : hovered ? TEXT_PRIMARY : PANEL_EDGE;
-        int passiveEdge = selected ? ACCENT : hovered ? TEXT_PRIMARY : PANEL_DEEP;
+        int activeEdge = selected ? hovered ? TEXT_PRIMARY : ACCENT : hovered ? UiRenderer.PANEL_EDGE_ACTIVE : PANEL_EDGE;
+        int passiveEdge = activeEdge;
         guiGraphics.pose().pushPose();
         guiGraphics.pose().translate(0.0F, 0.0F, 250.0F);
         guiGraphics.fill(x, y, x + width, y + 1, activeEdge);
@@ -1011,24 +1005,9 @@ public final class FixerDialogScreen extends AbstractContainerScreen<FixerDialog
         guiGraphics.pose().popPose();
     }
 
-    private void renderIdentityScrollbar(GuiGraphics guiGraphics) {
-        int x = identityScrollbarX();
-        int y = identityScrollbarY();
-        int width = identityScrollbarWidth();
-        drawPanel(guiGraphics, x, y, width, IDENTITY_SCROLLBAR_HEIGHT, PANEL_BG);
-        guiGraphics.fill(x + 1, y + 1, x + width - 1, y + IDENTITY_SCROLLBAR_HEIGHT - 1, PANEL_DEEP);
-        int total = Math.max(1, availableSkins().size());
-        int visible = Math.min(IDENTITY_VISIBLE_SKINS, total);
-        int trackWidth = width - 2;
-        int thumbWidth = Math.max(18, Math.round(trackWidth * (visible / (float) total)));
-        int maxOffset = maxSkinScrollOffset();
-        int thumbX = x + 1;
-        if (maxOffset > 0) {
-            thumbX += Math.round((trackWidth - thumbWidth) * (skinPage / (float) maxOffset));
-        }
-        guiGraphics.fill(thumbX, y + 1, thumbX + thumbWidth, y + IDENTITY_SCROLLBAR_HEIGHT - 1, ACCENT);
+    private void renderIdentityScrollbar(GuiGraphics graphics) {
+        UiScrollbar.draw(graphics,identityTrack(),lastMouseX,lastMouseY,identityScrollbar.dragging());
     }
-
     private void renderNpcModel(GuiGraphics guiGraphics, ResourceLocation texture, int x, int y, int renderWidth, int renderHeight, boolean preview) {
         if (minecraft == null || minecraft.level == null) {
             return;
@@ -1106,11 +1085,14 @@ public final class FixerDialogScreen extends AbstractContainerScreen<FixerDialog
 
     private Component npcText() {
         if (mode == ConversationMode.DIALOGUE) {
+            if (menu.responseId() == FixerDialogMenu.RESPONSE_CACHE_INTEL) return Component.translatable(responseKey("cache_intel"));
+            if (menu.responseId() == FixerDialogMenu.RESPONSE_NO_CACHE_INTEL) return Component.translatable("message.cyberneticenhancements.cache_intel.none");
             return Component.translatable(currentNpcLineKey());
         }
         return switch (menu.responseId()) {
             case FixerDialogMenu.RESPONSE_INTRO -> Component.translatable(responseKey("intro"));
             case FixerDialogMenu.RESPONSE_CACHE_INTEL -> Component.translatable(responseKey("cache_intel"));
+            case FixerDialogMenu.RESPONSE_NO_CACHE_INTEL -> Component.translatable("message.cyberneticenhancements.cache_intel.none");
             case FixerDialogMenu.RESPONSE_STABILIZE_OK -> Component.translatable(responseKey("stabilize_ok"));
             case FixerDialogMenu.RESPONSE_NEED_FUNDS -> Component.translatable(responseKey("need_funds"));
             case FixerDialogMenu.RESPONSE_PURGE_LOCKED -> Component.translatable(responseKey("purge_locked"));
@@ -1196,11 +1178,7 @@ public final class FixerDialogScreen extends AbstractContainerScreen<FixerDialog
     }
 
     private void drawPanel(GuiGraphics guiGraphics, int x, int y, int width, int height, int fill) {
-        guiGraphics.fill(x, y, x + width, y + height, fill);
-        guiGraphics.fill(x, y, x + width, y + 1, PANEL_EDGE);
-        guiGraphics.fill(x, y + height - 1, x + width, y + height, PANEL_DEEP);
-        guiGraphics.fill(x, y, x + 1, y + height, PANEL_EDGE);
-        guiGraphics.fill(x + width - 1, y, x + width, y + height, PANEL_DEEP);
+        UiRenderer.panel(guiGraphics, x, y, width, height, fill);
     }
 
     private Component trustLabel() {
@@ -1479,7 +1457,7 @@ public final class FixerDialogScreen extends AbstractContainerScreen<FixerDialog
     }
 
     private int shopScrollbarWidth() {
-        return 8;
+        return UiScrollbar.WIDTH;
     }
 
     private int shopScrollbarHeight() {
@@ -1510,23 +1488,10 @@ public final class FixerDialogScreen extends AbstractContainerScreen<FixerDialog
         return hoveredShopSlot(mouseX, mouseY);
     }
 
-    private boolean clickedShopScrollbar(double mouseX, double mouseY) {
-        if (shopItemCount() <= visibleShopRowCount()) {
-            return false;
-        }
-        int x = shopScrollbarX();
-        int y = shopScrollbarY();
-        int width = shopScrollbarWidth();
-        int height = shopScrollbarHeight();
-        if (mouseX < x || mouseX >= x + width || mouseY < y || mouseY >= y + height) {
-            return false;
-        }
-        float ratio = (float) ((mouseY - y) / Math.max(1.0D, height - 1.0D));
-        shopScrollOffset = Math.max(0, Math.min(maxShopScrollOffset(), Math.round(ratio * maxShopScrollOffset())));
-        alignShopScrollToSelection();
-        return true;
+    private boolean clickedShopScrollbar(double mouseX,double mouseY) {
+        var track=shopTrack();if(!shopScrollbar.begin(track,mouseX,mouseY))return false;
+        shopScrollOffset=(int)Math.round(shopScrollbar.value(track,mouseX,mouseY));return true;
     }
-
     private int actionButtonsX() {
         return (mode == ConversationMode.IDENTITY || mode == ConversationMode.SHOP)
                 ? transcriptX() + PANEL_TEXT_PADDING_X
@@ -1608,6 +1573,7 @@ public final class FixerDialogScreen extends AbstractContainerScreen<FixerDialog
     }
 
     private final class ChoiceButton extends Button {
+        private final UiMotion highlight = new UiMotion();
         private ChoiceSpec spec;
 
         private ChoiceButton(int x, int y, int width, int height) {
@@ -1621,13 +1587,7 @@ public final class FixerDialogScreen extends AbstractContainerScreen<FixerDialog
         @Override
         public void renderWidget(GuiGraphics guiGraphics, int mouseX, int mouseY, float partialTick) {
             boolean hovered = isHovered();
-            int fill = !active ? 0xFF172028 : hovered ? 0xFF173B39 : PANEL_BG;
-            int top = !active ? PANEL_EDGE : hovered ? ACCENT : PANEL_EDGE;
-            guiGraphics.fill(getX(), getY(), getX() + width, getY() + height, fill);
-            guiGraphics.fill(getX(), getY(), getX() + width, getY() + 1, top);
-            guiGraphics.fill(getX(), getY() + height - 1, getX() + width, getY() + height, PANEL_DEEP);
-            guiGraphics.fill(getX(), getY(), getX() + 1, getY() + height, PANEL_EDGE);
-            guiGraphics.fill(getX() + width - 1, getY(), getX() + width, getY() + height, PANEL_DEEP);
+            UiRenderer.action(guiGraphics, getX(), getY(), width, height, active, highlight.update(active && (hovered || isFocused())));
             int contentInset = Math.max(3, (height - font.lineHeight) / 2);
             int textY = getY() + contentInset;
             int iconY = getY() + Math.max(0, (height - font.lineHeight) / 2) + CHOICE_ICON_Y_OFFSET;
@@ -1669,16 +1629,9 @@ public final class FixerDialogScreen extends AbstractContainerScreen<FixerDialog
 
         @Override
         public void renderWidget(GuiGraphics guiGraphics, int mouseX, int mouseY, float partialTick) {
-            int fill = preset.hidden()
-                    ? (active ? PANEL_BG : 0xFF2B2F36)
-                    : (active ? preset.rgb() : 0xFF2B2F36);
-            int top = selected ? ACCENT : isHovered() ? TEXT_PRIMARY : PANEL_EDGE;
-            guiGraphics.fill(getX(), getY(), getX() + width, getY() + height, fill);
-            guiGraphics.fill(getX(), getY(), getX() + width, getY() + 1, top);
-            guiGraphics.fill(getX(), getY() + height - 1, getX() + width, getY() + height, PANEL_DEEP);
-            guiGraphics.fill(getX(), getY(), getX() + 1, getY() + height, top);
-            guiGraphics.fill(getX() + width - 1, getY(), getX() + width, getY() + height, PANEL_DEEP);
-            if (preset.hidden()) {
+            UiRenderer.control(guiGraphics,getX(),getY(),width,height,active,selected,isHoveredOrFocused(),0xFFFFFFFF);
+            int fill=!active?UiRenderer.ROW_DISABLED:preset.hidden()?UiRenderer.FIELD:preset.rgb();
+            guiGraphics.fill(getX()+3,getY()+3,getX()+width-3,getY()+height-3,fill);            if (preset.hidden()) {
                 guiGraphics.renderItem(new ItemStack(Items.BARRIER), getX() + (width - 16) / 2, getY() + (height - 16) / 2);
             }
         }

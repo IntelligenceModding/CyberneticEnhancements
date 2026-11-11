@@ -146,6 +146,8 @@ public final class RelicCacheHackMenu extends AbstractBaseMenu implements NamedB
         return Math.max(1, syncedData[TIME_LIMIT_INDEX]);
     }
 
+    public int bufferSize() { return RelicCacheHackPuzzle.bufferSize(difficulty()); }
+
     public int selectedCount() {
         return Math.max(0, syncedData[SELECTED_COUNT_INDEX]);
     }
@@ -202,7 +204,7 @@ public final class RelicCacheHackMenu extends AbstractBaseMenu implements NamedB
     }
 
     public boolean isCellSelectable(int cellIndex) {
-        return hasActiveSession() && RelicCacheHackRules.isSelectable(gridSize(), selectedCount(), this::selectedCell, cellIndex);
+        return hasActiveSession() && selectedCount() < bufferSize() && RelicCacheHackRules.isSelectable(gridSize(), selectedCount(), this::selectedCell, cellIndex);
     }
 
     public int targetPrefixLength(int targetIndex) {

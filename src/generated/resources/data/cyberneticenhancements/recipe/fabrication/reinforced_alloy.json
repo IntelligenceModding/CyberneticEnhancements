@@ -1,0 +1,65 @@
+{
+  "type": "cyberneticenhancements:fabrication",
+  "parts": [
+    {
+      "ingredient": {
+        "item": "cyberneticenhancements:alloy_plate"
+      },
+      "slot": 6
+    },
+    {
+      "ingredient": {
+        "item": "minecraft:diamond"
+      },
+      "slot": 7
+    },
+    {
+      "ingredient": {
+        "item": "cyberneticenhancements:alloy_plate"
+      },
+      "slot": 8
+    },
+    {
+      "ingredient": {
+        "item": "minecraft:diamond"
+      },
+      "slot": 11
+    },
+    {
+      "ingredient": {
+        "item": "cyberneticenhancements:alloy_plate"
+      },
+      "slot": 12
+    },
+    {
+      "ingredient": {
+        "item": "minecraft:diamond"
+      },
+      "slot": 13
+    },
+    {
+      "ingredient": {
+        "item": "cyberneticenhancements:alloy_plate"
+      },
+      "slot": 16
+    },
+    {
+      "ingredient": {
+        "item": "minecraft:diamond"
+      },
+      "slot": 17
+    },
+    {
+      "ingredient": {
+        "item": "cyberneticenhancements:alloy_plate"
+      },
+      "slot": 18
+    }
+  ],
+  "result": {
+    "count": 4,
+    "id": "cyberneticenhancements:reinforced_alloy"
+  },
+  "ticks": 120,
+  "tier": 3
+}

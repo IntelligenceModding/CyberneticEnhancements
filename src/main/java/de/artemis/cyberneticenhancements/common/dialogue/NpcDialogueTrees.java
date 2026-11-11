@@ -31,7 +31,7 @@ public final class NpcDialogueTrees {
                     FIXER_ROOT, new NpcDialogueNode(FIXER_ROOT, line("fixer", "root"), List.of(
                             choice(1000, key("fixer", "respect"), player("fixer", "respect"), FIXER_CREDS, NpcDialogueView.DIALOGUE, 1, 0, false, "fixer_respect"),
                             choice(1001, key("fixer", "skeptical"), player("fixer", "skeptical"), FIXER_VALUES, NpcDialogueView.DIALOGUE, 0, 0, false, ""),
-                            choice(1002, key("fixer", "jobs"), player("fixer", "contracts"), FIXER_ROOT, NpcDialogueView.CONTRACTS, 0, 0, false, ""),
+                            choice(1020, key("fixer", "intel"), player("fixer", "caches"), FIXER_ROOT, NpcDialogueView.DIALOGUE, 0, 0, false, ""),
                             choice(1003, key("fixer", "insult"), player("fixer", "insult"), FIXER_ROOT, NpcDialogueView.CLOSE, -2, 2, true, "")
                     )),
                     FIXER_CREDS, new NpcDialogueNode(FIXER_CREDS, line("fixer", "credentials"), List.of(
@@ -41,7 +41,7 @@ public final class NpcDialogueTrees {
                             choice(1013, key("fixer", "dismiss"), player("fixer", "dismiss"), FIXER_ROOT, NpcDialogueView.CLOSE, -2, 2, true, "")
                     )),
                     FIXER_VALUES, new NpcDialogueNode(FIXER_VALUES, line("fixer", "values"), List.of(
-                            choice(1020, key("fixer", "intel"), player("fixer", "caches"), FIXER_VALUES, NpcDialogueView.DIALOGUE, 1, 0, false, "fixer_intel"),
+                            choice(1002, key("fixer", "jobs"), player("fixer", "contracts"), FIXER_VALUES, NpcDialogueView.SERVICES, 0, 0, false, ""),
                             choice(1021, key("fixer", "stock"), player("fixer", "shop"), FIXER_VALUES, NpcDialogueView.SHOP, 0, 0, false, ""),
                             choice(1022, key("fixer", "challenge"), player("fixer", "challenge"), FIXER_ROOT, NpcDialogueView.DIALOGUE, -1, 1, false, ""),
                             choice(1023, key("fixer", "walk"), player("fixer", "back"), FIXER_ROOT, NpcDialogueView.CLOSE, 0, 0, true, "")
@@ -142,7 +142,7 @@ public final class NpcDialogueTrees {
             int preparation = root + 4;
             int consequences = root + 5;
             int entryChoice = switch (type) {
-                case FIXER -> 1020;
+                case FIXER -> 1002;
                 case RIPPERDOC -> 1121;
                 case TECHIE -> 1220;
                 case NETRUNNER -> 1311;

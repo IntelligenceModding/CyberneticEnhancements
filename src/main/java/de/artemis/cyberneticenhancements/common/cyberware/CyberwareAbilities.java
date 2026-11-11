@@ -1,6 +1,8 @@
 package de.artemis.cyberneticenhancements.common.cyberware;
 
 import de.artemis.cyberneticenhancements.common.item.CyberwareItem;
+import de.artemis.cyberneticenhancements.common.cyberware.sandevistan.SandevistanManager;
+import de.artemis.cyberneticenhancements.common.cyberware.sandevistan.SandevistanProfile;
 import de.artemis.cyberneticenhancements.common.network.FaceHazardHighlightPayload;
 import net.minecraft.ChatFormatting;
 import net.minecraft.core.Holder;
@@ -88,11 +90,14 @@ public final class CyberwareAbilities {
             return;
         }
 
-        long cooldownUntil = ACTIVE_COOLDOWN_UNTIL_TICK.getOrDefault(player.getUUID(), 0L);
+        long cooldownUntil = Math.max(ACTIVE_COOLDOWN_UNTIL_TICK.getOrDefault(player.getUUID(), 0L),
+                gameTime + SandevistanManager.recoveryRemaining(player));
         if (cooldownUntil > gameTime) {
             notify(player, "message.cyberneticenhancements.ability.cooldown", (cooldownUntil - gameTime + 19L) / 20L);
             return;
         }
+
+        if (spec.family() == OperatingSystemFamily.SANDEVISTAN && !SandevistanManager.canActivate(player, spec.id())) return;
 
         clearActiveState(player, false, false);
         activateOperatingSystem(player, inventory, spec, gameTime);
@@ -116,7 +121,7 @@ public final class CyberwareAbilities {
         float healthRatio = player.getHealth() / Math.max(1.0F, player.getMaxHealth());
 
         if (healthRatio <= 0.35F && inventory.hasInstalledCyberware("biomonitor") && isReady(BIOMONITOR_COOLDOWN_UNTIL_TICK, player, gameTime)) {
-            player.heal(4.0F);
+            player.heal((float) (4.0 * CyberwareUpgradeHelper.functionMultiplier(inventory, "biomonitor")));
             TemporaryCyberwareEffectManager.addEffects(player, 160,
                     CyberwareEffect.healthRegen(1.0D),
                     CyberwareEffect.bonusAbsorption(4.0D));
@@ -126,7 +131,7 @@ public final class CyberwareAbilities {
         }
 
         if (healthRatio <= 0.25F && inventory.hasInstalledCyberware("blood_pump") && isReady(BLOOD_PUMP_COOLDOWN_UNTIL_TICK, player, gameTime)) {
-            player.heal(6.0F);
+            player.heal((float) (6.0 * CyberwareUpgradeHelper.functionMultiplier(inventory, "blood_pump")));
             TemporaryCyberwareEffectManager.addEffects(player, 200,
                     CyberwareEffect.bonusAbsorption(8.0D),
                     CyberwareEffect.damageReduction(0.10D));
@@ -136,7 +141,8 @@ public final class CyberwareAbilities {
         }
 
         if (healthRatio <= 0.15F && inventory.hasInstalledCyberware("second_heart") && isReady(SECOND_HEART_COOLDOWN_UNTIL_TICK, player, gameTime)) {
-            float healTarget = Math.max(player.getMaxHealth() * 0.5F, player.getHealth() + 10.0F);
+            double multiplier = CyberwareUpgradeHelper.functionMultiplier(inventory, "second_heart");
+            float healTarget = (float) Math.max(player.getMaxHealth() * 0.5 * multiplier, player.getHealth() + 10.0 * multiplier);
             player.setHealth(Math.min(player.getMaxHealth(), healTarget));
             TemporaryCyberwareEffectManager.addEffects(player, 240,
                     CyberwareEffect.healthRegen(1.5D),
@@ -167,15 +173,18 @@ public final class CyberwareAbilities {
             return;
         }
 
+        var sandevistan = SandevistanManager.session(player);
+        if (sandevistan != null) {
+            double condition = 0.55 + 0.45 * sandevistan.condition;
+            merge(totals, CyberwareEffectType.MOVEMENT_SPEED, sandevistan.profile.movement() * condition);
+            merge(totals, CyberwareEffectType.ATTACK_SPEED, sandevistan.profile.attackSpeed() * condition);
+        }
+
         switch (activeId) {
             case DYNALAR_SANDEVISTAN_ID -> {
-                merge(totals, CyberwareEffectType.MOVEMENT_SPEED, 0.25D);
-                merge(totals, CyberwareEffectType.ATTACK_SPEED, 0.25D);
                 merge(totals, CyberwareEffectType.ATTACK_DAMAGE, 1.5D);
             }
             case ZETATECH_SANDEVISTAN_ID -> {
-                merge(totals, CyberwareEffectType.MOVEMENT_SPEED, 0.25D);
-                merge(totals, CyberwareEffectType.ATTACK_SPEED, 0.25D);
                 merge(totals, CyberwareEffectType.ATTACK_DAMAGE, 2.0D);
                 if (!player.onGround()) {
                     merge(totals, CyberwareEffectType.MOVEMENT_SPEED, 0.15D);
@@ -184,21 +193,15 @@ public final class CyberwareAbilities {
                 }
             }
             case MILITECH_FALCON_ID -> {
-                merge(totals, CyberwareEffectType.MOVEMENT_SPEED, 0.30D);
-                merge(totals, CyberwareEffectType.ATTACK_SPEED, 0.30D);
                 merge(totals, CyberwareEffectType.ATTACK_DAMAGE, 3.0D);
                 merge(totals, CyberwareEffectType.JUMP_POWER, 0.20D);
             }
             case QIANT_WARP_DANCER_ID -> {
-                merge(totals, CyberwareEffectType.MOVEMENT_SPEED, 0.35D);
-                merge(totals, CyberwareEffectType.ATTACK_SPEED, 0.30D);
                 merge(totals, CyberwareEffectType.DAMAGE_REDUCTION, 0.15D);
                 merge(totals, CyberwareEffectType.JUMP_POWER, 0.20D);
                 merge(totals, CyberwareEffectType.FIRE_RESISTANCE, 0.0D);
             }
             case MILITECH_APOGEE_ID -> {
-                merge(totals, CyberwareEffectType.MOVEMENT_SPEED, 0.40D);
-                merge(totals, CyberwareEffectType.ATTACK_SPEED, 0.40D);
                 merge(totals, CyberwareEffectType.ATTACK_DAMAGE, 4.0D);
                 merge(totals, CyberwareEffectType.DAMAGE_REDUCTION, 0.10D);
                 merge(totals, CyberwareEffectType.JUMP_POWER, 0.35D);
@@ -293,21 +296,24 @@ public final class CyberwareAbilities {
             return;
         }
 
+        if (SandevistanProfile.supports(activeId)) {
+            var session = SandevistanManager.session(player);
+            if (session != null && target instanceof Enemy
+                    && (MILITECH_FALCON_ID.equals(activeId) || MILITECH_APOGEE_ID.equals(activeId))
+                    && session.rewardKill(target.getUUID(), MILITECH_FALCON_ID.equals(activeId) ? 20 : 30)) {
+                  ACTIVE_UNTIL_TICK.put(player.getUUID(), player.level().getGameTime()
+                          + Math.max(0, session.until() - player.getServer().overworld().getGameTime()));
+                ACTIVE_DURATION_SECONDS.put(player.getUUID(), (int) ((session.until() - session.started + 19) / 20));
+                if (MILITECH_FALCON_ID.equals(activeId)) player.heal(2);
+                else TemporaryCyberwareEffectManager.addEffects(player, 80L,
+                        CyberwareEffect.bonusAbsorption(4), CyberwareEffect.attackSpeed(0.10));
+            }
+            return;
+        }
+
         switch (activeId) {
             case BIODYN_BERSERK_ID, MILITECH_BERSERK_ID, MOORE_TECH_BERSERK_ID, ZETATECH_BERSERK_ID ->
                     ACTIVE_KILL_COUNTS.merge(player.getUUID(), 1, Integer::sum);
-            case MILITECH_FALCON_ID -> {
-                ACTIVE_KILL_COUNTS.merge(player.getUUID(), 1, Integer::sum);
-                extendActiveDuration(player, 20L);
-                player.heal(2.0F);
-            }
-            case MILITECH_APOGEE_ID -> {
-                ACTIVE_KILL_COUNTS.merge(player.getUUID(), 1, Integer::sum);
-                extendActiveDuration(player, 30L);
-                TemporaryCyberwareEffectManager.addEffects(player, 80L,
-                        CyberwareEffect.bonusAbsorption(4.0D),
-                        CyberwareEffect.attackSpeed(0.10D));
-            }
             default -> {
             }
         }
@@ -357,7 +363,7 @@ public final class CyberwareAbilities {
     }
 
     public static int getAbilityCooldownSecondsRemaining(Player player) {
-        return getRemainingSeconds(ACTIVE_COOLDOWN_UNTIL_TICK, player);
+        return Math.max(getRemainingSeconds(ACTIVE_COOLDOWN_UNTIL_TICK, player), (int) ((SandevistanManager.recoveryRemaining(player) + 19) / 20));
     }
 
     public static int getActiveTotalSeconds(Player player) {
@@ -365,7 +371,7 @@ public final class CyberwareAbilities {
     }
 
     public static int getAbilityCooldownTotalSeconds(Player player) {
-        return ACTIVE_COOLDOWN_SECONDS.getOrDefault(player.getUUID(), 0);
+        return Math.max(ACTIVE_COOLDOWN_SECONDS.getOrDefault(player.getUUID(), 0), SandevistanManager.recoveryTotalSeconds(player));
     }
 
     public static OperatingSystemFamily getActiveFamily(Player player) {
@@ -407,6 +413,17 @@ public final class CyberwareAbilities {
     }
 
     public static void clearCooldowns(Player player) {
+        stopActiveOperatingSystem(player);
+        SandevistanManager.resetRecovery(player);
+        clearTransientState(player);
+    }
+
+    public static void onPlayerLogout(Player player) {
+        stopActiveOperatingSystem(player);
+        clearTransientState(player);
+    }
+
+    private static void clearTransientState(Player player) {
         UUID playerId = player.getUUID();
         ACTIVE_UNTIL_TICK.remove(playerId);
         ACTIVE_COOLDOWN_UNTIL_TICK.remove(playerId);
@@ -437,6 +454,15 @@ public final class CyberwareAbilities {
         ACTIVE_COOLDOWN_SECONDS.remove(player.getUUID());
     }
 
+    public static void enforceAbilityCooldown(Player player, long until, long cooldownTicks) {
+        ACTIVE_COOLDOWN_UNTIL_TICK.merge(player.getUUID(), until, Math::max);
+        ACTIVE_COOLDOWN_SECONDS.put(player.getUUID(), (int) Math.max(1, (cooldownTicks + 19) / 20));
+    }
+
+    public static void stopActiveOperatingSystem(Player player) {
+        if (!player.level().isClientSide()) clearActiveState(player, false, true);
+    }
+
     public static void clearBiomonitorCooldown(Player player) {
         BIOMONITOR_COOLDOWN_UNTIL_TICK.remove(player.getUUID());
         BIOMONITOR_COOLDOWN_TOTAL_SECONDS.remove(player.getUUID());
@@ -459,16 +485,26 @@ public final class CyberwareAbilities {
 
     private static void activateOperatingSystem(Player player, PlayerCyberwareInventory inventory, OperatingSystemSpec spec, long gameTime) {
         long adjustedCooldown = FrontalCortexManager.adjustCyberwareCooldownTicks(player, inventory, spec.cooldownSeconds() * 20L, true);
+        if (spec.family() == OperatingSystemFamily.SANDEVISTAN) {
+            var stack = inventory.getStackInSlot(CyberwareSlot.OPERATING_SYSTEM_1.ordinal());
+            adjustedCooldown = de.artemis.cyberneticenhancements.common.cyberware.sandevistan.SandevistanUpgrades.cooldown(adjustedCooldown, stack);
+        }
+        long durationTicks = spec.family() == OperatingSystemFamily.SANDEVISTAN
+                ? SandevistanManager.adjustedDuration(player, spec.durationSeconds() * 20L) : spec.durationSeconds() * 20L;
         ACTIVE_OPERATING_SYSTEM.put(player.getUUID(), spec.id());
-        ACTIVE_UNTIL_TICK.put(player.getUUID(), gameTime + spec.durationSeconds() * 20L);
+        ACTIVE_UNTIL_TICK.put(player.getUUID(), gameTime + durationTicks);
         ACTIVE_COOLDOWN_UNTIL_TICK.put(player.getUUID(), gameTime + adjustedCooldown);
-        ACTIVE_DURATION_SECONDS.put(player.getUUID(), spec.durationSeconds());
+        ACTIVE_DURATION_SECONDS.put(player.getUUID(), (int) ((durationTicks + 19) / 20));
         ACTIVE_COOLDOWN_SECONDS.put(player.getUUID(), (int) Math.max(1L, (adjustedCooldown + 19L) / 20L));
         ACTIVE_KILL_COUNTS.put(player.getUUID(), 0);
         applyActivationEffects(player, spec);
-        CyberstrainManager.onCyberwareActivated(player, resolvePsychosisActivationLoad(spec));
+        if (spec.family() == OperatingSystemFamily.SANDEVISTAN) {
+            SandevistanManager.start(player, spec.id(), durationTicks, adjustedCooldown);
+        } else {
+            CyberstrainManager.onCyberwareActivated(player, resolvePsychosisActivationLoad(spec));
+        }
         CyberwareEffects.refreshPlayerCyberware(player);
-        notify(player, "message.cyberneticenhancements.ability.engaged", Component.translatable(spec.itemTranslationKey()), spec.durationSeconds());
+        notify(player, "message.cyberneticenhancements.ability.engaged", Component.translatable(spec.itemTranslationKey()), (durationTicks + 19) / 20);
     }
 
     private static void applyActivationEffects(Player player, OperatingSystemSpec spec) {
@@ -575,6 +611,7 @@ public final class CyberwareAbilities {
         ACTIVE_UNTIL_TICK.remove(playerId);
         ACTIVE_DURATION_SECONDS.remove(playerId);
         ACTIVE_KILL_COUNTS.remove(playerId);
+        if (SandevistanProfile.supports(activeId)) SandevistanManager.stop(player, false);
 
         if (ARASAKA_SHADOW_ID.equals(activeId)) {
             player.removeEffect(MobEffects.INVISIBILITY);
@@ -616,18 +653,6 @@ public final class CyberwareAbilities {
     private static boolean isCurrentlyActive(Player player, String activeId, long gameTime) {
         return activeId.equals(ACTIVE_OPERATING_SYSTEM.get(player.getUUID()))
                 && ACTIVE_UNTIL_TICK.getOrDefault(player.getUUID(), 0L) > gameTime;
-    }
-
-    private static void extendActiveDuration(Player player, long extensionTicks) {
-        if (extensionTicks <= 0L) {
-            return;
-        }
-
-        UUID playerId = player.getUUID();
-        long until = ACTIVE_UNTIL_TICK.getOrDefault(playerId, 0L);
-        if (until > player.level().getGameTime()) {
-            ACTIVE_UNTIL_TICK.put(playerId, until + extensionTicks);
-        }
     }
 
     private static void applyPulse(Player player, double radius, int maxTargets, PulseTemplate... effects) {
@@ -774,6 +799,7 @@ public final class CyberwareAbilities {
         register(systems, MILITECH_FALCON_ID, OperatingSystemFamily.SANDEVISTAN, "hud.cyberneticenhancements.ability.militech_falcon", 10, 30);
         register(systems, QIANT_WARP_DANCER_ID, OperatingSystemFamily.SANDEVISTAN, "hud.cyberneticenhancements.ability.qiant_warp_dancer", 8, 32);
         register(systems, MILITECH_APOGEE_ID, OperatingSystemFamily.SANDEVISTAN, "hud.cyberneticenhancements.ability.militech_apogee", 12, 34);
+        register(systems, SandevistanProfile.EXPERIMENTAL, OperatingSystemFamily.SANDEVISTAN, "hud.cyberneticenhancements.ability.militech_experimental_sandevistan", 8, 30);
         register(systems, CHROME_COMPRESSOR_ID, OperatingSystemFamily.NONE, "", 0, 0);
         return systems;
     }

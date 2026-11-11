@@ -7,23 +7,12 @@
 </p>
 
 <p align="center">
-  <strong>THIS MOD IS STILL IN BETA. EVERYTHING IS SUBJECT TO CHANGE.</strong><br>
-  <strong>Game-breaking changes, world-breaking changes, and incompatible saves are completely possible between updates.</strong>
-</p>
-
-<p align="center">
-  Features, balance, progression, recipes, and saved-data formats may change or be removed without backward compatibility.<br>
-  Updates may make existing worlds or player data unusable and may require a new world.<br>
-  <strong>Always back up your worlds before installing or updating. Use a separate test world if you want to avoid risking an existing save.</strong>
-</p>
-
-<p align="center">
   Cybernetic Enhancements brings cyberware, body upgrades, and cyberpunk-inspired progression to Minecraft.
 </p>
 
 <p align="center">
   Build a loadout of implants, manage the strain on your body, work with specialist NPCs, complete contracts, and breach relic caches for rewards.<br>
-  An in-game archive brings together cyberware information, contacts, banking, and your quest log.
+  The Neural Archive brings together the wiki, schematic collection, contacts, banking, and your quest log.
 </p>
 
 <br>
@@ -43,7 +32,7 @@
 </p>
 
 <p align="center">
-  <strong>JEI is optional.</strong> Installing it adds recipe browsing integration, including a recycling category for the Recycler Station.
+  <strong>JEI is optional.</strong> Browse recycling recipes and learned fabrication recipes through its recipe integration.
 </p>
 
 <br>
@@ -53,67 +42,35 @@
 </p>
 
 <p align="center">
-  <strong>Build and maintain your cyberware loadout</strong>
+  Build and maintain a cyberware loadout suited to your playstyle:
 </p>
 
 <p align="center">
-  &bull; Implants for the frontal cortex, operating system, face, arms, hands, skeleton, nervous system, circulatory system, integumentary system, and legs<br>
-  &bull; Tiered cyberware with passive bonuses, triggered effects, and activated abilities<br>
-  &bull; Operating-system families including Berserk, Sandevistan, and cyberdecks<br>
+  &bull; Implants for ten body systems, with tiered hardware and datapack-defined upgrades<br>
+  &bull; Passive bonuses, triggered effects, and activated abilities<br>
+  &bull; Berserk, Sandevistan, and cyberdeck operating systems<br>
+  &bull; Local time dilation and holographic afterimages with Sandevistan<br>
   &bull; Swappable skill chips and arm/leg modules<br>
   &bull; Chrome capacity, cyberstrain, cyberpsychosis, and implant condition<br>
-  &bull; Medical and performance consumables with cooldowns and overdose effects
+  &bull; Medical and performance consumables
 </p>
 
 <p align="center">
-  Install and manage implants at the <strong>Ripper Station</strong>, repair and upgrade equipment at the <strong>Tech Station</strong>, and recover materials at the <strong>Recycler Station</strong>.<br>
-  Upgrade supported slot tiers as you progress, and balance stronger hardware against capacity, condition, and cyberstrain.
+  Learn schematics to unlock recipes at the <strong>Cyberware Fabricator</strong>, then install implants at the <strong>Ripper Station</strong>.<br>
+  Maintain your loadout with separate <strong>Repair</strong>, <strong>Upgrade</strong>, and <strong>Recycler Stations</strong>.<br>
+  Meet Fixers, Ripperdocs, Techies, Netrunners, and Mercs for contracts, supplies, and specialist services.<br>
+  Explore tiered relic caches, get compass leads from Fixers and Netrunners, and solve timed breach puzzles.
 </p>
 
 <p align="center">
-  <strong>Meet NPCs and take on contracts</strong>
+  Track learned schematics, browse the cyberware wiki, manage contacts and quests, and use Eurodollar banking in the Neural Archive.<br>
+  A configurable HUD displays cyberware load, cyberstrain, ability cooldowns, and active effects.
 </p>
 
 <p align="center">
-  Encounter <strong>Fixers, Ripperdocs, Techies, Netrunners, and Mercs</strong> with specialist services, supplies, and dialogue shared by NPC type.<br>
-  Build trust, earn discounts and service access where supported, and deal with annoyance and refusal when relationships turn sour.<br>
-  At maximum trust, unlock identity customization, including nicknames, appearances, and name colors.<br>
-  NPC appearances support both slim and wide-arm skins, independently of male/female categories.
-</p>
-
-<p align="center">
-  Contracts cover six objective types:<br>
-  &bull; <strong>Delivery:</strong> move a courier package to a designated stash<br>
-  &bull; <strong>Extraction:</strong> retrieve a marked data shard and return it to the issuer<br>
-  &bull; <strong>Investigation:</strong> follow and interact with a series of signal sites<br>
-  &bull; <strong>Breach:</strong> successfully hack a designated relic cache<br>
-  &bull; <strong>Elimination:</strong> defeat specified mobs inside a hunt zone, with limited encounters generated as you approach<br>
-  &bull; <strong>Recovery:</strong> gather and turn in requested materials
-</p>
-
-<p align="center">
-  Track objectives and guidance items through the quest log, then return completed work for Eurodollars, trust, and applicable item rewards.
-</p>
-
-<p align="center">
-  <strong>Explore, breach, and manage your resources</strong>
-</p>
-
-<p align="center">
-  Discover tiered relic caches in supported structures, from temples and outposts to ancient cities and End Cities.<br>
-  Solve a timed hacking puzzle by starting in the top row, alternating column and row selections, and matching every required token sequence.<br>
-  Sequence progress, legal-move highlighting, and retry feedback help you follow the breach; closing the screen does not pause its timer.
-</p>
-
-<p align="center">
-  Manage <strong>Eurodollar balances, player transfers, payment requests, and transaction history</strong> through the archive's banking interface.<br>
-  Use the archive for NPC contacts, quest tracking, and the cyberware wiki.<br>
-  A translucent HUD shows cyberware load, cyberstrain, ability cooldowns, and active effects.
-</p>
-
-<p align="center">
-  Default controls: <strong>J</strong> opens the archive, <strong>H</strong> toggles the HUD, and <strong>V / B / G / C</strong> activate operating-system, auxiliary, arm, and face abilities.<br>
-  Key bindings can be changed in Minecraft's Controls menu. Configuration files provide gameplay balance and NPC identity settings.
+  <a href="DATAPACKS.md"><img src="https://img.shields.io/badge/Datapacks-Reference-2D6CDF?style=for-the-badge&logo=databricks&logoColor=white" alt="Cybernetic Enhancements datapack reference"></a>
+  &nbsp;&nbsp;&nbsp;
+  <a href="CONFIG.md"><img src="https://img.shields.io/badge/Config-Reference-2D6CDF?style=for-the-badge&logo=readthedocs&logoColor=white" alt="Cybernetic Enhancements config reference"></a>
 </p>
 
 <br>
@@ -123,31 +80,23 @@
 </p>
 
 <p align="center">
-  Bug reports and feature suggestions are welcome, especially during beta testing.<br>
-  When reporting a problem, include your mod version, NeoForge version, reproduction steps, and relevant logs or crash reports.<br>
-  Mention whether the issue happens in singleplayer or on a dedicated server.
+  Bug reports, feature requests, version support requests, and contributions are welcome.
 </p>
 
 <p align="center">
-  <a href="https://github.com/IntelligenceModding/Cybernetic-Enhancements/issues/new/choose"><img src="https://img.shields.io/badge/GitHub-Issues-181717?style=for-the-badge&logo=github&logoColor=white" alt="Cybernetic Enhancements issues"></a>
-  &nbsp;&nbsp;&nbsp;
-  <a href="https://github.com/IntelligenceModding/Cybernetic-Enhancements/releases"><img src="https://img.shields.io/badge/GitHub-Releases-181717?style=for-the-badge&logo=github&logoColor=white" alt="Cybernetic Enhancements releases"></a>
+  Please read the contribution guidelines before submitting changes and use the appropriate issue form when reporting problems or suggesting improvements.
 </p>
 
 <p align="center">
   <a href="CONTRIBUTING.md"><img src="https://img.shields.io/badge/GitHub-Contributing%20Guidelines-181717?style=for-the-badge&logo=github&logoColor=white" alt="Contribution Guidelines"></a>
   &nbsp;&nbsp;&nbsp;
-  <a href="SUPPORT.md"><img src="https://img.shields.io/badge/GitHub-Support-181717?style=for-the-badge&logo=github&logoColor=white" alt="Support"></a>
-  &nbsp;&nbsp;&nbsp;
-  <a href="CODE_OF_CONDUCT.md"><img src="https://img.shields.io/badge/GitHub-Code%20of%20Conduct-181717?style=for-the-badge&logo=github&logoColor=white" alt="Code of Conduct"></a>
+  <a href="https://github.com/IntelligenceModding/Cybernetic-Enhancements/issues/new/choose"><img src="https://img.shields.io/badge/GitHub-Issues-181717?style=for-the-badge&logo=github&logoColor=white" alt="GitHub Issues"></a>
 </p>
 
 <p align="center">
-  For source builds, use JDK 21 and the included Gradle wrapper:<br>
-  <code>./gradlew runData</code>, then <code>./gradlew clean build</code>.<br>
-  On Windows, use <code>.&#92;gradlew.bat runData</code>, then <code>.&#92;gradlew.bat clean build</code>.<br>
-  Release JARs are written to <code>build/libs/</code>.<br>
-  Generated resources belong in <code>src/generated/resources/</code>; its <code>.cache/</code> directory is excluded from the release JAR.
+  <a href="SUPPORT.md"><img src="https://img.shields.io/badge/GitHub-Support-181717?style=for-the-badge&logo=github&logoColor=white" alt="Support"></a>
+  &nbsp;&nbsp;&nbsp;
+  <a href="CODE_OF_CONDUCT.md"><img src="https://img.shields.io/badge/GitHub-Code%20of%20Conduct-181717?style=for-the-badge&logo=github&logoColor=white" alt="Code of Conduct"></a>
 </p>
 
 <br>
@@ -161,7 +110,7 @@
 </p>
 
 <p align="center">
-  Follow the project or join the community for updates, previews, feedback, and modding help.
+  Follow the project, browse releases, or join the community for updates, previews, and modding help.
 </p>
 
 <p align="center">

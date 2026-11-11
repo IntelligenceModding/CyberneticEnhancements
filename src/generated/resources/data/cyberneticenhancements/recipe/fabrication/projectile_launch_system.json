@@ -1,0 +1,120 @@
+{
+  "type": "cyberneticenhancements:fabrication",
+  "category": "ARMS",
+  "parts": [
+    {
+      "ingredient": {
+        "item": "cyberneticenhancements:alloy_plate"
+      },
+      "slot": 0
+    },
+    {
+      "ingredient": {
+        "item": "cyberneticenhancements:alloy_plate"
+      },
+      "slot": 4
+    },
+    {
+      "ingredient": {
+        "item": "cyberneticenhancements:micro_actuator"
+      },
+      "slot": 5
+    },
+    {
+      "ingredient": {
+        "item": "cyberneticenhancements:neural_interface"
+      },
+      "slot": 6
+    },
+    {
+      "ingredient": {
+        "item": "cyberneticenhancements:neural_interface"
+      },
+      "slot": 8
+    },
+    {
+      "ingredient": {
+        "item": "cyberneticenhancements:micro_actuator"
+      },
+      "slot": 9
+    },
+    {
+      "ingredient": {
+        "item": "cyberneticenhancements:copper_wiring"
+      },
+      "slot": 10
+    },
+    {
+      "ingredient": {
+        "item": "cyberneticenhancements:firmware_module"
+      },
+      "slot": 11
+    },
+    {
+      "ingredient": {
+        "item": "cyberneticenhancements:precision_chassis"
+      },
+      "slot": 12
+    },
+    {
+      "ingredient": {
+        "item": "cyberneticenhancements:firmware_module"
+      },
+      "slot": 13
+    },
+    {
+      "ingredient": {
+        "item": "cyberneticenhancements:copper_wiring"
+      },
+      "slot": 14
+    },
+    {
+      "ingredient": {
+        "item": "cyberneticenhancements:micro_actuator"
+      },
+      "slot": 15
+    },
+    {
+      "ingredient": {
+        "item": "cyberneticenhancements:neural_interface"
+      },
+      "slot": 16
+    },
+    {
+      "ingredient": {
+        "item": "cyberneticenhancements:neural_interface"
+      },
+      "slot": 18
+    },
+    {
+      "ingredient": {
+        "item": "cyberneticenhancements:micro_actuator"
+      },
+      "slot": 19
+    },
+    {
+      "ingredient": {
+        "item": "cyberneticenhancements:alloy_plate"
+      },
+      "slot": 20
+    },
+    {
+      "ingredient": {
+        "item": "cyberneticenhancements:micro_battery"
+      },
+      "slot": 22
+    },
+    {
+      "ingredient": {
+        "item": "cyberneticenhancements:alloy_plate"
+      },
+      "slot": 24
+    }
+  ],
+  "result": {
+    "count": 1,
+    "id": "cyberneticenhancements:projectile_launch_system"
+  },
+  "ticks": 200,
+  "tier": 2
+}

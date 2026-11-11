@@ -367,7 +367,7 @@ public final class ArmCyberwareManager {
         long activeTicks = activeSeconds * 20L;
         ACTIVE_ARM_UNTIL_TICKS.put(player.getUUID(), player.level().getGameTime() + activeTicks);
         ACTIVE_ARM_TOTAL_SECONDS.put(player.getUUID(), activeSeconds);
-        TemporaryCyberwareEffectManager.addEffect(player, CyberwareEffect.breakSpeed(CyberwareBalance.doubleValue("arms.excavator.break_speed_bonus")), activeTicks);
+        TemporaryCyberwareEffectManager.addEffect(player, CyberwareEffect.breakSpeed(CyberwareUpgradeHelper.performance(inventory, "excavator_arms", "arms.excavator.break_speed_bonus")), activeTicks);
         startCooldown(player, inventory, CyberwareBalance.intValue("arms.excavator.cooldown_seconds"));
         spawnExcavatorActivationFeedback(player);
         notify(player, "message.cyberneticenhancements.arms.excavator_mode", Component.translatable(itemTranslationKey(id)), activeSeconds);

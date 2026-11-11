@@ -1,11 +1,28 @@
 {
   "type": "cyberneticenhancements:recycling",
-  "damage_sensitive": true,
+  "damaged_outputs": [
+    {
+      "count": 1,
+      "id": "cyberneticenhancements:alloy_plate"
+    }
+  ],
   "ingredient": {
     "item": "cyberneticenhancements:rara_avis"
   },
-  "result": {
-    "count": 4,
-    "id": "cyberneticenhancements:epic_item_components"
-  }
+  "outputs": [
+    {
+      "count": 1,
+      "id": "cyberneticenhancements:alloy_plate"
+    },
+    {
+      "count": 1,
+      "id": "cyberneticenhancements:thermal_regulator"
+    }
+  ],
+  "worn_outputs": [
+    {
+      "count": 1,
+      "id": "cyberneticenhancements:alloy_plate"
+    }
+  ]
 }

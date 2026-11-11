@@ -1,0 +1,33 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "key": {
+    "C": {
+      "item": "cyberneticenhancements:basic_circuit_plate"
+    },
+    "E": {
+      "item": "cyberneticenhancements:uncommon_item_components"
+    },
+    "I": {
+      "item": "minecraft:iron_ingot"
+    },
+    "P": {
+      "item": "cyberneticenhancements:conductive_paste"
+    },
+    "R": {
+      "item": "minecraft:redstone"
+    },
+    "S": {
+      "item": "minecraft:smithing_table"
+    }
+  },
+  "pattern": [
+    "ICI",
+    "RSR",
+    "EPE"
+  ],
+  "result": {
+    "count": 1,
+    "id": "cyberneticenhancements:upgrade_station"
+  }
+}

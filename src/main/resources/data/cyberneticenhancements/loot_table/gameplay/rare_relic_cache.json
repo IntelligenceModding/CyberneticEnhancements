@@ -1,61 +1,178 @@
 {
-  "type": "minecraft:chest",
-  "pools": [
-    {
-      "rolls": 1,
-      "entries": [
-        { "type": "minecraft:item", "name": "cyberneticenhancements:harvester_hands", "weight": 9 },
-        { "type": "minecraft:item", "name": "cyberneticenhancements:hydrolung", "weight": 8 },
-        { "type": "minecraft:item", "name": "cyberneticenhancements:kiroshi_retrieval_suite", "weight": 8 },
-        { "type": "minecraft:item", "name": "cyberneticenhancements:vein_reader_optics", "weight": 7 },
-        { "type": "minecraft:item", "name": "cyberneticenhancements:brushstep_legs", "weight": 7 },
-        { "type": "minecraft:item", "name": "cyberneticenhancements:reach_extender", "weight": 7 },
-        { "type": "minecraft:item", "name": "cyberneticenhancements:combat_actuator", "weight": 7 },
-        { "type": "minecraft:item", "name": "cyberneticenhancements:dash_piston", "weight": 6 },
-        { "type": "minecraft:item", "name": "cyberneticenhancements:sprint_motor", "weight": 6 },
-        { "type": "minecraft:item", "name": "cyberneticenhancements:climbing_servo", "weight": 6 },
-        { "type": "minecraft:item", "name": "cyberneticenhancements:scout_skillchip", "weight": 5 },
-        { "type": "minecraft:item", "name": "cyberneticenhancements:combat_skillchip", "weight": 5 },
-        { "type": "minecraft:item", "name": "cyberneticenhancements:runner_skillchip", "weight": 5 },
-        { "type": "minecraft:item", "name": "cyberneticenhancements:relic_scanner", "weight": 3 }
-      ]
-    },
-    {
-      "rolls": {
-        "type": "minecraft:uniform",
-        "min": 1.0,
-        "max": 2.0
-      },
-      "entries": [
-        {
-          "type": "minecraft:item",
-          "name": "cyberneticenhancements:uncommon_item_components",
-          "weight": 10,
-          "functions": [{ "function": "minecraft:set_count", "count": { "type": "minecraft:uniform", "min": 2.0, "max": 4.0 } }]
-        },
-        {
-          "type": "minecraft:item",
-          "name": "cyberneticenhancements:rare_item_components",
-          "weight": 7,
-          "functions": [{ "function": "minecraft:set_count", "count": { "type": "minecraft:uniform", "min": 1.0, "max": 2.0 } }]
-        },
-        {
-          "type": "minecraft:item",
-          "name": "cyberneticenhancements:sensor_lens",
-          "weight": 6,
-          "functions": [{ "function": "minecraft:set_count", "count": { "type": "minecraft:uniform", "min": 1.0, "max": 2.0 } }]
-        },
-        {
-          "type": "minecraft:item",
-          "name": "cyberneticenhancements:micro_battery",
-          "weight": 6,
-          "functions": [{ "function": "minecraft:set_count", "count": { "type": "minecraft:uniform", "min": 1.0, "max": 2.0 } }]
-        },
-        { "type": "minecraft:item", "name": "cyberneticenhancements:maxdoc_mk3", "weight": 4 },
-        { "type": "minecraft:item", "name": "cyberneticenhancements:bounce_back_mk3", "weight": 4 },
-        { "type": "minecraft:item", "name": "cyberneticenhancements:ram_jolt", "weight": 4 },
-        { "type": "minecraft:item", "name": "cyberneticenhancements:capacity_booster", "weight": 3 }
-      ]
-    }
-  ]
+    "type":  "minecraft:chest",
+    "pools":  [
+                  {
+                      "rolls":  1,
+                      "entries":  [
+                                      {
+                                          "type":  "minecraft:item",
+                                          "name":  "cyberneticenhancements:harvester_hands",
+                                          "weight":  9
+                                      },
+                                      {
+                                          "type":  "minecraft:item",
+                                          "name":  "cyberneticenhancements:hydrolung",
+                                          "weight":  8
+                                      },
+                                      {
+                                          "type":  "minecraft:item",
+                                          "name":  "cyberneticenhancements:kiroshi_retrieval_suite",
+                                          "weight":  8
+                                      },
+                                      {
+                                          "type":  "minecraft:item",
+                                          "name":  "cyberneticenhancements:vein_reader_optics",
+                                          "weight":  7
+                                      },
+                                      {
+                                          "type":  "minecraft:item",
+                                          "name":  "cyberneticenhancements:brushstep_legs",
+                                          "weight":  7
+                                      },
+                                      {
+                                          "type":  "minecraft:item",
+                                          "name":  "cyberneticenhancements:reach_extender",
+                                          "weight":  7
+                                      },
+                                      {
+                                          "type":  "minecraft:item",
+                                          "name":  "cyberneticenhancements:combat_actuator",
+                                          "weight":  7
+                                      },
+                                      {
+                                          "type":  "minecraft:item",
+                                          "name":  "cyberneticenhancements:dash_piston",
+                                          "weight":  6
+                                      },
+                                      {
+                                          "type":  "minecraft:item",
+                                          "name":  "cyberneticenhancements:sprint_motor",
+                                          "weight":  6
+                                      },
+                                      {
+                                          "type":  "minecraft:item",
+                                          "name":  "cyberneticenhancements:climbing_servo",
+                                          "weight":  6
+                                      },
+                                      {
+                                          "type":  "minecraft:item",
+                                          "name":  "cyberneticenhancements:scout_skillchip",
+                                          "weight":  5
+                                      },
+                                      {
+                                          "type":  "minecraft:item",
+                                          "name":  "cyberneticenhancements:combat_skillchip",
+                                          "weight":  5
+                                      },
+                                      {
+                                          "type":  "minecraft:item",
+                                          "name":  "cyberneticenhancements:runner_skillchip",
+                                          "weight":  5
+                                      },
+                                      {
+                                          "type":  "minecraft:item",
+                                          "name":  "cyberneticenhancements:relic_scanner",
+                                          "weight":  3
+                                      }
+                                  ]
+                  },
+                  {
+                      "rolls":  {
+                                    "type":  "minecraft:uniform",
+                                    "min":  1.0,
+                                    "max":  2.0
+                                },
+                      "entries":  [
+                                      {
+                                          "type":  "minecraft:item",
+                                          "name":  "cyberneticenhancements:uncommon_item_components",
+                                          "weight":  10,
+                                          "functions":  [
+                                                            {
+                                                                "function":  "minecraft:set_count",
+                                                                "count":  {
+                                                                              "type":  "minecraft:uniform",
+                                                                              "min":  2.0,
+                                                                              "max":  4.0
+                                                                          }
+                                                            }
+                                                        ]
+                                      },
+                                      {
+                                          "type":  "minecraft:item",
+                                          "name":  "cyberneticenhancements:rare_item_components",
+                                          "weight":  7,
+                                          "functions":  [
+                                                            {
+                                                                "function":  "minecraft:set_count",
+                                                                "count":  {
+                                                                              "type":  "minecraft:uniform",
+                                                                              "min":  1.0,
+                                                                              "max":  2.0
+                                                                          }
+                                                            }
+                                                        ]
+                                      },
+                                      {
+                                          "type":  "minecraft:item",
+                                          "name":  "cyberneticenhancements:sensor_lens",
+                                          "weight":  6,
+                                          "functions":  [
+                                                            {
+                                                                "function":  "minecraft:set_count",
+                                                                "count":  {
+                                                                              "type":  "minecraft:uniform",
+                                                                              "min":  1.0,
+                                                                              "max":  2.0
+                                                                          }
+                                                            }
+                                                        ]
+                                      },
+                                      {
+                                          "type":  "minecraft:item",
+                                          "name":  "cyberneticenhancements:micro_battery",
+                                          "weight":  6,
+                                          "functions":  [
+                                                            {
+                                                                "function":  "minecraft:set_count",
+                                                                "count":  {
+                                                                              "type":  "minecraft:uniform",
+                                                                              "min":  1.0,
+                                                                              "max":  2.0
+                                                                          }
+                                                            }
+                                                        ]
+                                      },
+                                      {
+                                          "type":  "minecraft:item",
+                                          "name":  "cyberneticenhancements:maxdoc_mk3",
+                                          "weight":  4
+                                      },
+                                      {
+                                          "type":  "minecraft:item",
+                                          "name":  "cyberneticenhancements:bounce_back_mk3",
+                                          "weight":  4
+                                      },
+                                      {
+                                          "type":  "minecraft:item",
+                                          "name":  "cyberneticenhancements:ram_jolt",
+                                          "weight":  4
+                                      },
+                                      {
+                                          "type":  "minecraft:item",
+                                          "name":  "cyberneticenhancements:capacity_booster",
+                                          "weight":  3
+                                      }
+                                  ]
+                  },
+                  {
+                      "rolls":  1,
+                      "entries":  [
+                                      {
+                                          "type":  "minecraft:loot_table",
+                                          "value":  "cyberneticenhancements:fabrication/discoveries_3"
+                                      }
+                                  ]
+                  }
+              ]
 }

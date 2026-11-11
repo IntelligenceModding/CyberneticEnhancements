@@ -1,0 +1,54 @@
+{
+  "type": "cyberneticenhancements:fabrication",
+  "category": "Modules",
+  "parts": [
+    {
+      "ingredient": {
+        "item": "cyberneticenhancements:alloy_plate"
+      },
+      "slot": 6
+    },
+    {
+      "ingredient": {
+        "item": "cyberneticenhancements:micro_actuator"
+      },
+      "slot": 7
+    },
+    {
+      "ingredient": {
+        "item": "cyberneticenhancements:alloy_plate"
+      },
+      "slot": 8
+    },
+    {
+      "ingredient": {
+        "item": "cyberneticenhancements:copper_wiring"
+      },
+      "slot": 11
+    },
+    {
+      "ingredient": {
+        "item": "cyberneticenhancements:firmware_module"
+      },
+      "slot": 12
+    },
+    {
+      "ingredient": {
+        "item": "cyberneticenhancements:copper_wiring"
+      },
+      "slot": 13
+    },
+    {
+      "ingredient": {
+        "item": "cyberneticenhancements:replacement_joint"
+      },
+      "slot": 17
+    }
+  ],
+  "result": {
+    "count": 1,
+    "id": "cyberneticenhancements:stealth_foot"
+  },
+  "ticks": 160,
+  "tier": 3
+}

@@ -187,7 +187,7 @@ public final class LegCyberwareManager {
         }
 
         if (brushstepCount > 0 && isBrushstepTerrain(player)) {
-            merge(totals, CyberwareEffectType.MOVEMENT_SPEED, CyberwareBalance.doubleValue("legs.brushstep_speed_bonus") * brushstepCount);
+            merge(totals, CyberwareEffectType.MOVEMENT_SPEED, CyberwareUpgradeHelper.performance(inventory, "brushstep_legs", "legs.brushstep_speed_bonus") * brushstepCount);
             merge(totals, CyberwareEffectType.STEP_HEIGHT, CyberwareBalance.doubleValue("legs.brushstep_step_height_bonus") * brushstepCount);
             merge(totals, CyberwareEffectType.SAFE_FALL_DISTANCE, 1.0D * brushstepCount);
         }

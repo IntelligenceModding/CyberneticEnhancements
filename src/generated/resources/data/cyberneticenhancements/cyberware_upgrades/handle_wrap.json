@@ -1,0 +1,44 @@
+{
+  "levels": [
+    {
+      "effects": {
+        "attack_speed": 0.025
+      },
+      "materials": [
+        {
+          "count": 3,
+          "item": "cyberneticenhancements:common_item_components"
+        },
+        {
+          "count": 1,
+          "item": "cyberneticenhancements:micro_actuator"
+        }
+      ]
+    },
+    {
+      "effects": {
+        "attack_speed": 0.05
+      },
+      "materials": [
+        {
+          "count": 4,
+          "item": "cyberneticenhancements:common_item_components"
+        },
+        {
+          "count": 1,
+          "item": "cyberneticenhancements:micro_actuator"
+        }
+      ]
+    }
+  ],
+  "repair_materials": [
+    {
+      "count": 3,
+      "item": "cyberneticenhancements:common_item_components"
+    },
+    {
+      "count": 1,
+      "item": "cyberneticenhancements:replacement_joint"
+    }
+  ]
+}

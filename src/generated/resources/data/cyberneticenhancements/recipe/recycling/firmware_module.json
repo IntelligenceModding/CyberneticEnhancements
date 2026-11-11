@@ -1,0 +1,25 @@
+{
+  "type": "cyberneticenhancements:recycling",
+  "damaged_outputs": [
+    {
+      "count": 1,
+      "id": "minecraft:redstone"
+    }
+  ],
+  "group": "fabrication",
+  "ingredient": {
+    "item": "cyberneticenhancements:firmware_module"
+  },
+  "outputs": [
+    {
+      "count": 1,
+      "id": "minecraft:redstone"
+    }
+  ],
+  "worn_outputs": [
+    {
+      "count": 1,
+      "id": "minecraft:redstone"
+    }
+  ]
+}

@@ -1,0 +1,52 @@
+{
+  "type": "cyberneticenhancements:fabrication",
+  "parts": [
+    {
+      "ingredient": {
+        "item": "cyberneticenhancements:servo_screws"
+      },
+      "slot": 6
+    },
+    {
+      "ingredient": {
+        "item": "minecraft:iron_ingot"
+      },
+      "slot": 7
+    },
+    {
+      "ingredient": {
+        "item": "cyberneticenhancements:servo_screws"
+      },
+      "slot": 8
+    },
+    {
+      "ingredient": {
+        "item": "cyberneticenhancements:copper_wiring"
+      },
+      "slot": 11
+    },
+    {
+      "ingredient": {
+        "item": "minecraft:redstone"
+      },
+      "slot": 12
+    },
+    {
+      "ingredient": {
+        "item": "cyberneticenhancements:copper_wiring"
+      },
+      "slot": 13
+    },
+    {
+      "ingredient": {
+        "item": "cyberneticenhancements:servo_screws"
+      },
+      "slot": 17
+    }
+  ],
+  "result": {
+    "count": 4,
+    "id": "cyberneticenhancements:micro_actuator"
+  },
+  "ticks": 80
+}

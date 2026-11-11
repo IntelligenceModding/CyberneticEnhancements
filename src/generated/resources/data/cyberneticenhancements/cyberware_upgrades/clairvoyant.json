@@ -1,0 +1,66 @@
+{
+  "levels": [
+    {
+      "function_multiplier": 1.1,
+      "materials": [
+        {
+          "count": 1,
+          "item": "cyberneticenhancements:rare_item_components"
+        },
+        {
+          "count": 1,
+          "item": "cyberneticenhancements:optical_array"
+        }
+      ]
+    },
+    {
+      "function_multiplier": 1.2,
+      "materials": [
+        {
+          "count": 1,
+          "item": "cyberneticenhancements:rare_item_components"
+        },
+        {
+          "count": 1,
+          "item": "cyberneticenhancements:optical_array"
+        }
+      ]
+    },
+    {
+      "function_multiplier": 1.3,
+      "materials": [
+        {
+          "count": 2,
+          "item": "cyberneticenhancements:rare_item_components"
+        },
+        {
+          "count": 1,
+          "item": "cyberneticenhancements:optical_array"
+        }
+      ]
+    },
+    {
+      "function_multiplier": 1.4,
+      "materials": [
+        {
+          "count": 2,
+          "item": "cyberneticenhancements:rare_item_components"
+        },
+        {
+          "count": 2,
+          "item": "cyberneticenhancements:optical_array"
+        }
+      ]
+    }
+  ],
+  "repair_materials": [
+    {
+      "count": 2,
+      "item": "cyberneticenhancements:rare_item_components"
+    },
+    {
+      "count": 2,
+      "item": "cyberneticenhancements:sensor_lens"
+    }
+  ]
+}

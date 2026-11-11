@@ -1,395 +1,119 @@
 package de.artemis.cyberneticenhancements.client.screen;
 
-import de.artemis.cyberneticenhancements.CyberneticEnhancements;
-import de.artemis.cyberneticenhancements.common.cyberware.CyberwareTier;
-import de.artemis.cyberneticenhancements.common.cyberware.CyberwareServicePlan;
-import de.artemis.cyberneticenhancements.common.cyberware.CyberwareServiceHelper;
-import de.artemis.cyberneticenhancements.common.cyberware.CyberwareUpgradeHelper;
-import de.artemis.cyberneticenhancements.common.menu.AbstractBaseMenu;
-import de.artemis.cyberneticenhancements.common.menu.TechStationLayout;
-import de.artemis.cyberneticenhancements.common.menu.TechStationMenu;
-import de.artemis.cyberneticenhancements.common.network.UpgradeStationInputSlotPayload;
+import de.artemis.cyberneticenhancements.client.ui.*;
+import de.artemis.cyberneticenhancements.common.cyberware.*;
+import de.artemis.cyberneticenhancements.common.item.CyberwareItem;
+import de.artemis.cyberneticenhancements.common.menu.*;
 import net.minecraft.client.gui.GuiGraphics;
-import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen;
-import net.minecraft.locale.Language;
+import net.minecraft.client.gui.components.Tooltip;
 import net.minecraft.network.chat.Component;
-import net.minecraft.network.chat.FormattedText;
-import net.minecraft.resources.ResourceLocation;
-import net.minecraft.util.FormattedCharSequence;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.item.ItemStack;
-import net.neoforged.neoforge.network.PacketDistributor;
+import static de.artemis.cyberneticenhancements.client.screen.WorkshopScreenParts.*;
 
-import java.util.List;
+ public final class TechStationScreen extends ResponsiveContainerScreen<TechStationMenu> {
+    private UiButton apply, fill, clear, capacity;
 
-public final class TechStationScreen extends AbstractContainerScreen<TechStationMenu> {
-    private static final ResourceLocation BACKGROUND_TEXTURE = ResourceLocation.fromNamespaceAndPath(
-            CyberneticEnhancements.MOD_ID,
-            "textures/gui/container/tech_station.png");
-    private static final int SLOT_BG = StationScreenStyle.SLOT_BG;
-    private static final int TEXT_PRIMARY = StationScreenStyle.TEXT_PRIMARY;
-    private static final int TEXT_SECONDARY = StationScreenStyle.TEXT_SECONDARY;
-    private static final int ACCENT = StationScreenStyle.ACCENT;
-    private static final int WARNING = StationScreenStyle.WARNING;
-    private static final int PANEL_TEXT_PADDING_X = StationScreenStyle.PANEL_TEXT_PADDING_X;
-    private static final int PANEL_TEXT_PADDING_Y = StationScreenStyle.PANEL_TEXT_PADDING_Y;
-    private static final int SLOT_LABEL_Y = StationScreenStyle.SLOT_LABEL_Y;
-    private static final int REPAIR_SUMMARY_Y = 124;
-    private static final int UPGRADE_SUMMARY_Y = 124;
-    private static final int SUMMARY_LINE_HEIGHT = 18;
-    private static final int SUMMARY_MAX_LINES = 3;
-    private static final long SLOT_UPGRADE_HOLD_MS = 5000L;
-
-    private UpgradeTarget heldUpgradeTarget;
-    private CyberwareTier heldUpgradeStartTier;
-    private long heldUpgradeStartMs;
-    private boolean upgradeTriggeredThisHold;
-
-    private enum UpgradeTarget {
-        REPAIR_INPUT,
-        UPGRADE_INPUT
+    public TechStationScreen(TechStationMenu menu, Inventory inventory, Component title) {
+        super(menu, inventory, title);
+        imageWidth = TechStationLayout.IMAGE_WIDTH;
+        imageHeight = TechStationLayout.IMAGE_HEIGHT;
     }
-
-    public TechStationScreen(TechStationMenu menu, Inventory playerInventory, Component title) {
-        super(menu, playerInventory, title);
-        this.imageWidth = TechStationLayout.IMAGE_WIDTH;
-        this.imageHeight = TechStationLayout.IMAGE_HEIGHT;
+    protected void init() {
+        super.init();
+        capacity = button("capacity_button", 386, 18, 130, 3);
+        fill = button("fill", 12, 250, 94, 1);
+        clear = button("clear", 114, 250, 94, 2);
+        apply = button(menu.isUpgrading() ? "upgrade" : "repair", 218, 250, 176, 0);
     }
-
-    @Override
-    protected void renderBg(GuiGraphics guiGraphics, float partialTick, int mouseX, int mouseY) {
-        int x0 = leftPos;
-        int y0 = topPos;
-        guiGraphics.blit(BACKGROUND_TEXTURE, x0, y0, 0, 0, imageWidth, imageHeight, imageWidth, imageHeight);
-
-        drawUpgradeableSlotBack(guiGraphics, TechStationLayout.REPAIR_INPUT_X, TechStationLayout.REPAIR_INPUT_Y, menu.getRepairSupportedTier());
-        drawSlotBack(guiGraphics, TechStationLayout.REPAIR_MATERIAL_X, TechStationLayout.REPAIR_PRIMARY_Y);
-        drawSlotBack(guiGraphics, TechStationLayout.REPAIR_MATERIAL_X, TechStationLayout.REPAIR_MATERIAL_Y);
-        drawSlotBack(guiGraphics, TechStationLayout.REPAIR_MATERIAL_X, TechStationLayout.REPAIR_TERTIARY_Y);
-        drawSlotBack(guiGraphics, TechStationLayout.REPAIR_RESULT_X, TechStationLayout.REPAIR_RESULT_Y);
-        drawUpgradeableSlotBack(guiGraphics, TechStationLayout.UPGRADE_INPUT_X, TechStationLayout.UPGRADE_INPUT_Y, menu.getUpgradeSupportedTier());
-        drawSlotBack(guiGraphics, TechStationLayout.UPGRADE_PRIMARY_X, TechStationLayout.UPGRADE_PRIMARY_Y);
-        drawSlotBack(guiGraphics, TechStationLayout.UPGRADE_SECONDARY_X, TechStationLayout.UPGRADE_SECONDARY_Y);
-        drawSlotBack(guiGraphics, TechStationLayout.UPGRADE_RESULT_X, TechStationLayout.UPGRADE_RESULT_Y);
-        drawPlayerSlotBacks(guiGraphics);
+    private UiButton button(String key, int x, int y, int width, int action) {
+        return addRenderableWidget(new UiButton(leftPos + x, topPos + y, width, 20, tr(key), b -> {
+            if (minecraft != null && minecraft.gameMode != null)
+                minecraft.gameMode.handleInventoryButtonClick(menu.containerId, action);
+        }));
     }
-
-    @Override
-    protected void renderLabels(GuiGraphics guiGraphics, int mouseX, int mouseY) {
-        guiGraphics.drawString(font, Component.translatable("screen.cyberneticenhancements.tech_station.service_bay"), TechStationLayout.REPAIR_PANEL_X1 + PANEL_TEXT_PADDING_X, TechStationLayout.REPAIR_PANEL_Y1 + PANEL_TEXT_PADDING_Y, TEXT_PRIMARY, false);
-        guiGraphics.drawString(font, Component.translatable("screen.cyberneticenhancements.tech_station.upgrade_bay"), TechStationLayout.UPGRADE_PANEL_X1 + PANEL_TEXT_PADDING_X, TechStationLayout.UPGRADE_PANEL_Y1 + PANEL_TEXT_PADDING_Y, TEXT_PRIMARY, false);
-
-        drawCenteredLabel(guiGraphics, Component.translatable("screen.cyberneticenhancements.tech_station.input"), TechStationLayout.REPAIR_INPUT_X + StationSlotRenderer.SLOT_SIZE / 2, SLOT_LABEL_Y, TEXT_SECONDARY);
-        drawCenteredLabel(guiGraphics, Component.translatable("screen.cyberneticenhancements.tech_station.materials"), TechStationLayout.REPAIR_MATERIAL_X + StationSlotRenderer.SLOT_SIZE / 2, SLOT_LABEL_Y, TEXT_SECONDARY);
-        drawCenteredLabel(guiGraphics, Component.translatable("screen.cyberneticenhancements.tech_station.output"), TechStationLayout.REPAIR_RESULT_X + StationSlotRenderer.SLOT_SIZE / 2, SLOT_LABEL_Y, TEXT_SECONDARY);
-
-        drawCenteredLabel(guiGraphics, Component.translatable("screen.cyberneticenhancements.tech_station.input"), TechStationLayout.UPGRADE_INPUT_X + StationSlotRenderer.SLOT_SIZE / 2, SLOT_LABEL_Y, TEXT_SECONDARY);
-        drawCenteredLabel(guiGraphics, Component.translatable("screen.cyberneticenhancements.tech_station.upgrade_parts"), TechStationLayout.UPGRADE_PRIMARY_X + StationSlotRenderer.SLOT_SIZE / 2, SLOT_LABEL_Y, TEXT_SECONDARY);
-        drawCenteredLabel(guiGraphics, Component.translatable("screen.cyberneticenhancements.tech_station.output"), TechStationLayout.UPGRADE_RESULT_X + StationSlotRenderer.SLOT_SIZE / 2, SLOT_LABEL_Y, TEXT_SECONDARY);
-
-        renderRepairSummary(guiGraphics);
-        renderUpgradeSummary(guiGraphics);
-    }
-
-    @Override
-    public void render(GuiGraphics guiGraphics, int mouseX, int mouseY, float partialTick) {
-        renderBackground(guiGraphics, mouseX, mouseY, partialTick);
-        super.render(guiGraphics, mouseX, mouseY, partialTick);
-        updateHeldSlotUpgrade(mouseX, mouseY);
-        renderUpgradeSlotTooltip(guiGraphics, mouseX, mouseY);
-        renderTooltip(guiGraphics, mouseX, mouseY);
-    }
-
-    @Override
-    public boolean mouseClicked(double mouseX, double mouseY, int button) {
-        if (button == 0 && menu.getCarried().isEmpty()) {
-            UpgradeTarget hoveredTarget = getHoveredEmptyUpgradeableSlot((int) mouseX, (int) mouseY);
-            if (hoveredTarget != null && canUpgrade(hoveredTarget) && hasRequiredUpgradeComponent(hoveredTarget)) {
-                heldUpgradeTarget = hoveredTarget;
-                heldUpgradeStartTier = getSupportedTier(hoveredTarget);
-                heldUpgradeStartMs = System.currentTimeMillis();
-                upgradeTriggeredThisHold = false;
-                return true;
+    protected void renderBg(GuiGraphics g, float partial, int mouseX, int mouseY) {
+        frame(g, leftPos, topPos);
+        for (var slot : menu.slots)
+            StationSlotRenderer.drawStandardSlot(g, leftPos, topPos, slot.x, slot.y, UiRenderer.FIELD);
+        var plan = menu.plan();
+        if (plan.isAvailable()) {
+            UiRenderer.panel(g, leftPos + 230, topPos + 82, 26, 26, UiRenderer.FIELD, UiRenderer.FIELD_EDGE);
+            g.renderFakeItem(plan.output(), leftPos + 235, topPos + 87);
+            for (int i = 0; i < plan.materials().size(); i++) {
+                if (!menu.getMaterialStack(i).isEmpty()) continue;
+                g.renderFakeItem(plan.materials().get(i).stack(), leftPos + TechStationLayout.MATERIAL_X, topPos + TechStationLayout.MATERIAL_Y[i]);
+                g.fill(leftPos + 30, topPos + TechStationLayout.MATERIAL_Y[i], leftPos + 46, topPos + TechStationLayout.MATERIAL_Y[i] + 16, 0x990D141C);
             }
         }
-
-        clearHeldSlotUpgrade();
-        return super.mouseClicked(mouseX, mouseY, button);
     }
-
-    @Override
-    public boolean mouseReleased(double mouseX, double mouseY, int button) {
-        boolean consumed = button == 0 && heldUpgradeTarget != null;
-        if (button == 0) {
-            clearHeldSlotUpgrade();
-        }
-        return consumed || super.mouseReleased(mouseX, mouseY, button);
-    }
-
-    private void renderRepairSummary(GuiGraphics guiGraphics) {
-        int x = TechStationLayout.REPAIR_PANEL_X1 + PANEL_TEXT_PADDING_X;
-        int maxWidth = TechStationLayout.REPAIR_PANEL_X2 - TechStationLayout.REPAIR_PANEL_X1 - PANEL_TEXT_PADDING_X * 2;
-        ItemStack input = menu.getRepairInputStack();
-        CyberwareServicePlan plan = menu.getRepairPlan();
-        CyberwareServicePlan resolvedPlan = menu.getRepairResolvedPlan();
-
+    protected void renderLabels(GuiGraphics g, int mouseX, int mouseY) {
+        line(g, tr("capacity", menu.tier().ordinal() + 1), 22, 24, 352, UiRenderer.ACCENT);
+        line(g, tr("implant"), 22, 64, 176, UiRenderer.TEXT);
+        line(g, tr("preview"), 230, 64, 286, UiRenderer.TEXT);
+        ItemStack input = menu.getInputStack();
+        var plan = menu.plan();
         if (input.isEmpty()) {
-            drawWrappedText(guiGraphics, Component.translatable("screen.cyberneticenhancements.tech_station.insert_repair_target"), x, REPAIR_SUMMARY_Y, maxWidth, TEXT_SECONDARY, SUMMARY_MAX_LINES);
-            return;
+            wrap(g, font, tr(menu.isUpgrading() ? "insert_upgrade" : "insert_repair"), 56, 86, 140, 3, UiRenderer.TEXT_SECONDARY);
+        } else {
+            wrap(g, font, input.getHoverName(), 56, 86, 140, 3, UiRenderer.TEXT);
         }
-
-        if (!plan.isAvailable()) {
-            drawWrappedText(guiGraphics, Component.translatable("screen.cyberneticenhancements.tech_station.repair_unavailable"), x, REPAIR_SUMMARY_Y, maxWidth, WARNING, 2);
-            return;
+        line(g, tr("materials"), 22, 126, 176, UiRenderer.TEXT_SECONDARY);
+        for (int i = 0; i < plan.materials().size(); i++) {
+            var requirement = plan.materials().get(i);
+            int owned = menu.materialTotal(requirement.stack());
+            int y = TechStationLayout.MATERIAL_Y[i];
+            line(g, requirement.stack().getHoverName(), 56, y - 2, 140, UiRenderer.TEXT);
+            line(g, tr("quantity", owned, requirement.count()), 56, y + 12, 140,
+                    owned >= requirement.count() ? UiRenderer.ACCENT : UiRenderer.WARNING);
         }
-
-        var requirements = CyberwareServiceHelper.getRequiredMaterials(plan);
-        ItemStack[] repairMaterials = menu.getRepairMaterialStacks();
-        for (int index = 0; index < requirements.size(); index++) {
-            var requirement = requirements.get(index);
-            drawPlanMaterial(guiGraphics, requirement.count(), requirement.stack(), x, REPAIR_SUMMARY_Y + SUMMARY_LINE_HEIGHT * index, maxWidth, hasMatchingCount(repairMaterials, requirement.stack(), requirement.count()));
+        if (input.getItem() instanceof CyberwareItem item) {
+            int level = CyberwareUpgradeHelper.getUpgradeLevel(input);
+            int integrity = (int) Math.round(CyberwareConditionHelper.getIntegrityRatio(input, item.getDefinition()) * 100);
+            line(g, input.getHoverName(), 264, 90, 252, UiRenderer.TEXT);
+            line(g, tr("integrity_change", integrity, menu.isUpgrading() ? integrity : 100), 230, 116, 286, UiRenderer.ACCENT);
+            line(g, tr("level_change", level, plan.isAvailable() && menu.isUpgrading() ? level + 1 : level, CyberwareUpgradeHelper.getMaxUpgrades(input)),
+                    230, 132, 286, UiRenderer.TEXT_SECONDARY);
+            if (menu.isUpgrading() && plan.isAvailable()) {
+                int y = 156;
+                for (var benefit : CyberwareUpgradeHelper.getUpgradePreviewLines(input, item.getDefinition())) {
+                    var split = font.split(benefit, 286);
+                    for (var text : split) {
+                        if (y <= 218) g.drawString(font, text, 230, y, UiRenderer.TEXT, false);
+                        y += 11;
+                    }
+                }
+            } else wrap(g, font, tr(menu.isUpgrading() ? "max_upgrade" : "repair_note"), 230, 160, 286, 5, UiRenderer.TEXT_SECONDARY);
+        } else wrap(g, font, tr("preview_help"), 230, 90, 286, 4, UiRenderer.TEXT_SECONDARY);
+        line(g, tr("completed"), 404, 256, 82, menu.hasPendingOutput() ? UiRenderer.ACCENT : UiRenderer.TEXT_SECONDARY);
+        wrap(g, font, menu.status(), 22, 286, 496, 2, UiRenderer.TEXT_SECONDARY);
+        line(g, playerInventoryTitle, 22, 332, 154, UiRenderer.TEXT);
+        wrap(g, font, tr(menu.isUpgrading() ? "upgrade_note" : "repair_short"), 22, 350, 154, 4, UiRenderer.TEXT_SECONDARY);
+        wrap(g, font, tr("collection_help"), 364, 332, 152, 5, UiRenderer.TEXT_SECONDARY);
+    }
+    private void line(GuiGraphics g, Component text, int x, int y, int width, int color) {
+        text(g, font, text, x, y, width, color);
+    }
+    protected void renderContent(GuiGraphics g, int mouseX, int mouseY, float partial) {
+        apply.active = menu.canService();
+        apply.setSelected(apply.active);
+        apply.setTooltip(Tooltip.create(menu.status()));
+        fill.active = menu.canFillMaterials();
+        clear.active = java.util.stream.IntStream.range(0, menu.materialCount()).anyMatch(i -> !menu.getMaterialStack(i).isEmpty());
+        capacity.active = menu.canUpgradeCapacity() && menu.hasCapacityMaterial();
+        ItemStack cost = menu.capacityCost();
+        capacity.setTooltip(Tooltip.create(cost.isEmpty() ? tr("capacity_max")
+                : tr("capacity_cost", cost.getHoverName(), menu.tier().ordinal() + 2)));
+        super.renderContent(g, mouseX, mouseY, partial);
+        renderTooltip(g, mouseX, mouseY);
+        var plan = menu.plan();
+        for (int i = 0; i < plan.materials().size(); i++) {
+            var required = plan.materials().get(i);
+            if (isHovering(30, TechStationLayout.MATERIAL_Y[i] - 4, 168, 28, mouseX, mouseY))
+                g.renderTooltip(font, java.util.List.of(required.stack().getHoverName(),
+                        tr("quantity", menu.materialTotal(required.stack()), required.count())), java.util.Optional.empty(), mouseX, mouseY);
         }
-    }
-
-    private void renderUpgradeSummary(GuiGraphics guiGraphics) {
-        int x = TechStationLayout.UPGRADE_PANEL_X1 + PANEL_TEXT_PADDING_X;
-        int maxWidth = TechStationLayout.UPGRADE_PANEL_X2 - TechStationLayout.UPGRADE_PANEL_X1 - PANEL_TEXT_PADDING_X * 2;
-        ItemStack input = menu.getUpgradeInputStack();
-        CyberwareServicePlan plan = menu.getUpgradePlan();
-
-        if (input.isEmpty()) {
-            drawWrappedText(guiGraphics, Component.translatable("screen.cyberneticenhancements.tech_station.insert_upgrade_target"), x, UPGRADE_SUMMARY_Y, maxWidth, TEXT_SECONDARY, SUMMARY_MAX_LINES);
-            return;
-        }
-
-        if (!plan.isAvailable()) {
-            drawWrappedText(guiGraphics, Component.translatable("screen.cyberneticenhancements.tech_station.upgrade_unavailable"), x, UPGRADE_SUMMARY_Y, maxWidth, WARNING, 2);
-            return;
-        }
-
-        if (input.getItem() instanceof de.artemis.cyberneticenhancements.common.item.CyberwareItem cyberwareItem) {
-            drawWrappedText(
-                    guiGraphics,
-                    CyberwareUpgradeHelper.getUpgradePreviewStatusComponent(input, cyberwareItem.getDefinition()),
-                    x,
-                    UPGRADE_SUMMARY_Y,
-                    maxWidth,
-                    TEXT_PRIMARY,
-                    1
-            );
-        }
-
-        drawPlanMaterial(guiGraphics, plan.primaryCount(), plan.primaryMaterial(), x, UPGRADE_SUMMARY_Y + SUMMARY_LINE_HEIGHT, maxWidth, hasMatchingCount(menu.getUpgradePrimaryMaterialStack(), plan.primaryMaterial(), plan.primaryCount()) || hasMatchingCount(menu.getUpgradeSecondaryMaterialStack(), plan.primaryMaterial(), plan.primaryCount()));
-        if (plan.requiresSecondaryMaterial()) {
-            drawPlanMaterial(guiGraphics, plan.secondaryCount(), plan.secondaryMaterial(), x, UPGRADE_SUMMARY_Y + SUMMARY_LINE_HEIGHT * 2, maxWidth, hasMatchingCount(menu.getUpgradePrimaryMaterialStack(), plan.secondaryMaterial(), plan.secondaryCount()) || hasMatchingCount(menu.getUpgradeSecondaryMaterialStack(), plan.secondaryMaterial(), plan.secondaryCount()));
-        }
-    }
-
-    private boolean hasMatchingCount(ItemStack candidate, ItemStack expected, int requiredCount) {
-        return !candidate.isEmpty()
-                && !expected.isEmpty()
-                && ItemStack.isSameItemSameComponents(candidate.copyWithCount(1), expected.copyWithCount(1))
-                && candidate.getCount() >= requiredCount;
-    }
-
-    private boolean hasMatchingCount(ItemStack[] candidates, ItemStack expected, int requiredCount) {
-        for (ItemStack candidate : candidates) {
-            if (hasMatchingCount(candidate, expected, requiredCount)) {
-                return true;
-            }
-        }
-        return false;
-    }
-
-    private void drawPlanMaterial(GuiGraphics guiGraphics, int count, ItemStack stack, int x, int y, int maxWidth, boolean ready) {
-        Component amount = Component.translatable("screen.cyberneticenhancements.common.count_prefix", count);
-        guiGraphics.drawString(font, amount, x, y, ready ? ACCENT : WARNING, false);
-        int materialX = x + font.width(amount);
-        drawTrimmedText(guiGraphics, stack.getHoverName(), materialX, y, Math.max(0, maxWidth - font.width(amount)), ready ? TEXT_PRIMARY : TEXT_SECONDARY);
-    }
-
-    private void drawCenteredLabel(GuiGraphics guiGraphics, Component label, int centerX, int y, int color) {
-        guiGraphics.drawString(font, label, centerX - font.width(label) / 2, y, color, false);
-    }
-
-    private void drawTrimmedText(GuiGraphics guiGraphics, Component text, int x, int y, int maxWidth, int color) {
-        guiGraphics.drawString(font, trimStyled(text, maxWidth), x, y, color, false);
-    }
-
-    private FormattedCharSequence trimStyled(Component text, int maxWidth) {
-        if (font.width(text) <= maxWidth) {
-            return Language.getInstance().getVisualOrder(text);
-        }
-
-        int ellipsisWidth = font.width("...");
-        FormattedText base = font.substrByWidth(text, Math.max(0, maxWidth - ellipsisWidth));
-        FormattedText combined = FormattedText.composite(base, Component.literal("..."));
-        return Language.getInstance().getVisualOrder(combined);
-    }
-
-    private void drawWrappedText(GuiGraphics guiGraphics, Component text, int x, int y, int maxWidth, int color, int maxLines) {
-        List<FormattedCharSequence> lines = font.split(text, maxWidth);
-        int lineCount = Math.min(lines.size(), maxLines);
-        for (int index = 0; index < lineCount; index++) {
-            guiGraphics.drawString(font, lines.get(index), x, y + index * SUMMARY_LINE_HEIGHT, color, false);
-        }
-    }
-
-    private void drawPlayerSlotBacks(GuiGraphics guiGraphics) {
-        for (int row = 0; row < 3; row++) {
-            for (int column = 0; column < 9; column++) {
-                drawSlotBack(guiGraphics, TechStationLayout.PLAYER_INVENTORY_X + column * AbstractBaseMenu.SLOT_SPACING, TechStationLayout.PLAYER_INVENTORY_Y + row * AbstractBaseMenu.SLOT_SPACING);
-            }
-        }
-        for (int slot = 0; slot < 9; slot++) {
-            drawSlotBack(guiGraphics, TechStationLayout.PLAYER_INVENTORY_X + slot * AbstractBaseMenu.SLOT_SPACING, TechStationLayout.PLAYER_HOTBAR_Y);
-        }
-    }
-
-    private void drawSlotBack(GuiGraphics guiGraphics, int x, int y) {
-        StationSlotRenderer.drawStandardSlot(guiGraphics, leftPos, topPos, x, y, SLOT_BG);
-    }
-
-    private void drawUpgradeableSlotBack(GuiGraphics guiGraphics, int x, int y, CyberwareTier tier) {
-        StationSlotRenderer.drawUpgradeableSlot(guiGraphics, leftPos, topPos, x, y, SLOT_BG, StationSlotRenderer.getTierFrameColor(tier));
-    }
-
-    private void renderUpgradeSlotTooltip(GuiGraphics guiGraphics, int mouseX, int mouseY) {
-        UpgradeTarget hoveredTarget = getHoveredEmptyUpgradeableSlot(mouseX, mouseY);
-        if (hoveredTarget == null) {
-            return;
-        }
-        StationUpgradeTooltipBuilder.Tooltip tooltip = buildUpgradeTooltip(hoveredTarget);
-        if (!tooltip.showProgressBar()) {
-            guiGraphics.renderTooltip(font, tooltip.lines(), java.util.Optional.empty(), mouseX, mouseY);
-            return;
-        }
-        StationUpgradeTooltipRenderer.renderTooltip(guiGraphics, font, width, height, tooltip.lines(), getHeldUpgradeProgress(hoveredTarget), mouseX, mouseY);
-    }
-
-    private StationUpgradeTooltipBuilder.Tooltip buildUpgradeTooltip(UpgradeTarget target) {
-        return StationUpgradeTooltipBuilder.build(
-                Component.translatable(target == UpgradeTarget.REPAIR_INPUT
-                        ? "screen.cyberneticenhancements.tech_station.service_bay"
-                        : "screen.cyberneticenhancements.tech_station.upgrade_bay"),
-                getSupportedTier(target),
-                getNextSupportedTier(target),
-                getRequiredUpgradeComponentStack(target),
-                canUpgrade(target),
-                hasRequiredUpgradeComponent(target),
-                target == UpgradeTarget.REPAIR_INPUT
-                        ? "screen.cyberneticenhancements.tech_station.repair_slot_hint"
-                        : "screen.cyberneticenhancements.tech_station.upgrade_slot_hint"
-        );
-    }
-
-    private float getHeldUpgradeProgress(UpgradeTarget target) {
-        if (target != heldUpgradeTarget || heldUpgradeStartTier == null) {
-            return 0.0F;
-        }
-        if (upgradeTriggeredThisHold) {
-            return 1.0F;
-        }
-        long elapsedMs = System.currentTimeMillis() - heldUpgradeStartMs;
-        return Math.max(0.0F, Math.min(1.0F, (float) elapsedMs / (float) SLOT_UPGRADE_HOLD_MS));
-    }
-
-    private void updateHeldSlotUpgrade(int mouseX, int mouseY) {
-        if (heldUpgradeTarget == null || heldUpgradeStartTier == null) {
-            return;
-        }
-        if (!isHeldUpgradeStillValid(heldUpgradeTarget, mouseX, mouseY)) {
-            clearHeldSlotUpgrade();
-            return;
-        }
-        if (getSupportedTier(heldUpgradeTarget) != heldUpgradeStartTier) {
-            clearHeldSlotUpgrade();
-            return;
-        }
-        if (!upgradeTriggeredThisHold && System.currentTimeMillis() - heldUpgradeStartMs >= SLOT_UPGRADE_HOLD_MS) {
-            sendUpgradePacket(heldUpgradeTarget);
-            upgradeTriggeredThisHold = true;
-        }
-    }
-
-    private boolean isHeldUpgradeStillValid(UpgradeTarget target, int mouseX, int mouseY) {
-        return isHoveringUpgradeTarget(target, mouseX, mouseY)
-                && isTargetEmpty(target)
-                && canUpgrade(target)
-                && hasRequiredUpgradeComponent(target);
-    }
-
-    private UpgradeTarget getHoveredEmptyUpgradeableSlot(int mouseX, int mouseY) {
-        if (isHoveringUpgradeTarget(UpgradeTarget.REPAIR_INPUT, mouseX, mouseY) && menu.getRepairInputStack().isEmpty()) {
-            return UpgradeTarget.REPAIR_INPUT;
-        }
-        if (isHoveringUpgradeTarget(UpgradeTarget.UPGRADE_INPUT, mouseX, mouseY) && menu.getUpgradeInputStack().isEmpty()) {
-            return UpgradeTarget.UPGRADE_INPUT;
-        }
-        return null;
-    }
-
-    private void clearHeldSlotUpgrade() {
-        heldUpgradeTarget = null;
-        heldUpgradeStartTier = null;
-        heldUpgradeStartMs = 0L;
-        upgradeTriggeredThisHold = false;
-    }
-
-    private void sendUpgradePacket(UpgradeTarget target) {
-        PacketDistributor.sendToServer(new UpgradeStationInputSlotPayload(target == UpgradeTarget.REPAIR_INPUT ? 0 : 1));
-    }
-
-    private boolean isHoveringUpgradeTarget(UpgradeTarget target, int mouseX, int mouseY) {
-        return switch (target) {
-            case REPAIR_INPUT -> isHoveringSlot(TechStationLayout.REPAIR_INPUT_X, TechStationLayout.REPAIR_INPUT_Y, mouseX, mouseY);
-            case UPGRADE_INPUT -> isHoveringSlot(TechStationLayout.UPGRADE_INPUT_X, TechStationLayout.UPGRADE_INPUT_Y, mouseX, mouseY);
-        };
-    }
-
-    private boolean isHoveringSlot(int x, int y, int mouseX, int mouseY) {
-        return isHovering(x, y, StationSlotRenderer.SLOT_SIZE, StationSlotRenderer.SLOT_SIZE, mouseX, mouseY);
-    }
-
-    private boolean isTargetEmpty(UpgradeTarget target) {
-        return switch (target) {
-            case REPAIR_INPUT -> menu.getRepairInputStack().isEmpty();
-            case UPGRADE_INPUT -> menu.getUpgradeInputStack().isEmpty();
-        };
-    }
-
-    private CyberwareTier getSupportedTier(UpgradeTarget target) {
-        return switch (target) {
-            case REPAIR_INPUT -> menu.getRepairSupportedTier();
-            case UPGRADE_INPUT -> menu.getUpgradeSupportedTier();
-        };
-    }
-
-    private CyberwareTier getNextSupportedTier(UpgradeTarget target) {
-        return switch (target) {
-            case REPAIR_INPUT -> menu.getNextRepairSupportedTier();
-            case UPGRADE_INPUT -> menu.getNextUpgradeSupportedTier();
-        };
-    }
-
-    private boolean canUpgrade(UpgradeTarget target) {
-        return switch (target) {
-            case REPAIR_INPUT -> menu.canUpgradeRepairSupportedTier();
-            case UPGRADE_INPUT -> menu.canUpgradeUpgradeSupportedTier();
-        };
-    }
-
-    private boolean hasRequiredUpgradeComponent(UpgradeTarget target) {
-        return switch (target) {
-            case REPAIR_INPUT -> menu.hasRequiredRepairUpgradeComponent();
-            case UPGRADE_INPUT -> menu.hasRequiredUpgradeInputComponent();
-        };
-    }
-
-    private ItemStack getRequiredUpgradeComponentStack(UpgradeTarget target) {
-        return switch (target) {
-            case REPAIR_INPUT -> menu.getRequiredRepairUpgradeComponentStack();
-            case UPGRADE_INPUT -> menu.getRequiredUpgradeInputComponentStack();
-        };
+        if (plan.isAvailable() && isHovering(230, 82, 286, 26, mouseX, mouseY))
+            g.renderTooltip(font, plan.output(), mouseX, mouseY);
     }
 }

@@ -1,0 +1,89 @@
+{
+  "levels": [
+    {
+      "effects": {
+        "entity_reach": 0.1
+      },
+      "materials": [
+        {
+          "count": 1,
+          "item": "cyberneticenhancements:epic_item_components"
+        },
+        {
+          "count": 1,
+          "item": "cyberneticenhancements:neural_processor"
+        }
+      ]
+    },
+    {
+      "effects": {
+        "entity_reach": 0.2
+      },
+      "materials": [
+        {
+          "count": 1,
+          "item": "cyberneticenhancements:epic_item_components"
+        },
+        {
+          "count": 1,
+          "item": "cyberneticenhancements:neural_processor"
+        }
+      ]
+    },
+    {
+      "effects": {
+        "entity_reach": 0.30000000000000004
+      },
+      "materials": [
+        {
+          "count": 1,
+          "item": "cyberneticenhancements:epic_item_components"
+        },
+        {
+          "count": 1,
+          "item": "cyberneticenhancements:neural_processor"
+        }
+      ]
+    },
+    {
+      "effects": {
+        "entity_reach": 0.4
+      },
+      "materials": [
+        {
+          "count": 1,
+          "item": "cyberneticenhancements:epic_item_components"
+        },
+        {
+          "count": 2,
+          "item": "cyberneticenhancements:neural_processor"
+        }
+      ]
+    },
+    {
+      "effects": {
+        "entity_reach": 0.5
+      },
+      "materials": [
+        {
+          "count": 2,
+          "item": "cyberneticenhancements:epic_item_components"
+        },
+        {
+          "count": 2,
+          "item": "cyberneticenhancements:neural_processor"
+        }
+      ]
+    }
+  ],
+  "repair_materials": [
+    {
+      "count": 2,
+      "item": "cyberneticenhancements:epic_item_components"
+    },
+    {
+      "count": 2,
+      "item": "cyberneticenhancements:basic_circuit_plate"
+    }
+  ]
+}

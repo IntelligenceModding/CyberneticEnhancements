@@ -1,0 +1,79 @@
+{
+  "type": "cyberneticenhancements:fabrication",
+  "category": "FACE",
+  "parts": [
+    {
+      "ingredient": {
+        "item": "cyberneticenhancements:sensor_lens"
+      },
+      "slot": 2
+    },
+    {
+      "ingredient": {
+        "item": "cyberneticenhancements:reinforced_alloy"
+      },
+      "slot": 6
+    },
+    {
+      "ingredient": {
+        "item": "cyberneticenhancements:optical_array"
+      },
+      "slot": 7
+    },
+    {
+      "ingredient": {
+        "item": "cyberneticenhancements:reinforced_alloy"
+      },
+      "slot": 8
+    },
+    {
+      "ingredient": {
+        "item": "cyberneticenhancements:copper_wiring"
+      },
+      "slot": 11
+    },
+    {
+      "ingredient": {
+        "item": "cyberneticenhancements:precision_chassis"
+      },
+      "slot": 12
+    },
+    {
+      "ingredient": {
+        "item": "cyberneticenhancements:copper_wiring"
+      },
+      "slot": 13
+    },
+    {
+      "ingredient": {
+        "item": "cyberneticenhancements:neural_interface"
+      },
+      "slot": 17
+    },
+    {
+      "ingredient": {
+        "item": "cyberneticenhancements:firmware_module"
+      },
+      "slot": 21
+    },
+    {
+      "ingredient": {
+        "item": "cyberneticenhancements:proprietary_neural_core"
+      },
+      "slot": 22
+    },
+    {
+      "ingredient": {
+        "item": "cyberneticenhancements:firmware_module"
+      },
+      "slot": 23
+    }
+  ],
+  "result": {
+    "count": 1,
+    "id": "cyberneticenhancements:behavioral_imprint_synced_faceplate"
+  },
+  "schematic": "behavioral_imprint_synced_faceplate",
+  "ticks": 1000,
+  "tier": 5
+}

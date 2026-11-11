@@ -32,6 +32,15 @@ public final class ModPayloads {
 
     public static void register(RegisterPayloadHandlersEvent event) {
         event.registrar("1")
+                .playToClient(de.artemis.cyberneticenhancements.common.fabrication.SchematicKnowledgePayload.TYPE,
+                        de.artemis.cyberneticenhancements.common.fabrication.SchematicKnowledgePayload.STREAM_CODEC, (payload, context) ->
+                                context.enqueueWork(() -> de.artemis.cyberneticenhancements.common.fabrication.SchematicKnowledge.receiveDetails(payload.records())))
+                .playToClient(CyberwareUpgradesPayload.TYPE, CyberwareUpgradesPayload.STREAM_CODEC, (payload, context) ->
+                        context.enqueueWork(() -> de.artemis.cyberneticenhancements.common.cyberware.CyberwareUpgradeRegistry.receive(payload.json())))
+                .playToClient(SandevistanEchoPayload.TYPE, SandevistanEchoPayload.STREAM_CODEC, (payload, context) ->
+                        context.enqueueWork(() -> de.artemis.cyberneticenhancements.client.render.SandevistanEchoRenderer.receive(payload)))
+                .playToClient(SandevistanSnapshotPayload.TYPE, SandevistanSnapshotPayload.STREAM_CODEC, (payload, context) ->
+                        context.enqueueWork(() -> de.artemis.cyberneticenhancements.client.SandevistanClientEffects.receive(payload)))
                 .playToClient(CyberpsychosisControlPayload.TYPE, CyberpsychosisControlPayload.STREAM_CODEC, (payload, context) ->
                         context.enqueueWork(() -> CyberpsychosisClientState.apply(
                                 payload.locked(),
@@ -98,24 +107,6 @@ public final class ModPayloads {
                                 }
                                 default -> {
                                 }
-                            }
-                        }))
-                .playToServer(UpgradeStationInputSlotPayload.TYPE, UpgradeStationInputSlotPayload.STREAM_CODEC, (payload, context) ->
-                        context.enqueueWork(() -> {
-                            if (payload.slotIndex() < 0) {
-                                return;
-                            }
-                            if (context.player().containerMenu instanceof TechStationMenu techStationMenu) {
-                                switch (payload.slotIndex()) {
-                                    case 0 -> techStationMenu.tryUpgradeRepairSupportedTier();
-                                    case 1 -> techStationMenu.tryUpgradeUpgradeSupportedTier();
-                                    default -> {
-                                    }
-                                }
-                                return;
-                            }
-                            if (context.player().containerMenu instanceof RecyclerStationMenu recyclerStationMenu && payload.slotIndex() == 0) {
-                                recyclerStationMenu.tryUpgradeSupportedTier();
                             }
                         }))
                 .playToServer(RelicCacheHackSelectPayload.TYPE, RelicCacheHackSelectPayload.STREAM_CODEC, (payload, context) ->

@@ -2,6 +2,8 @@ package de.artemis.cyberneticenhancements.common.block;
 
 import de.artemis.cyberneticenhancements.common.blockentity.RelicCacheBlockEntity;
 import de.artemis.cyberneticenhancements.common.menu.RelicCacheHackMenu;
+import de.artemis.cyberneticenhancements.common.world.RelicCacheStructurePlacementSavedData;
+import de.artemis.cyberneticenhancements.common.world.RelicCacheIntel;
 import de.artemis.cyberneticenhancements.common.registry.ModBlockEntities;
 import net.minecraft.ChatFormatting;
 import net.minecraft.core.BlockPos;
@@ -69,6 +71,22 @@ public abstract class RelicCacheBlock extends BaseEntityBlock implements EntityB
         return tier;
     }
 
+    @Override
+    protected void onPlace(BlockState state, Level level, BlockPos pos, BlockState oldState, boolean moving) {
+        super.onPlace(state, level, pos, oldState, moving);
+        if (level instanceof ServerLevel serverLevel && !oldState.is(state.getBlock())) {
+            RelicCacheStructurePlacementSavedData.get(serverLevel).register(pos, tier);
+        }
+    }
+
+    @Override
+    protected void onRemove(BlockState state, Level level, BlockPos pos, BlockState newState, boolean moving) {
+        if (level instanceof ServerLevel serverLevel && !state.is(newState.getBlock())) {
+            RelicCacheStructurePlacementSavedData.get(serverLevel).remove(pos);
+        }
+        super.onRemove(state, level, pos, newState, moving);
+    }
+
     public ResourceKey<LootTable> lootTableKey() {
         return tier.lootTableKey();
     }
@@ -102,6 +120,7 @@ public abstract class RelicCacheBlock extends BaseEntityBlock implements EntityB
     @Override
     protected @NotNull InteractionResult useWithoutItem(@NotNull BlockState state, @NotNull Level level, BlockPos pos, Player player, BlockHitResult hitResult) {
         if (player instanceof ServerPlayer serverPlayer) {
+            RelicCacheIntel.removeCompassForCache(serverPlayer, pos);
             openHackInterface(serverPlayer, pos);
         }
         return InteractionResult.SUCCESS;

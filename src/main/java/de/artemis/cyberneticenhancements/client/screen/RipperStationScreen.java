@@ -2,10 +2,8 @@ package de.artemis.cyberneticenhancements.client.screen;
 
 import com.mojang.blaze3d.platform.Lighting;
 import com.mojang.blaze3d.systems.RenderSystem;
-import com.mojang.blaze3d.vertex.VertexConsumer;
-import com.mojang.math.Axis;
-import de.artemis.cyberneticenhancements.CyberneticEnhancements;
 import de.artemis.cyberneticenhancements.client.tooltip.ModTooltipStyle;
+import de.artemis.cyberneticenhancements.client.render.RipperStationHighlightLayer;
 import de.artemis.cyberneticenhancements.client.tooltip.UpgradeProgressClientTooltip;
 import de.artemis.cyberneticenhancements.client.tooltip.UpgradeProgressTooltip;
 import de.artemis.cyberneticenhancements.common.cyberware.CyberwareEffect;
@@ -19,47 +17,38 @@ import de.artemis.cyberneticenhancements.common.network.UpgradeCyberwareSlotPayl
 import de.artemis.cyberneticenhancements.common.network.UpgradeRipperSubSlotPayload;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
-import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen;
+import de.artemis.cyberneticenhancements.client.ui.UiRenderer;
+import de.artemis.cyberneticenhancements.client.ui.UiScrollbar;
+import de.artemis.cyberneticenhancements.client.ui.UiScrollState;
+import de.artemis.cyberneticenhancements.client.ui.ResponsiveContainerScreen;
 import net.minecraft.client.player.AbstractClientPlayer;
-import net.minecraft.client.model.geom.ModelPart;
-import net.minecraft.client.renderer.RenderType;
 import net.minecraft.client.renderer.entity.EntityRenderDispatcher;
-import net.minecraft.client.renderer.entity.LivingEntityRenderer;
-import net.minecraft.client.renderer.entity.player.PlayerRenderer;
 import net.minecraft.network.chat.Component;
-import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.entity.player.Inventory;
-import net.minecraft.world.entity.player.PlayerModelPart;
 import net.minecraft.world.inventory.Slot;
 import net.minecraft.world.inventory.tooltip.TooltipComponent;
 import net.minecraft.world.item.ItemStack;
-import net.minecraft.world.phys.Vec3;
 import net.neoforged.neoforge.network.PacketDistributor;
 import org.joml.Quaternionf;
 import org.joml.Vector3f;
 
 import java.util.ArrayList;
-import java.util.EnumMap;
+
+import de.artemis.cyberneticenhancements.common.cyberware.CyberwareConditionHelper;
+import de.artemis.cyberneticenhancements.common.item.CyberwareItem;
+
 import java.util.List;
 import java.util.Optional;
 
-public final class RipperStationScreen extends AbstractContainerScreen<RipperStationMenu> {
-    private static final ResourceLocation BACKGROUND_TEXTURE = ResourceLocation.fromNamespaceAndPath(
-            CyberneticEnhancements.MOD_ID,
-            "textures/gui/container/ripper_station.png");
-    private static final ResourceLocation HIGHLIGHT_TEXTURE = ResourceLocation.fromNamespaceAndPath(
-            CyberneticEnhancements.MOD_ID,
-            "textures/gui/selection_overlay.png");
+public final class RipperStationScreen extends ResponsiveContainerScreen<RipperStationMenu> {
     private static final int PANEL_ACCENT = StationScreenStyle.ACCENT;
     private static final int SLOT_BACKGROUND = StationScreenStyle.SLOT_BG;
     private static final int SLOT_ACTIVE = StationScreenStyle.SLOT_ACTIVE;
     private static final int TEXT_PRIMARY = StationScreenStyle.TEXT_PRIMARY;
     private static final int TEXT_SECONDARY = StationScreenStyle.TEXT_SECONDARY;
     private static final int WARNING = StationScreenStyle.WARNING;
-    private static final int HOVER_HIGHLIGHT_TINT = 0x401EE2B5;
-    private static final float HOVER_HIGHLIGHT_SCALE = 1.0035F;
-    private static final int SLOT_HOVER_FILL = 0xFF1C3835;
-    private static final int SLOT_HOVER_OUTLINE = 0xFF1EE2B5;
+    private static final int SLOT_HOVER_FILL = StationScreenStyle.SLOT_ACTIVE;
+    private static final int SLOT_HOVER_OUTLINE = StationScreenStyle.ACCENT;
     private static final int LEFT_PANEL_X = 12;
     private static final int CENTER_PANEL_X = 200;
     private static final int RIGHT_PANEL_X = 610;
@@ -75,11 +64,6 @@ public final class RipperStationScreen extends AbstractContainerScreen<RipperSta
     private static final int INTEGRITY_TANK_Y1 = 340;
     private static final int INTEGRITY_TANK_X2 = 785;
     private static final int INTEGRITY_TANK_Y2 = 441;
-    private static final int TANK_FILL_BASE = 0xFF17CDA4;
-    private static final int TANK_FILL_SHADE = 0x33102F28;
-    private static final int TANK_FILL_TOP = 0x996AF3D7;
-    private static final int TANK_FILL_LEFT = 0x337DFFE4;
-    private static final int TANK_FILL_RIGHT = 0x22081A16;
     private static final long SLOT_UPGRADE_HOLD_MS = 5000L;
     private static final int MATRIX_MODEL_CENTER_X = 400;
     private static final int MATRIX_MODEL_CENTER_Y = 130;
@@ -96,6 +80,14 @@ public final class RipperStationScreen extends AbstractContainerScreen<RipperSta
     private static final int SYSTEM_SUMMARY_CONTENT_OFFSET_Y = -3;
     private static final int BODY_OVERVIEW_VALUE_OFFSET_X = 7;
     private static final int SYSTEM_SUMMARY_COUNT_OFFSET_X = 3;
+    private static final int OVERVIEW_X = 18, OVERVIEW_Y = 130, OVERVIEW_WIDTH = 160, OVERVIEW_HEIGHT = 108;
+    private final UiScrollbar overviewScrollbar = new UiScrollbar();
+    private final UiScrollState overviewScroll = new UiScrollState();
+    private int overviewMaxScroll;
+
+    private record OverviewRow(Component text, int color) {
+    }
+
     private UpgradeTarget heldUpgradeTarget;
     private CyberwareTier heldUpgradeStartTier;
     private long heldUpgradeStartMs;
@@ -126,7 +118,14 @@ public final class RipperStationScreen extends AbstractContainerScreen<RipperSta
     protected void renderBg(GuiGraphics guiGraphics, float partialTick, int mouseX, int mouseY) {
         int x0 = leftPos;
         int y0 = topPos;
-        guiGraphics.blit(BACKGROUND_TEXTURE, x0, y0, 0, 0, imageWidth, imageHeight, imageWidth, imageHeight);
+        UiRenderer.panel(guiGraphics, x0, y0, imageWidth, imageHeight, StationScreenStyle.PANEL_DEEP);
+        UiRenderer.panel(guiGraphics, x0 + 12, y0 + 12, 176, 236, StationScreenStyle.PANEL_BG);
+        UiRenderer.panel(guiGraphics, x0 + 200, y0 + 12, 400, 236, StationScreenStyle.PANEL_BG);
+        UiRenderer.panel(guiGraphics, x0 + 610, y0 + 12, 178, 236, StationScreenStyle.PANEL_BG);
+        UiRenderer.panel(guiGraphics, x0 + 12, y0 + 258, 176, 70, StationScreenStyle.PANEL_BG);
+        UiRenderer.panel(guiGraphics, x0 + 200, y0 + 258, 400, 70, StationScreenStyle.PANEL_BG);
+        UiRenderer.panel(guiGraphics, x0 + 610, y0 + 258, 178, 70, StationScreenStyle.PANEL_BG);
+        UiRenderer.panel(guiGraphics, x0 + 200, y0 + 338, 400, 106, StationScreenStyle.PANEL_BG);
 
         drawPlayerModel(guiGraphics, mouseX, mouseY);
         drawPlayerSlotBacks(guiGraphics);
@@ -148,7 +147,7 @@ public final class RipperStationScreen extends AbstractContainerScreen<RipperSta
         overviewY += BODY_OVERVIEW_LINE_SPACING;
         drawStatLine(guiGraphics, Component.translatable("screen.cyberneticenhancements.ripper_station.integrity"), Component.literal(menu.getIntegrity() + "%"), 18, overviewY, 178);
         overviewY += BODY_OVERVIEW_LINE_SPACING;
-        renderBodyOverviewBonuses(guiGraphics, overviewY);
+        renderBodyOverviewBonuses(guiGraphics, mouseX, mouseY);
 
         renderBodyLabels(guiGraphics);
         renderSystemSummary(guiGraphics);
@@ -157,9 +156,8 @@ public final class RipperStationScreen extends AbstractContainerScreen<RipperSta
     }
 
     @Override
-    public void render(GuiGraphics guiGraphics, int mouseX, int mouseY, float partialTick) {
-        renderBackground(guiGraphics, mouseX, mouseY, partialTick);
-        super.render(guiGraphics, mouseX, mouseY, partialTick);
+    protected void renderContent(GuiGraphics guiGraphics, int mouseX, int mouseY, float partialTick) {
+        super.renderContent(guiGraphics, mouseX, mouseY, partialTick);
         updateHeldSlotUpgrade(mouseX, mouseY);
         renderSlotTooltips(guiGraphics, mouseX, mouseY);
         renderStatusTankTooltip(guiGraphics, mouseX, mouseY);
@@ -167,7 +165,12 @@ public final class RipperStationScreen extends AbstractContainerScreen<RipperSta
     }
 
     @Override
-    public boolean mouseClicked(double mouseX, double mouseY, int button) {
+    protected boolean mouseClickedContent(double mouseX, double mouseY, int button) {
+        if (button == 0 && overviewScrollbar.begin(overviewTrack(), mouseX, mouseY)) {
+            clearHeldSlotUpgrade();
+            overviewScroll.set(overviewScrollbar.value(overviewTrack(), mouseX, mouseY), overviewMaxScroll);
+            return true;
+        }
         if (button == 0 && menu.getCarried().isEmpty()) {
             UpgradeTarget hoveredTarget = getHoveredEmptyUpgradeableSlot((int) mouseX, (int) mouseY);
             if (hoveredTarget != null && canUpgrade(hoveredTarget) && hasRequiredUpgradeComponent(hoveredTarget)) {
@@ -180,16 +183,35 @@ public final class RipperStationScreen extends AbstractContainerScreen<RipperSta
         }
 
         clearHeldSlotUpgrade();
-        return super.mouseClicked(mouseX, mouseY, button);
+        return super.mouseClickedContent(mouseX, mouseY, button);
     }
 
     @Override
-    public boolean mouseReleased(double mouseX, double mouseY, int button) {
-        boolean consumed = button == 0 && heldUpgradeTarget != null;
+    protected boolean mouseReleasedContent(double mouseX, double mouseY, int button) {
+        boolean consumed = button == 0 && (heldUpgradeTarget != null || overviewScrollbar.dragging());
+        if (button == 0) overviewScrollbar.release();
         if (button == 0) {
             clearHeldSlotUpgrade();
         }
-        return consumed || super.mouseReleased(mouseX, mouseY, button);
+        return consumed || super.mouseReleasedContent(mouseX, mouseY, button);
+    }
+
+    @Override
+    protected boolean mouseDraggedContent(double mouseX, double mouseY, int button, double dx, double dy) {
+        if (button == 0 && overviewScrollbar.dragging()) {
+            overviewScroll.set(overviewScrollbar.value(overviewTrack(), mouseX, mouseY), overviewMaxScroll);
+            return true;
+        }
+        return super.mouseDraggedContent(mouseX, mouseY, button, dx, dy);
+    }
+
+    @Override
+    protected boolean mouseScrolledContent(double mouseX, double mouseY, double dx, double dy) {
+        if (overviewMaxScroll > 0 && isHovering(OVERVIEW_X, OVERVIEW_Y, OVERVIEW_WIDTH, OVERVIEW_HEIGHT, mouseX, mouseY)) {
+            overviewScroll.add(-dy * UiScrollState.WHEEL_STEP, overviewMaxScroll);
+            return true;
+        }
+        return super.mouseScrolledContent(mouseX, mouseY, dx, dy);
     }
 
     private void drawStatLine(GuiGraphics guiGraphics, Component label, Component value, int x, int y, int rightX) {
@@ -197,142 +219,73 @@ public final class RipperStationScreen extends AbstractContainerScreen<RipperSta
         guiGraphics.drawString(font, value, rightX - font.width(value) + BODY_OVERVIEW_VALUE_OFFSET_X, y, TEXT_PRIMARY, false);
     }
 
-    private void renderBodyOverviewBonuses(GuiGraphics guiGraphics, int startY) {
-        EnumMap<CyberwareEffectType, Double> totals = menu.getInstalledEffectTotals();
-        int y = startY;
-        y = drawOverviewBonusLine(guiGraphics, Component.translatable("screen.cyberneticenhancements.ripper_station.overview_health"), buildHealthOverview(totals), y);
-        y = drawOverviewBonusLine(guiGraphics, Component.translatable("screen.cyberneticenhancements.ripper_station.overview_recovery"), buildRecoveryOverview(totals), y);
-        y = drawOverviewBonusLine(guiGraphics, Component.translatable("screen.cyberneticenhancements.ripper_station.overview_armor"), buildArmorOverview(totals), y);
-        y = drawOverviewBonusLine(guiGraphics, Component.translatable("screen.cyberneticenhancements.ripper_station.overview_resistance"), buildResistanceOverview(totals), y);
-        y = drawOverviewBonusLine(guiGraphics, Component.translatable("screen.cyberneticenhancements.ripper_station.overview_power"), buildPowerOverview(totals), y);
-        y = drawOverviewBonusLine(guiGraphics, Component.translatable("screen.cyberneticenhancements.ripper_station.overview_speed"), buildSpeedOverview(totals), y);
-        y = drawOverviewBonusLine(guiGraphics, Component.translatable("screen.cyberneticenhancements.ripper_station.overview_mobility"), buildMobilityOverview(totals), y);
-        y = drawOverviewBonusLine(guiGraphics, Component.translatable("screen.cyberneticenhancements.ripper_station.overview_reach"), buildReachOverview(totals), y);
-        drawOverviewBonusLine(guiGraphics, Component.translatable("screen.cyberneticenhancements.ripper_station.overview_utility"), buildUtilityOverview(totals), y);
-    }
-
-    private int drawOverviewBonusLine(GuiGraphics guiGraphics, Component label, String value, int y) {
-        drawCompactStatLine(guiGraphics, label, value, 18, y, 178, hasOverviewValue(value));
-        return y + BODY_OVERVIEW_LINE_SPACING;
-    }
-
-    private void drawCompactStatLine(GuiGraphics guiGraphics, Component label, String value, int x, int y, int rightX, boolean highlighted) {
-        guiGraphics.drawString(font, label, x, y, highlighted ? PANEL_ACCENT : TEXT_SECONDARY, false);
-        int maxWidth = Math.max(0, rightX - x - font.width(label) - 6);
-        String trimmedValue = trimToWidth(value, maxWidth);
-        guiGraphics.drawString(font, trimmedValue, rightX - font.width(trimmedValue) + BODY_OVERVIEW_VALUE_OFFSET_X, y, TEXT_PRIMARY, false);
-    }
-
-    private String buildHealthOverview(EnumMap<CyberwareEffectType, Double> totals) {
-        List<String> parts = new ArrayList<>();
-        appendEffect(parts, CyberwareEffectType.MAX_HEALTH, totals.getOrDefault(CyberwareEffectType.MAX_HEALTH, 0.0D));
-        return joinOverviewParts(parts);
-    }
-
-    private String buildRecoveryOverview(EnumMap<CyberwareEffectType, Double> totals) {
-        List<String> parts = new ArrayList<>();
-        appendEffect(parts, CyberwareEffectType.HEALTH_REGEN, totals.getOrDefault(CyberwareEffectType.HEALTH_REGEN, 0.0D));
-        appendEffect(parts, CyberwareEffectType.BONUS_ABSORPTION, totals.getOrDefault(CyberwareEffectType.BONUS_ABSORPTION, 0.0D));
-        return joinOverviewParts(parts);
-    }
-
-    private String buildArmorOverview(EnumMap<CyberwareEffectType, Double> totals) {
-        List<String> parts = new ArrayList<>();
-        appendEffect(parts, CyberwareEffectType.ARMOR, totals.getOrDefault(CyberwareEffectType.ARMOR, 0.0D));
-        return joinOverviewParts(parts);
-    }
-
-    private String buildResistanceOverview(EnumMap<CyberwareEffectType, Double> totals) {
-        List<String> parts = new ArrayList<>();
-        appendEffect(parts, CyberwareEffectType.DAMAGE_REDUCTION, totals.getOrDefault(CyberwareEffectType.DAMAGE_REDUCTION, 0.0D));
-        appendEffect(parts, CyberwareEffectType.KNOCKBACK_RESISTANCE, totals.getOrDefault(CyberwareEffectType.KNOCKBACK_RESISTANCE, 0.0D));
-        return joinOverviewParts(parts);
-    }
-
-    private String buildPowerOverview(EnumMap<CyberwareEffectType, Double> totals) {
-        List<String> parts = new ArrayList<>();
-        appendEffect(parts, CyberwareEffectType.ATTACK_DAMAGE, totals.getOrDefault(CyberwareEffectType.ATTACK_DAMAGE, 0.0D));
-        appendEffect(parts, CyberwareEffectType.ATTACK_SPEED, totals.getOrDefault(CyberwareEffectType.ATTACK_SPEED, 0.0D));
-        return joinOverviewParts(parts);
-    }
-
-    private String buildSpeedOverview(EnumMap<CyberwareEffectType, Double> totals) {
-        List<String> parts = new ArrayList<>();
-        appendEffect(parts, CyberwareEffectType.MOVEMENT_SPEED, totals.getOrDefault(CyberwareEffectType.MOVEMENT_SPEED, 0.0D));
-        appendEffect(parts, CyberwareEffectType.JUMP_POWER, totals.getOrDefault(CyberwareEffectType.JUMP_POWER, 0.0D));
-        return joinOverviewParts(parts);
-    }
-
-    private String buildMobilityOverview(EnumMap<CyberwareEffectType, Double> totals) {
-        List<String> parts = new ArrayList<>();
-        appendEffect(parts, CyberwareEffectType.STEP_HEIGHT, totals.getOrDefault(CyberwareEffectType.STEP_HEIGHT, 0.0D));
-        appendEffect(parts, CyberwareEffectType.SAFE_FALL_DISTANCE, totals.getOrDefault(CyberwareEffectType.SAFE_FALL_DISTANCE, 0.0D));
-        appendFallReduction(parts, totals.getOrDefault(CyberwareEffectType.FALL_DAMAGE_REDUCTION, 0.0D));
-        return joinOverviewParts(parts);
-    }
-
-    private String buildReachOverview(EnumMap<CyberwareEffectType, Double> totals) {
-        List<String> parts = new ArrayList<>();
-        appendEffect(parts, CyberwareEffectType.BLOCK_REACH, totals.getOrDefault(CyberwareEffectType.BLOCK_REACH, 0.0D));
-        appendEffect(parts, CyberwareEffectType.ENTITY_REACH, totals.getOrDefault(CyberwareEffectType.ENTITY_REACH, 0.0D));
-        return joinOverviewParts(parts);
-    }
-
-    private String buildUtilityOverview(EnumMap<CyberwareEffectType, Double> totals) {
-        List<String> parts = new ArrayList<>();
-        appendEffect(parts, CyberwareEffectType.BLOCK_BREAK_SPEED, totals.getOrDefault(CyberwareEffectType.BLOCK_BREAK_SPEED, 0.0D));
-        appendEffect(parts, CyberwareEffectType.CHROME_CAPACITY, menu.getChromeHeadroomBonus());
-        appendFlag(parts, Component.translatable(CyberwareEffectType.NIGHT_VISION.translationKey()).getString(), totals.containsKey(CyberwareEffectType.NIGHT_VISION));
-        appendFlag(parts, Component.translatable(CyberwareEffectType.FIRE_RESISTANCE.translationKey()).getString(), totals.containsKey(CyberwareEffectType.FIRE_RESISTANCE));
-        appendFlag(parts, Component.translatable(CyberwareEffectType.WATER_BREATHING.translationKey()).getString(), totals.containsKey(CyberwareEffectType.WATER_BREATHING));
-        return joinOverviewParts(parts);
-    }
-
-    private void appendEffect(List<String> parts, CyberwareEffectType type, double amount) {
-        if (Math.abs(amount) <= 0.0001D) {
-            return;
+    private List<OverviewRow> bodyOverviewRows() {
+        List<OverviewRow> rows = new ArrayList<>();
+        int damaged = 0, broken = 0;
+        for (CyberwareSlot slot : CyberwareSlot.values()) {
+            ItemStack stack = menu.getCyberwareStack(slot);
+            if (!(stack.getItem() instanceof CyberwareItem implant)) continue;
+            double integrity = CyberwareConditionHelper.getIntegrityRatio(stack, implant.getDefinition());
+            if (integrity <= 0) broken++;
+            else if (integrity < 1) damaged++;
         }
-        parts.add(new CyberwareEffect(type, amount).describe().getString());
-    }
+        if (broken > 0)
+            rows.add(new OverviewRow(Component.translatable("screen.cyberneticenhancements.ripper_station.overview_broken", broken), WARNING));
+        if (damaged > 0)
+            rows.add(new OverviewRow(Component.translatable("screen.cyberneticenhancements.ripper_station.overview_damaged", damaged), WARNING));
+        var totals = menu.getInstalledEffectTotals();
 
-    private void appendFallReduction(List<String> parts, double amount) {
-        if (Math.abs(amount) <= 0.0001D) {
-            return;
+        for (CyberwareEffectType type : CyberwareEffectType.values()) {
+            double amount = type == CyberwareEffectType.CHROME_CAPACITY ? menu.getChromeHeadroomBonus() : totals.getOrDefault(type, 0.0D);
+            if (type.isMobEffect() ? !totals.containsKey(type) : Math.abs(amount) <= 0.0001D) continue;
+            rows.add(new OverviewRow(new CyberwareEffect(type, amount).describe(), PANEL_ACCENT));
         }
-        double reductionPercent = Math.abs(amount) * 100.0D;
-        parts.add(formatSigned(reductionPercent) + "% Fall Damage Reduction");
+        return rows;
     }
 
-    private void appendFlag(List<String> parts, String label, boolean active) {
-        if (active) {
-            parts.add(label);
+    private int overviewContentHeight(List<OverviewRow> rows, int width) {
+        int height = 0;
+        for (var row : rows) height += font.split(row.text(), width).size() * 11 + 5;
+        return Math.max(0, height - 5);
+    }
+
+    private void renderBodyOverviewBonuses(GuiGraphics g, int mouseX, int mouseY) {
+        g.fill(OVERVIEW_X, 108, OVERVIEW_X + OVERVIEW_WIDTH, 109, UiRenderer.FIELD_EDGE);
+        g.drawString(font, Component.translatable("screen.cyberneticenhancements.ripper_station.overview_effects"), OVERVIEW_X, 114, TEXT_SECONDARY, false);
+        var rows = bodyOverviewRows();
+        boolean overflow = overviewContentHeight(rows, OVERVIEW_WIDTH) > OVERVIEW_HEIGHT;
+        int textWidth = OVERVIEW_WIDTH - (overflow ? UiScrollbar.WIDTH + 6 : 0);
+        overviewMaxScroll = Math.max(0, overviewContentHeight(rows, textWidth) - OVERVIEW_HEIGHT);
+        overviewScroll.clamp(overviewMaxScroll);
+        overviewScroll.tick();
+        if (overviewMaxScroll == 0) overviewScrollbar.release();
+
+        g.enableScissor(leftPos + OVERVIEW_X, topPos + OVERVIEW_Y, leftPos + OVERVIEW_X + textWidth, topPos + OVERVIEW_Y + OVERVIEW_HEIGHT);
+        int y = OVERVIEW_Y - (int) Math.round(overviewScroll.current);
+        for (var row : rows) {
+            for (var line : font.split(row.text(), textWidth)) {
+                g.drawString(font, line, OVERVIEW_X, y, row.color(), false);
+                y += 11;
+            }
+            y += 5;
         }
-    }
-
-    private String joinOverviewParts(List<String> parts) {
-        return parts.isEmpty() ? "-" : String.join(" ", parts);
-    }
-
-    private boolean hasOverviewValue(String value) {
-        return !"-".equals(value);
-    }
-
-    private String trimToWidth(String value, int maxWidth) {
-        if (font.width(value) <= maxWidth) {
-            return value;
+        if (rows.isEmpty()) {
+            for (var line : font.split(Component.translatable("screen.cyberneticenhancements.ripper_station.overview_no_effects"), textWidth)) {
+                g.drawString(font, line, OVERVIEW_X, y, TEXT_SECONDARY, false);
+                y += 11;
+            }
         }
-        return font.plainSubstrByWidth(value, Math.max(0, maxWidth - font.width("..."))) + "...";
+        g.disableScissor();
+
+        g.pose().pushPose();
+        g.pose().translate(-leftPos, -topPos, 0);
+        UiScrollbar.draw(g, overviewTrack(), mouseX, mouseY, overviewScrollbar.dragging());
+        g.pose().popPose();
     }
 
-    private String formatSigned(double value) {
-        double rounded = Math.abs(value - Math.rint(value)) < 0.0001D ? Math.rint(value) : Math.round(value * 10.0D) / 10.0D;
-        if (Math.abs(rounded) < 0.0001D) {
-            return "0";
-        }
-        if (Math.abs(rounded - Math.rint(rounded)) < 0.0001D) {
-            return (rounded > 0 ? "+" : "") + Integer.toString((int) Math.rint(rounded));
-        }
-        return (rounded > 0 ? "+" : "") + String.format(java.util.Locale.ROOT, "%.1f", rounded);
+    private UiScrollbar.Track overviewTrack() {
+        return UiScrollbar.layout(leftPos + OVERVIEW_X + OVERVIEW_WIDTH - UiScrollbar.WIDTH, topPos + OVERVIEW_Y,
+                UiScrollbar.WIDTH, OVERVIEW_HEIGHT, false, OVERVIEW_HEIGHT, overviewMaxScroll, overviewScroll.current);
     }
 
     private void drawPlayerModel(GuiGraphics guiGraphics, int mouseX, int mouseY) {
@@ -424,255 +377,15 @@ public final class RipperStationScreen extends AbstractContainerScreen<RipperSta
         EntityRenderDispatcher renderDispatcher = Minecraft.getInstance().getEntityRenderDispatcher();
         renderDispatcher.overrideCameraOrientation(cameraRotation.conjugate(new Quaternionf()).rotateY((float) Math.PI));
         renderDispatcher.setRenderShadow(false);
-        PlayerRenderer playerRenderer = renderDispatcher.getRenderer(player) instanceof PlayerRenderer renderer ? renderer : null;
 
-        RenderSystem.runAsFancy(() -> {
-            renderDispatcher.render(player, 0.0, 0.0, 0.0, 0.0F, 1.0F, guiGraphics.pose(), guiGraphics.bufferSource(), 15728880);
-            if (hoveredSlot != null && playerRenderer != null) {
-                renderSelectionOverlay(guiGraphics, player, playerRenderer, hoveredSlot);
-            }
-        });
+        RenderSystem.runAsFancy(() -> RipperStationHighlightLayer.renderWithSelection(player, hoveredSlot,
+                () -> renderDispatcher.render(player, 0.0, 0.0, 0.0, 0.0F, 1.0F,
+                        guiGraphics.pose(), guiGraphics.bufferSource(), 15728880)));
 
         guiGraphics.flush();
         renderDispatcher.setRenderShadow(true);
         guiGraphics.pose().popPose();
         Lighting.setupFor3DItems();
-    }
-
-    private void renderSelectionOverlay(
-            GuiGraphics guiGraphics,
-            AbstractClientPlayer player,
-            PlayerRenderer playerRenderer,
-            CyberwareSlot hoveredSlot
-    ) {
-        VertexConsumer vertexConsumer = guiGraphics.bufferSource().getBuffer(RenderType.entityTranslucent(HIGHLIGHT_TEXTURE));
-        int overlay = LivingEntityRenderer.getOverlayCoords(player, 0.0F);
-        var model = playerRenderer.getModel();
-        Vec3 renderOffset = playerRenderer.getRenderOffset(player, 1.0F);
-
-        guiGraphics.pose().pushPose();
-        guiGraphics.pose().translate(renderOffset.x, renderOffset.y, renderOffset.z);
-        guiGraphics.pose().scale(player.getScale(), player.getScale(), player.getScale());
-        guiGraphics.pose().mulPose(Axis.YP.rotationDegrees(180.0F - player.yBodyRot));
-        guiGraphics.pose().scale(-1.0F, -1.0F, 1.0F);
-        guiGraphics.pose().scale(0.9375F, 0.9375F, 0.9375F);
-        guiGraphics.pose().translate(0.0F, -1.501F, 0.0F);
-
-        switch (hoveredSlot) {
-            case HANDS_1 -> renderScreenLeftHandGroup(model, player, guiGraphics, vertexConsumer, overlay);
-            case HANDS_2 -> renderScreenRightHandGroup(model, player, guiGraphics, vertexConsumer, overlay);
-            default -> {
-                switch (hoveredSlot.getType()) {
-                    case FRONTAL_CORTEX -> renderHeadGroup(model, player, guiGraphics, vertexConsumer, overlay);
-                    case OPERATING_SYSTEM -> renderTorsoGroup(model, player, guiGraphics, vertexConsumer, overlay);
-                    case FACE -> renderHeadGroup(model, player, guiGraphics, vertexConsumer, overlay);
-                    case SKELETON -> renderWholeBaseBody(model, guiGraphics, vertexConsumer, overlay);
-                    case ARMS -> renderArmsGroup(model, player, guiGraphics, vertexConsumer, overlay);
-                    case HANDS -> renderHandsGroup(model, player, guiGraphics, vertexConsumer, overlay);
-                    case NERVOUS_SYSTEM -> renderWholeBaseBody(model, guiGraphics, vertexConsumer, overlay);
-                    case CIRCULATORY_SYSTEM -> renderCirculatoryGroup(model, player, guiGraphics, vertexConsumer, overlay);
-                    case INTEGUMENTARY_SYSTEM -> renderOuterBodyGroup(model, player, guiGraphics, vertexConsumer, overlay);
-                    case LEGS -> renderLegsGroup(model, player, guiGraphics, vertexConsumer, overlay);
-                }
-            }
-        }
-        guiGraphics.pose().popPose();
-    }
-
-    private void renderWholeBaseBody(
-            net.minecraft.client.model.PlayerModel<AbstractClientPlayer> model,
-            GuiGraphics guiGraphics,
-            VertexConsumer vertexConsumer,
-            int overlay
-    ) {
-        renderHighlightedPart(model.head, guiGraphics, vertexConsumer, overlay);
-        renderHighlightedPart(model.hat, guiGraphics, vertexConsumer, overlay);
-        renderHighlightedPart(model.body, guiGraphics, vertexConsumer, overlay);
-        renderHighlightedPart(model.jacket, guiGraphics, vertexConsumer, overlay);
-        renderHighlightedPart(model.rightArm, guiGraphics, vertexConsumer, overlay);
-        renderHighlightedPart(model.leftArm, guiGraphics, vertexConsumer, overlay);
-        renderHighlightedPart(model.rightSleeve, guiGraphics, vertexConsumer, overlay);
-        renderHighlightedPart(model.leftSleeve, guiGraphics, vertexConsumer, overlay);
-        renderHighlightedPart(model.rightLeg, guiGraphics, vertexConsumer, overlay);
-        renderHighlightedPart(model.leftLeg, guiGraphics, vertexConsumer, overlay);
-        renderHighlightedPart(model.rightPants, guiGraphics, vertexConsumer, overlay);
-        renderHighlightedPart(model.leftPants, guiGraphics, vertexConsumer, overlay);
-    }
-
-    private void renderHeadGroup(
-            net.minecraft.client.model.PlayerModel<AbstractClientPlayer> model,
-            AbstractClientPlayer player,
-            GuiGraphics guiGraphics,
-            VertexConsumer vertexConsumer,
-            int overlay
-    ) {
-        renderHighlightedPart(model.head, guiGraphics, vertexConsumer, overlay);
-        if (player.isModelPartShown(PlayerModelPart.HAT)) {
-            renderHighlightedPart(model.hat, guiGraphics, vertexConsumer, overlay);
-        }
-    }
-
-    private void renderTorsoGroup(
-            net.minecraft.client.model.PlayerModel<AbstractClientPlayer> model,
-            AbstractClientPlayer player,
-            GuiGraphics guiGraphics,
-            VertexConsumer vertexConsumer,
-            int overlay
-    ) {
-        renderHighlightedPart(model.body, guiGraphics, vertexConsumer, overlay);
-        if (player.isModelPartShown(PlayerModelPart.JACKET)) {
-            renderHighlightedPart(model.jacket, guiGraphics, vertexConsumer, overlay);
-        }
-    }
-
-    private void renderCirculatoryGroup(
-            net.minecraft.client.model.PlayerModel<AbstractClientPlayer> model,
-            AbstractClientPlayer player,
-            GuiGraphics guiGraphics,
-            VertexConsumer vertexConsumer,
-            int overlay
-    ) {
-        renderTorsoGroup(model, player, guiGraphics, vertexConsumer, overlay);
-        renderArmsGroup(model, player, guiGraphics, vertexConsumer, overlay);
-        renderLegsGroup(model, player, guiGraphics, vertexConsumer, overlay);
-    }
-
-    private void renderArmsGroup(
-            net.minecraft.client.model.PlayerModel<AbstractClientPlayer> model,
-            AbstractClientPlayer player,
-            GuiGraphics guiGraphics,
-            VertexConsumer vertexConsumer,
-            int overlay
-    ) {
-        renderHighlightedPart(model.rightArm, guiGraphics, vertexConsumer, overlay);
-        renderHighlightedPart(model.leftArm, guiGraphics, vertexConsumer, overlay);
-        if (player.isModelPartShown(PlayerModelPart.RIGHT_SLEEVE)) {
-            renderHighlightedPart(model.rightSleeve, guiGraphics, vertexConsumer, overlay);
-        }
-        if (player.isModelPartShown(PlayerModelPart.LEFT_SLEEVE)) {
-            renderHighlightedPart(model.leftSleeve, guiGraphics, vertexConsumer, overlay);
-        }
-    }
-
-    private void renderHandsGroup(
-            net.minecraft.client.model.PlayerModel<AbstractClientPlayer> model,
-            AbstractClientPlayer player,
-            GuiGraphics guiGraphics,
-            VertexConsumer vertexConsumer,
-            int overlay
-    ) {
-        boolean renderedSleeve = false;
-        if (player.isModelPartShown(PlayerModelPart.RIGHT_SLEEVE)) {
-            renderHighlightedPart(model.rightSleeve, guiGraphics, vertexConsumer, overlay);
-            renderedSleeve = true;
-        }
-        if (player.isModelPartShown(PlayerModelPart.LEFT_SLEEVE)) {
-            renderHighlightedPart(model.leftSleeve, guiGraphics, vertexConsumer, overlay);
-            renderedSleeve = true;
-        }
-        if (!renderedSleeve) {
-            renderHighlightedPart(model.rightArm, guiGraphics, vertexConsumer, overlay);
-            renderHighlightedPart(model.leftArm, guiGraphics, vertexConsumer, overlay);
-        }
-    }
-
-    private void renderScreenLeftHandGroup(
-            net.minecraft.client.model.PlayerModel<AbstractClientPlayer> model,
-            AbstractClientPlayer player,
-            GuiGraphics guiGraphics,
-            VertexConsumer vertexConsumer,
-            int overlay
-    ) {
-
-        renderSingleHandGroup(model.rightArm, model.rightSleeve, PlayerModelPart.RIGHT_SLEEVE, player, guiGraphics, vertexConsumer, overlay);
-    }
-
-    private void renderScreenRightHandGroup(
-            net.minecraft.client.model.PlayerModel<AbstractClientPlayer> model,
-            AbstractClientPlayer player,
-            GuiGraphics guiGraphics,
-            VertexConsumer vertexConsumer,
-            int overlay
-    ) {
-        renderSingleHandGroup(model.leftArm, model.leftSleeve, PlayerModelPart.LEFT_SLEEVE, player, guiGraphics, vertexConsumer, overlay);
-    }
-
-    private void renderSingleHandGroup(
-            ModelPart arm,
-            ModelPart sleeve,
-            PlayerModelPart sleevePart,
-            AbstractClientPlayer player,
-            GuiGraphics guiGraphics,
-            VertexConsumer vertexConsumer,
-            int overlay
-    ) {
-        if (player.isModelPartShown(sleevePart)) {
-            renderHighlightedPart(sleeve, guiGraphics, vertexConsumer, overlay);
-            return;
-        }
-        renderHighlightedPart(arm, guiGraphics, vertexConsumer, overlay);
-    }
-
-    private void renderOuterBodyGroup(
-            net.minecraft.client.model.PlayerModel<AbstractClientPlayer> model,
-            AbstractClientPlayer player,
-            GuiGraphics guiGraphics,
-            VertexConsumer vertexConsumer,
-            int overlay
-    ) {
-        if (player.isModelPartShown(PlayerModelPart.HAT)) {
-            renderHighlightedPart(model.hat, guiGraphics, vertexConsumer, overlay);
-        }
-        if (player.isModelPartShown(PlayerModelPart.JACKET)) {
-            renderHighlightedPart(model.jacket, guiGraphics, vertexConsumer, overlay);
-        }
-        if (player.isModelPartShown(PlayerModelPart.RIGHT_SLEEVE)) {
-            renderHighlightedPart(model.rightSleeve, guiGraphics, vertexConsumer, overlay);
-        }
-        if (player.isModelPartShown(PlayerModelPart.LEFT_SLEEVE)) {
-            renderHighlightedPart(model.leftSleeve, guiGraphics, vertexConsumer, overlay);
-        }
-        if (player.isModelPartShown(PlayerModelPart.RIGHT_PANTS_LEG)) {
-            renderHighlightedPart(model.rightPants, guiGraphics, vertexConsumer, overlay);
-        }
-        if (player.isModelPartShown(PlayerModelPart.LEFT_PANTS_LEG)) {
-            renderHighlightedPart(model.leftPants, guiGraphics, vertexConsumer, overlay);
-        }
-    }
-
-    private void renderLegsGroup(
-            net.minecraft.client.model.PlayerModel<AbstractClientPlayer> model,
-            AbstractClientPlayer player,
-            GuiGraphics guiGraphics,
-            VertexConsumer vertexConsumer,
-            int overlay
-    ) {
-        renderHighlightedPart(model.rightLeg, guiGraphics, vertexConsumer, overlay);
-        renderHighlightedPart(model.leftLeg, guiGraphics, vertexConsumer, overlay);
-        if (player.isModelPartShown(PlayerModelPart.RIGHT_PANTS_LEG)) {
-            renderHighlightedPart(model.rightPants, guiGraphics, vertexConsumer, overlay);
-        }
-        if (player.isModelPartShown(PlayerModelPart.LEFT_PANTS_LEG)) {
-            renderHighlightedPart(model.leftPants, guiGraphics, vertexConsumer, overlay);
-        }
-    }
-
-    private void renderHighlightedPart(
-            ModelPart modelPart,
-            GuiGraphics guiGraphics,
-            VertexConsumer vertexConsumer,
-            int overlay
-    ) {
-        float xScale = modelPart.xScale;
-        float yScale = modelPart.yScale;
-        float zScale = modelPart.zScale;
-        modelPart.xScale = xScale * HOVER_HIGHLIGHT_SCALE;
-        modelPart.yScale = yScale * HOVER_HIGHLIGHT_SCALE;
-        modelPart.zScale = zScale * HOVER_HIGHLIGHT_SCALE;
-        modelPart.render(guiGraphics.pose(), vertexConsumer, 15728880, overlay, HOVER_HIGHLIGHT_TINT);
-        modelPart.xScale = xScale;
-        modelPart.yScale = yScale;
-        modelPart.zScale = zScale;
     }
 
     private CyberwareSlot getHoveredCyberwareSlot(int mouseX, int mouseY) {
@@ -682,26 +395,7 @@ public final class RipperStationScreen extends AbstractContainerScreen<RipperSta
                 return slot;
             }
         }
-        return getHoveredMatrixModelSlot(mouseX, mouseY);
-    }
-
-    private CyberwareSlot getHoveredMatrixModelSlot(int mouseX, int mouseY) {
-        int relativeX = mouseX - (leftPos + MATRIX_MODEL_X1);
-        int relativeY = mouseY - (topPos + MATRIX_MODEL_Y1);
-        if (relativeX < 0 || relativeY < 0 || relativeX >= MATRIX_MODEL_X2 - MATRIX_MODEL_X1 || relativeY >= MATRIX_MODEL_Y2 - MATRIX_MODEL_Y1) {
-            return null;
-        }
-        if (isWithinMatrixRegion(relativeX, relativeY, 18, 70, 60, 158)) {
-            return CyberwareSlot.HANDS_1;
-        }
-        if (isWithinMatrixRegion(relativeX, relativeY, 108, 70, 150, 158)) {
-            return CyberwareSlot.HANDS_2;
-        }
         return null;
-    }
-
-    private boolean isWithinMatrixRegion(int x, int y, int x1, int y1, int x2, int y2) {
-        return x >= x1 && x < x2 && y >= y1 && y < y2;
     }
 
     private void drawSlotFrames(GuiGraphics guiGraphics, int mouseX, int mouseY) {
@@ -744,27 +438,18 @@ public final class RipperStationScreen extends AbstractContainerScreen<RipperSta
     }
 
     private void drawTank(GuiGraphics guiGraphics, int x1, int y1, int x2, int y2, int percent) {
-        int tankX1 = leftPos + x1;
-        int tankY1 = topPos + y1;
-        int tankX2 = leftPos + x2;
-        int tankY2 = topPos + y2;
-        int tankWidth = tankX2 - tankX1;
-        int tankHeight = tankY2 - tankY1;
-        int fillHeight = Math.max(0, Math.min(tankHeight, percent * tankHeight / 100));
-        int fillTop = tankY2 - fillHeight;
-
-        if (fillHeight > 0) {
-            guiGraphics.fill(tankX1, fillTop, tankX2, tankY2, TANK_FILL_BASE);
-
-            if (fillHeight > 2) {
-                guiGraphics.fill(tankX1, fillTop, tankX2, Math.min(tankY2, fillTop + 2), TANK_FILL_TOP);
-            }
-            if (fillHeight > 4 && tankWidth > 3) {
-                guiGraphics.fill(tankX1, fillTop + 1, tankX1 + 2, tankY2, TANK_FILL_LEFT);
-                guiGraphics.fill(tankX2 - 2, fillTop + 1, tankX2, tankY2, TANK_FILL_RIGHT);
-                guiGraphics.fill(tankX1 + 2, fillTop + 2, tankX2, tankY2, TANK_FILL_SHADE);
-            }
-        }
+        int x = leftPos + x1;
+        int y = topPos + y1;
+        int width = x2 - x1;
+        int height = y2 - y1;
+        boolean chrome = x1 == CHROME_TANK_X1;
+        Component label = Component.translatable("screen.cyberneticenhancements.ripper_station." + (chrome ? "chrome" : "integrity"));
+        UiRenderer.panel(guiGraphics, x, y, width, height, UiRenderer.PANEL);
+        guiGraphics.drawString(font, label, x + 8, y + 9, TEXT_SECONDARY, false);
+        String value = percent + "%";
+        guiGraphics.drawString(font, value, x + width - 8 - font.width(value), y + 9, TEXT_PRIMARY, false);
+        UiRenderer.tank(guiGraphics, x + 8, y + 25, width - 16, height - 33, percent,
+                chrome ? 0xFF409DC5 : 0xFF31BDA6);
     }
 
     private void renderStatusTankTooltip(GuiGraphics guiGraphics, int mouseX, int mouseY) {
@@ -954,8 +639,8 @@ public final class RipperStationScreen extends AbstractContainerScreen<RipperSta
         for (int row = 0; row < 3; row++) {
             for (int column = 0; column < 9; column++) {
                 drawVanillaSlotBack(guiGraphics,
-                    RipperStationLayout.PLAYER_INVENTORY_X + column * RipperStationLayout.PLAYER_SLOT_SPACING,
-                    RipperStationLayout.PLAYER_INVENTORY_Y + row * RipperStationLayout.PLAYER_SLOT_SPACING,
+                        RipperStationLayout.PLAYER_INVENTORY_X + column * RipperStationLayout.PLAYER_SLOT_SPACING,
+                        RipperStationLayout.PLAYER_INVENTORY_Y + row * RipperStationLayout.PLAYER_SLOT_SPACING,
                         SLOT_BACKGROUND);
             }
         }
@@ -1162,9 +847,12 @@ public final class RipperStationScreen extends AbstractContainerScreen<RipperSta
     private void sendUpgradePacket(UpgradeTarget target) {
         switch (target.kind()) {
             case CYBERWARE -> PacketDistributor.sendToServer(new UpgradeCyberwareSlotPayload(target.primaryIndex()));
-            case CHIPWARE -> PacketDistributor.sendToServer(new UpgradeRipperSubSlotPayload(UpgradeRipperSubSlotPayload.KIND_CHIPWARE, target.primaryIndex(), target.slotIndex()));
-            case ARM_MODULE -> PacketDistributor.sendToServer(new UpgradeRipperSubSlotPayload(UpgradeRipperSubSlotPayload.KIND_ARM_MODULE, 0, target.slotIndex()));
-            case LEG_MODULE -> PacketDistributor.sendToServer(new UpgradeRipperSubSlotPayload(UpgradeRipperSubSlotPayload.KIND_LEG_MODULE, 0, target.slotIndex()));
+            case CHIPWARE ->
+                    PacketDistributor.sendToServer(new UpgradeRipperSubSlotPayload(UpgradeRipperSubSlotPayload.KIND_CHIPWARE, target.primaryIndex(), target.slotIndex()));
+            case ARM_MODULE ->
+                    PacketDistributor.sendToServer(new UpgradeRipperSubSlotPayload(UpgradeRipperSubSlotPayload.KIND_ARM_MODULE, 0, target.slotIndex()));
+            case LEG_MODULE ->
+                    PacketDistributor.sendToServer(new UpgradeRipperSubSlotPayload(UpgradeRipperSubSlotPayload.KIND_LEG_MODULE, 0, target.slotIndex()));
         }
     }
 
@@ -1178,8 +866,10 @@ public final class RipperStationScreen extends AbstractContainerScreen<RipperSta
                 int x = RipperStationLayout.CHIP_CLUSTER_X[target.primaryIndex()] + RipperStationLayout.CHIP_SLOT_OFFSET_X[target.slotIndex()];
                 yield isHoveringSlot(x, RipperStationLayout.CHIP_SLOT_Y, mouseX, mouseY);
             }
-            case ARM_MODULE -> isHoveringSlot(RipperStationLayout.ARM_MODULE_X[target.slotIndex()], RipperStationLayout.ARM_MODULE_Y, mouseX, mouseY);
-            case LEG_MODULE -> isHoveringSlot(RipperStationLayout.LEG_MODULE_X[target.slotIndex()], RipperStationLayout.LEG_MODULE_Y, mouseX, mouseY);
+            case ARM_MODULE ->
+                    isHoveringSlot(RipperStationLayout.ARM_MODULE_X[target.slotIndex()], RipperStationLayout.ARM_MODULE_Y, mouseX, mouseY);
+            case LEG_MODULE ->
+                    isHoveringSlot(RipperStationLayout.LEG_MODULE_X[target.slotIndex()], RipperStationLayout.LEG_MODULE_Y, mouseX, mouseY);
         };
     }
 

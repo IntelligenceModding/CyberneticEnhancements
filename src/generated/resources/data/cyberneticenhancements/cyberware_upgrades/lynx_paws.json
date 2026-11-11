@@ -1,0 +1,59 @@
+{
+  "levels": [
+    {
+      "effects": {
+        "movement_speed": 0.01
+      },
+      "materials": [
+        {
+          "count": 1,
+          "item": "cyberneticenhancements:uncommon_item_components"
+        },
+        {
+          "count": 1,
+          "item": "cyberneticenhancements:micro_actuator"
+        }
+      ]
+    },
+    {
+      "effects": {
+        "movement_speed": 0.02
+      },
+      "materials": [
+        {
+          "count": 1,
+          "item": "cyberneticenhancements:uncommon_item_components"
+        },
+        {
+          "count": 1,
+          "item": "cyberneticenhancements:micro_actuator"
+        }
+      ]
+    },
+    {
+      "effects": {
+        "movement_speed": 0.03
+      },
+      "materials": [
+        {
+          "count": 2,
+          "item": "cyberneticenhancements:uncommon_item_components"
+        },
+        {
+          "count": 1,
+          "item": "cyberneticenhancements:micro_actuator"
+        }
+      ]
+    }
+  ],
+  "repair_materials": [
+    {
+      "count": 3,
+      "item": "cyberneticenhancements:uncommon_item_components"
+    },
+    {
+      "count": 1,
+      "item": "cyberneticenhancements:micro_actuator"
+    }
+  ]
+}

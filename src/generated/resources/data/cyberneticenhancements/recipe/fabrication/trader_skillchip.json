@@ -1,0 +1,41 @@
+{
+  "type": "cyberneticenhancements:fabrication",
+  "category": "Chipware",
+  "parts": [
+    {
+      "ingredient": {
+        "item": "cyberneticenhancements:firmware_module"
+      },
+      "slot": 7
+    },
+    {
+      "ingredient": {
+        "item": "cyberneticenhancements:neural_interface"
+      },
+      "slot": 11
+    },
+    {
+      "ingredient": {
+        "item": "cyberneticenhancements:basic_circuit_plate"
+      },
+      "slot": 12
+    },
+    {
+      "ingredient": {
+        "item": "cyberneticenhancements:neural_interface"
+      },
+      "slot": 13
+    },
+    {
+      "ingredient": {
+        "item": "cyberneticenhancements:copper_wiring"
+      },
+      "slot": 17
+    }
+  ],
+  "result": {
+    "count": 1,
+    "id": "cyberneticenhancements:trader_skillchip"
+  },
+  "tier": 3
+}

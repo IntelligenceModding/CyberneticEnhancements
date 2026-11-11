@@ -1,6 +1,7 @@
 package de.artemis.cyberneticenhancements.common.cyberware;
 
 import de.artemis.cyberneticenhancements.common.consumable.CyberConsumableManager;
+import de.artemis.cyberneticenhancements.common.cyberware.sandevistan.SandevistanManager;
 import de.artemis.cyberneticenhancements.common.economy.PlayerEurodollarManager;
 import de.artemis.cyberneticenhancements.common.quest.PlayerQuestManager;
 import net.minecraft.server.level.ServerPlayer;
@@ -11,6 +12,7 @@ public final class CyberwarePlayerEvents {
     }
 
     public static void onPlayerClone(PlayerEvent.Clone event) {
+        SandevistanManager.copyState(event.getOriginal(), event.getEntity());
         PlayerCyberwareInventory.copyStoredInventory(event.getOriginal(), event.getEntity());
         CyberstrainManager.copyState(event.getOriginal(), event.getEntity());
         CyberConsumableManager.copyState(event.getOriginal(), event.getEntity());
@@ -45,6 +47,7 @@ public final class CyberwarePlayerEvents {
 
     public static void onPlayerLogout(PlayerEvent.PlayerLoggedOutEvent event) {
         if (event.getEntity() instanceof ServerPlayer serverPlayer) {
+            CyberwareAbilities.onPlayerLogout(serverPlayer);
             PsychosisBossBarManager.onPlayerLogout(serverPlayer);
         }
     }

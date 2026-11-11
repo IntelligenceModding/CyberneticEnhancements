@@ -1,0 +1,25 @@
+{
+  "type": "cyberneticenhancements:recycling",
+  "damaged_outputs": [
+    {
+      "count": 1,
+      "id": "cyberneticenhancements:polymer_shell"
+    }
+  ],
+  "group": "fabrication",
+  "ingredient": {
+    "item": "cyberneticenhancements:microfluidic_pump"
+  },
+  "outputs": [
+    {
+      "count": 1,
+      "id": "cyberneticenhancements:polymer_shell"
+    }
+  ],
+  "worn_outputs": [
+    {
+      "count": 1,
+      "id": "cyberneticenhancements:polymer_shell"
+    }
+  ]
+}

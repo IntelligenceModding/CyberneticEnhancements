@@ -1,0 +1,74 @@
+{
+  "levels": [
+    {
+      "effects": {
+        "health_regen": 0.05
+      },
+      "materials": [
+        {
+          "count": 1,
+          "item": "cyberneticenhancements:rare_item_components"
+        },
+        {
+          "count": 1,
+          "item": "cyberneticenhancements:reinforced_alloy"
+        }
+      ]
+    },
+    {
+      "effects": {
+        "health_regen": 0.1
+      },
+      "materials": [
+        {
+          "count": 1,
+          "item": "cyberneticenhancements:rare_item_components"
+        },
+        {
+          "count": 1,
+          "item": "cyberneticenhancements:reinforced_alloy"
+        }
+      ]
+    },
+    {
+      "effects": {
+        "health_regen": 0.15000000000000002
+      },
+      "materials": [
+        {
+          "count": 2,
+          "item": "cyberneticenhancements:rare_item_components"
+        },
+        {
+          "count": 1,
+          "item": "cyberneticenhancements:reinforced_alloy"
+        }
+      ]
+    },
+    {
+      "effects": {
+        "health_regen": 0.2
+      },
+      "materials": [
+        {
+          "count": 2,
+          "item": "cyberneticenhancements:rare_item_components"
+        },
+        {
+          "count": 2,
+          "item": "cyberneticenhancements:reinforced_alloy"
+        }
+      ]
+    }
+  ],
+  "repair_materials": [
+    {
+      "count": 2,
+      "item": "cyberneticenhancements:rare_item_components"
+    },
+    {
+      "count": 2,
+      "item": "cyberneticenhancements:replacement_joint"
+    }
+  ]
+}

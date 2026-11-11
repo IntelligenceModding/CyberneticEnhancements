@@ -1,0 +1,25 @@
+{
+  "type": "cyberneticenhancements:recycling",
+  "damaged_outputs": [
+    {
+      "count": 1,
+      "id": "cyberneticenhancements:sensor_lens"
+    }
+  ],
+  "group": "fabrication",
+  "ingredient": {
+    "item": "cyberneticenhancements:optical_array"
+  },
+  "outputs": [
+    {
+      "count": 1,
+      "id": "cyberneticenhancements:sensor_lens"
+    }
+  ],
+  "worn_outputs": [
+    {
+      "count": 1,
+      "id": "cyberneticenhancements:sensor_lens"
+    }
+  ]
+}

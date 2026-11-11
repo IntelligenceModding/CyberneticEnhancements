@@ -70,6 +70,7 @@ public final class RelicCacheBlockEntity extends BlockEntity {
     private final List<ItemStack> previewItems = new ArrayList<>();
     private final List<ItemStack> rewardItems = new ArrayList<>();
 
+    private int puzzleVersion;
     private int puzzleDifficulty;
     private int puzzleGridSize;
     private int puzzleTimeLimitTicks;
@@ -126,6 +127,15 @@ public final class RelicCacheBlockEntity extends BlockEntity {
             return;
         }
 
+        if (hackSelectedCount == 0) {
+            var owner = level.getServer().getPlayerList().getPlayer(hackingPlayer);
+            if (owner == null || !(owner.containerMenu instanceof RelicCacheHackMenu menu) || !menu.isForBlock(pos)) {
+                clearHackSessionState();
+                setChanged();
+                syncToClient(level, pos, state);
+            }
+            return;
+        }
         emitHackSessionParticles(level, pos);
         hackTimeRemainingTicks--;
         if (hackTimeRemainingTicks <= 0) {
@@ -184,6 +194,10 @@ public final class RelicCacheBlockEntity extends BlockEntity {
             return;
         }
 
+        if (hackSelectedCount >= getHackBufferSize()) {
+            failHack(player, Component.translatable("message.cyberneticenhancements.relic_cache.buffer_full"));
+            return;
+        }
         boolean hasMove = false;
         for (int next = 0; next < hackGridSize * hackGridSize; next++) {
             if (isSelectableCell(next)) {
@@ -269,12 +283,12 @@ public final class RelicCacheBlockEntity extends BlockEntity {
     }
 
     private boolean isSelectableCell(int cellIndex) {
-        return hasActiveHackSession() && RelicCacheHackRules.isSelectable(hackGridSize, hackSelectedCount,
+        return hasActiveHackSession() && hackSelectedCount < getHackBufferSize() && RelicCacheHackRules.isSelectable(hackGridSize, hackSelectedCount,
                 i -> hackSelectedCells[i], cellIndex);
     }
 
     private void ensureStoredPuzzle(ServerLevel level, ServerPlayer player) {
-        if (hasStoredPuzzle()) {
+        if (hasStoredPuzzle() && puzzleVersion >= 2) {
             return;
         }
 
@@ -284,7 +298,7 @@ public final class RelicCacheBlockEntity extends BlockEntity {
                         ^ player.getUUID().getMostSignificantBits()
                         ^ player.getUUID().getLeastSignificantBits()
         );
-        storePuzzleDefinition(RelicCacheHackPuzzle.generate(random));
+        storePuzzleDefinition(RelicCacheHackPuzzle.generate(random, currentCacheBlock().tier().ordinal() + 2));
     }
 
     private void beginHackSession(ServerPlayer player) {
@@ -308,6 +322,7 @@ public final class RelicCacheBlockEntity extends BlockEntity {
     }
 
     private void storePuzzleDefinition(RelicCacheHackPuzzle puzzle) {
+        puzzleVersion = 2;
         puzzleDifficulty = puzzle.difficulty();
         puzzleGridSize = puzzle.gridSize();
         puzzleTimeLimitTicks = puzzle.timeLimitTicks();
@@ -359,6 +374,10 @@ public final class RelicCacheBlockEntity extends BlockEntity {
 
     public int getHackDifficulty() {
         return hackDifficulty;
+    }
+
+    public int getHackBufferSize() {
+        return RelicCacheHackPuzzle.bufferSize(hackDifficulty);
     }
 
     public int getHackGridSize() {
@@ -600,6 +619,7 @@ public final class RelicCacheBlockEntity extends BlockEntity {
         openingPlayer = tag.hasUUID(OPENING_PLAYER_TAG) ? tag.getUUID(OPENING_PLAYER_TAG) : null;
         readStacks(tag.getList(PREVIEW_ITEMS_TAG, Tag.TAG_COMPOUND), previewItems, registries);
         readStacks(tag.getList(REWARD_ITEMS_TAG, Tag.TAG_COMPOUND), rewardItems, registries);
+        puzzleVersion = tag.getInt("PuzzleVersion");
         puzzleDifficulty = tag.getInt(PUZZLE_DIFFICULTY_TAG);
         puzzleGridSize = tag.getInt(PUZZLE_GRID_SIZE_TAG);
         puzzleTimeLimitTicks = tag.getInt(PUZZLE_TIME_LIMIT_TAG);
@@ -636,6 +656,7 @@ public final class RelicCacheBlockEntity extends BlockEntity {
         }
         tag.put(PREVIEW_ITEMS_TAG, writeStacks(previewItems, registries));
         tag.put(REWARD_ITEMS_TAG, writeStacks(rewardItems, registries));
+        tag.putInt("PuzzleVersion", puzzleVersion);
         tag.putInt(PUZZLE_DIFFICULTY_TAG, puzzleDifficulty);
         tag.putInt(PUZZLE_GRID_SIZE_TAG, puzzleGridSize);
         tag.putInt(PUZZLE_TIME_LIMIT_TAG, puzzleTimeLimitTicks);

@@ -73,7 +73,7 @@ public final class CirculatoryCyberwareManager {
         if (hydrolungCount > 0 && player.isInWaterOrBubble()) {
             totals.merge(
                     CyberwareEffectType.BLOCK_BREAK_SPEED,
-                    CyberwareBalance.doubleValue("circulatory.hydrolung.break_speed_bonus") * hydrolungCount,
+                    CyberwareUpgradeHelper.performance(inventory, HYDROLUNG_ID, "circulatory.hydrolung.break_speed_bonus") * hydrolungCount,
                     Double::sum
             );
         }
@@ -106,7 +106,7 @@ public final class CirculatoryCyberwareManager {
         int healOnKillCount = inventory.countInstalledCyberware(HEAL_ON_KILL_ID);
         if (healOnKillCount > 0) {
             player.heal(Math.min((float) (player.getMaxHealth() * CyberwareBalance.doubleValue("circulatory.heal_on_kill.max_heal_percent")),
-                    (float) (CyberwareBalance.doubleValue("circulatory.heal_on_kill.flat_heal_per_install") * healOnKillCount)));
+                    (float) (CyberwareUpgradeHelper.performance(inventory, "heal_on_kill", "circulatory.heal_on_kill.flat_heal_per_install") * healOnKillCount)));
             applyTimedEffects(player,
                     isEliteTarget(target)
                             ? CyberwareBalance.intValue("circulatory.heal_on_kill.elite_regen_ticks")
@@ -222,8 +222,8 @@ public final class CirculatoryCyberwareManager {
           if (totalFeedbackCount > 0
                   && isReady(FEEDBACK_READY_UNTIL_TICK, player, gameTime)
                   && isRangedThreat(event.getSource().getDirectEntity(), player)) {
-            long flatRefundTicks = Math.round(feedbackCount * CyberwareBalance.doubleValue("circulatory.feedback_circuit.flat_refund_ticks")
-                    + recyclerCount * CyberwareBalance.doubleValue("circulatory.electromag_recycler.flat_refund_ticks"));
+            long flatRefundTicks = Math.round(feedbackCount * CyberwareUpgradeHelper.performance(inventory, "feedback_circuit", "circulatory.feedback_circuit.flat_refund_ticks")
+                    + recyclerCount * CyberwareUpgradeHelper.performance(inventory, "electromag_recycler", "circulatory.electromag_recycler.flat_refund_ticks"));
             double percentRefund = Math.min(0.20D, recyclerCount * CyberwareBalance.doubleValue("circulatory.electromag_recycler.percent_refund"));
             refundTrackedCooldowns(player, flatRefundTicks, percentRefund);
             applyTimedEffects(player, CyberwareBalance.intValue("circulatory.feedback_circuit.proc_ticks"),
@@ -250,7 +250,7 @@ public final class CirculatoryCyberwareManager {
           if (blackMambaCount > 0 && (meleeHit || rangedHit)) {
               CombatStatusManager.applyStatus(target, CombatStatusType.CORROSION, 80L + blackMambaCount * 20L, meleeHit ? 2 : 1, true);
               if (hasStatus(target, CombatStatusType.CORROSION)) {
-                  event.setAmount(event.getAmount() + (float) (CyberwareBalance.doubleValue("circulatory.black_mamba.bonus_damage") * blackMambaCount));
+                  event.setAmount(event.getAmount() + (float) (CyberwareUpgradeHelper.performance(inventory, "black_mamba", "circulatory.black_mamba.bonus_damage") * blackMambaCount));
               }
           }
 
@@ -268,7 +268,7 @@ public final class CirculatoryCyberwareManager {
           int recyclerCount = inventory.countInstalledCyberware(ELECTROMAG_RECYCLER_ID);
           if (recyclerCount > 0 && rangedHit) {
             refundTrackedCooldowns(player,
-                    Math.round(CyberwareBalance.doubleValue("circulatory.electromag_recycler.ranged_flat_refund_ticks") * recyclerCount),
+                    Math.round(CyberwareUpgradeHelper.performance(inventory, "electromag_recycler", "circulatory.electromag_recycler.ranged_flat_refund_ticks") * recyclerCount),
                     CyberwareBalance.doubleValue("circulatory.electromag_recycler.ranged_percent_refund") * recyclerCount);
             if (recyclerCount > 0) {
                 CombatStatusManager.applyStatus(target, CombatStatusType.SHOCK, 50L + recyclerCount * 10L, 1, true);

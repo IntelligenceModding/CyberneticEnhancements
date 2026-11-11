@@ -42,73 +42,53 @@ public final class RelicCacheHackPuzzle {
     }
 
     public static RelicCacheHackPuzzle generate(RandomSource random) {
-        for (int attempt = 0; attempt < 32; attempt++) {
-            RelicCacheHackPuzzle puzzle = tryGenerate(random);
-            if (puzzle != null) {
-                return puzzle;
-            }
-        }
-        return fallbackPuzzle();
+        return generate(random, 1 + random.nextInt(5));
     }
 
-    private static RelicCacheHackPuzzle tryGenerate(RandomSource random) {
-        int difficulty = 1 + random.nextInt(5);
-        int gridSize = difficulty >= 4 ? 6 : 5;
-        int targetCount = difficulty <= 2 ? 2 : 3;
-        int timeLimitTicks = 60 * 20;
+    public static int bufferSize(int difficulty) {
+        return difficulty <= 2 ? 7 : difficulty <= 4 ? 8 : 9;
+    }
 
-        int pathLength = 5;
-        int[] path = generatePath(random, gridSize, pathLength);
-        if (path == null) {
-            return null;
-        }
+    public static RelicCacheHackPuzzle generate(RandomSource random, int difficulty) {
+        if (difficulty < 1 || difficulty > 5) throw new IllegalArgumentException("Difficulty must be 1..5");
+        int size = difficulty >= 4 ? 6 : 5;
+        int count = difficulty <= 2 ? 2 : 3;
+        int length = difficulty + 4;
+        int[] path = generatePath(random, size, length);
+        if (path == null) path = Arrays.copyOf(new int[]{0, size, size+1, 2*size+1, 2*size+2, 3*size+2, 3*size+3, 4*size+3, 4*size+4}, length);
+        int[] palette = new int[TOKEN_COUNT];
+        for (int i = 0; i < TOKEN_COUNT; i++) palette[i] = i;
+        shuffleInts(palette, random);
+        int[] route = new int[length];
+        for (int i = 0; i < length; i++) route[i] = palette[i % TOKEN_COUNT];
+        int[] grid = new int[MAX_GRID_CELLS];
+        Arrays.fill(grid, -1);
 
-        int[] tokenOrder = new int[TOKEN_COUNT];
-        for (int index = 0; index < TOKEN_COUNT; index++) {
-            tokenOrder[index] = index;
-        }
-        shuffleInts(tokenOrder, random);
-        int[] pathTokens = Arrays.copyOf(tokenOrder, pathLength);
-        int[] fillerTokens = Arrays.copyOfRange(tokenOrder, pathLength, TOKEN_COUNT);
+        for (int i = 0; i < size * size; i++) grid[i] = palette[random.nextInt(Math.min(length, TOKEN_COUNT))];
+        for (int i = 0; i < length; i++) grid[path[i]] = route[i];
 
-        int[] gridTokens = new int[MAX_GRID_CELLS];
-        Arrays.fill(gridTokens, -1);
-        int cellCount = gridSize * gridSize;
-        for (int cellIndex = 0; cellIndex < cellCount; cellIndex++) {
-            gridTokens[cellIndex] = fillerTokens[random.nextInt(fillerTokens.length)];
+        for (int step = 0; step < length - 1; step++) {
+            List<Integer> candidates = new ArrayList<>();
+            for (int cell = 0; cell < size * size; cell++) {
+                if (!contains(path, cell) && ((step & 1) == 0 ? cell % size == path[step] % size : cell / size == path[step] / size)) candidates.add(cell);
+            }
+            if (!candidates.isEmpty()) grid[candidates.get(random.nextInt(candidates.size()))] = route[step + 1];
         }
-        for (int step = 0; step < path.length; step++) {
-            gridTokens[path[step]] = pathTokens[step];
-        }
-        sanitizeCanonicalRoute(gridSize, path, pathTokens, gridTokens, random);
-
+        int[] starts = difficulty == 1 ? new int[]{0,2} : difficulty == 2 ? new int[]{0,3} : difficulty == 3 ? new int[]{0,1,3} : new int[]{0,2,4};
+        int[] lengths = difficulty <= 2 ? new int[]{3,3} : difficulty == 3 ? new int[]{3,4,4} : difficulty == 4 ? new int[]{4,4,4} : new int[]{4,5,5};
+        int[] order = count == 2 ? new int[]{0,1} : new int[]{0,1,2};
+        shuffleInts(order, random);
         int[] targetLengths = new int[MAX_TARGET_COUNT];
-        int[] targetTokens = new int[MAX_TARGET_COUNT * MAX_SEQUENCE_LENGTH];
-        Arrays.fill(targetLengths, 0);
-        Arrays.fill(targetTokens, -1);
-
-        for (int targetIndex = 0; targetIndex < targetCount; targetIndex++) {
-            int start = targetCount == 2
-                    ? (targetIndex == 0 ? 0 : 2)
-                    : targetIndex;
-            int length = 3;
-            targetLengths[targetIndex] = length;
-            for (int tokenIndex = 0; tokenIndex < length; tokenIndex++) {
-                targetTokens[targetIndex * MAX_SEQUENCE_LENGTH + tokenIndex] = pathTokens[start + tokenIndex];
-            }
+        int[] targets = new int[MAX_TARGET_COUNT * MAX_SEQUENCE_LENGTH];
+        Arrays.fill(targets, -1);
+        for (int i = 0; i < count; i++) {
+            int word = order[i];
+            targetLengths[i] = lengths[word];
+            System.arraycopy(route, starts[word], targets, i * MAX_SEQUENCE_LENGTH, lengths[word]);
         }
-
-        return new RelicCacheHackPuzzle(
-                difficulty,
-                gridSize,
-                timeLimitTicks,
-                targetCount,
-                gridTokens,
-                targetLengths,
-                targetTokens
-        );
+        int seconds = switch (difficulty) { case 1 -> 60; case 2 -> 50; case 3 -> 40; case 4 -> 32; default -> 25; };
+        return new RelicCacheHackPuzzle(difficulty, size, seconds * 20, count, grid, targetLengths, targets);
     }
-
     private static int[] generatePath(RandomSource random, int gridSize, int length) {
         boolean[] used = new boolean[gridSize * gridSize];
         int[] path = new int[length];
@@ -185,92 +165,6 @@ public final class RelicCacheHackPuzzle {
             }
         }
         return count;
-    }
-
-    private static void sanitizeCanonicalRoute(int gridSize, int[] path, int[] pathTokens, int[] gridTokens, RandomSource random) {
-        sanitizeTopRowEntry(gridSize, path, pathTokens, gridTokens, random);
-        for (int step = 0; step < path.length - 1; step++) {
-            int currentCell = path[step];
-            int nextCell = path[step + 1];
-            int nextToken = pathTokens[step + 1];
-            sanitizeNextMoveLine(gridSize, path, pathTokens, gridTokens, currentCell, nextCell, nextToken, random, (step & 1) == 0);
-        }
-    }
-
-    private static void sanitizeTopRowEntry(int gridSize, int[] path, int[] pathTokens, int[] gridTokens, RandomSource random) {
-        int entryToken = pathTokens[0];
-        for (int column = 0; column < gridSize; column++) {
-            int cellIndex = column;
-            if (cellIndex == path[0]) {
-                continue;
-            }
-            if (gridTokens[cellIndex] == entryToken) {
-                gridTokens[cellIndex] = replacementToken(entryToken, pathTokens, random);
-            }
-        }
-    }
-
-    private static void sanitizeNextMoveLine(
-            int gridSize,
-            int[] path,
-            int[] pathTokens,
-            int[] gridTokens,
-            int currentCell,
-            int nextCell,
-            int nextToken,
-            RandomSource random,
-            boolean nextMoveUsesColumn
-    ) {
-        int row = currentCell / gridSize;
-        int column = currentCell % gridSize;
-        if (nextMoveUsesColumn) {
-            for (int candidateRow = 0; candidateRow < gridSize; candidateRow++) {
-                int cellIndex = candidateRow * gridSize + column;
-                sanitizeCandidate(path, pathTokens, gridTokens, nextCell, nextToken, random, cellIndex);
-            }
-            return;
-        }
-
-        for (int candidateColumn = 0; candidateColumn < gridSize; candidateColumn++) {
-            int cellIndex = row * gridSize + candidateColumn;
-            sanitizeCandidate(path, pathTokens, gridTokens, nextCell, nextToken, random, cellIndex);
-        }
-    }
-
-    private static void sanitizeCandidate(int[] path, int[] pathTokens, int[] gridTokens, int nextCell, int nextToken, RandomSource random, int cellIndex) {
-        if (cellIndex == nextCell || contains(path, cellIndex)) {
-            return;
-        }
-        if (gridTokens[cellIndex] == nextToken) {
-            gridTokens[cellIndex] = replacementToken(nextToken, pathTokens, random);
-        }
-    }
-
-    private static int replacementToken(int blockedToken, int[] preferredAvoid, RandomSource random) {
-        int token = random.nextInt(TOKEN_COUNT - 1);
-        if (token >= blockedToken) {
-            token++;
-        }
-        if (preferredAvoid == null) {
-            return token;
-        }
-        for (int attempt = 0; attempt < TOKEN_COUNT; attempt++) {
-            boolean conflicts = false;
-            for (int avoid : preferredAvoid) {
-                if (avoid == token) {
-                    conflicts = true;
-                    break;
-                }
-            }
-            if (!conflicts) {
-                return token;
-            }
-            token = (token + 1) % TOKEN_COUNT;
-            if (token == blockedToken) {
-                token = (token + 1) % TOKEN_COUNT;
-            }
-        }
-        return token;
     }
 
     private static void shuffle(List<Integer> values, RandomSource random) {

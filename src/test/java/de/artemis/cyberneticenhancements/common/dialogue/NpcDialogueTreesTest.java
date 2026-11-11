@@ -11,6 +11,16 @@ import static org.junit.Assert.*;
 
 public class NpcDialogueTreesTest {
     @Test
+    public void cacheQuestionsAreAvailableWithoutNavigatingOtherTopics() {
+        for (NpcType type : new NpcType[]{NpcType.FIXER, NpcType.NETRUNNER}) {
+            var tree = NpcDialogueTrees.tree(type);
+            int cacheChoiceId = type == NpcType.FIXER ? 1020 : 1301;
+            var choice = tree.choice(tree.rootNodeId(), cacheChoiceId);
+            assertEquals(NpcDialogueView.DIALOGUE, choice.view());
+            assertEquals(0, choice.trustDelta());
+        }
+    }
+    @Test
     public void everyTypeHasReachableExpandedBranchesAndValidChoices() throws Exception {
         String language = Files.readString(Path.of("src/generated/resources/assets/cyberneticenhancements/lang/en_us.json"));
         Set<Integer> ids = new HashSet<>();

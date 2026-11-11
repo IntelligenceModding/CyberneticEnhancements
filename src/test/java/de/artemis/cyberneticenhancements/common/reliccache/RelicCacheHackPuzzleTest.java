@@ -8,7 +8,7 @@ import static org.junit.Assert.*;
 
 public class RelicCacheHackPuzzleTest {
     @Test
-    public void generatedPuzzlesHaveLegalFivePickSolutionsAcrossAllDifficulties() {
+    public void generatedPuzzlesHaveLegalSolutionsWithinTheirBuffers() {
         Set<Integer> difficulties = new HashSet<>();
         for (int seed = 0; seed < 5000; seed++) {
             RelicCacheHackPuzzle puzzle = RelicCacheHackPuzzle.generate(RandomSource.create(seed));
@@ -40,26 +40,42 @@ public class RelicCacheHackPuzzleTest {
     }
 
     private static void assertSolvable(RelicCacheHackPuzzle puzzle) {
-        int[] grid = puzzle.gridTokens();
-        int[] targets = puzzle.targetTokens();
-        int[] lengths = puzzle.targetLengths();
-        int[] tokens = puzzle.targetCount() == 2
-                ? new int[]{targets[0], targets[1], targets[2], targets[6], targets[7]}
-                : new int[]{targets[0], targets[1], targets[2], targets[7], targets[12]};
-        int[] path = new int[5];
-        assertTrue("No solution for generated difficulty " + puzzle.difficulty(), findPath(grid, puzzle.gridSize(), tokens, path, 0));
-        for (int target = 0; target < puzzle.targetCount(); target++) {
-            int offset = target * RelicCacheHackPuzzle.MAX_SEQUENCE_LENGTH;
-            assertEquals(3, lengths[target]);
-            assertTrue(RelicCacheHackRules.containsSequence(5, i -> grid[path[i]], lengths[target], i -> targets[offset + i]));
-        }
-        assertEquals(1200, puzzle.timeLimitTicks());
-        assertTrue(puzzle.gridSize() == 5 || puzzle.gridSize() == 6);
-        for (int i = 0; i < puzzle.gridSize() * puzzle.gridSize(); i++) {
-            assertTrue(grid[i] >= 0 && grid[i] < RelicCacheHackPuzzle.TOKEN_COUNT);
-        }
+        int[][] words = new int[puzzle.targetCount()][];
+        for (int i = 0; i < words.length; i++) words[i] = java.util.Arrays.copyOfRange(puzzle.targetTokens(), i * 5, i * 5 + puzzle.targetLengths()[i]);
+        assertTrue("Unsolvable difficulty " + puzzle.difficulty(), solveOrders(puzzle, words, new boolean[words.length], new int[0], 0));
+        for (int i = 0; i < puzzle.gridSize() * puzzle.gridSize(); i++) assertTrue(puzzle.gridTokens()[i] >= 0 && puzzle.gridTokens()[i] < 8);
     }
 
+    private static boolean solveOrders(RelicCacheHackPuzzle puzzle, int[][] words, boolean[] used, int[] merged, int depth) {
+        if (depth == words.length) return merged.length <= RelicCacheHackPuzzle.bufferSize(puzzle.difficulty()) && findPath(puzzle.gridTokens(), puzzle.gridSize(), merged, new int[merged.length], 0);
+        for (int i = 0; i < words.length; i++) {
+            if (used[i]) continue;
+            int[] word = words[i];
+            int overlap = Math.min(merged.length, word.length);
+            while (overlap > 0 && !java.util.Arrays.equals(merged, merged.length - overlap, merged.length, word, 0, overlap)) overlap--;
+            int[] next = java.util.Arrays.copyOf(merged, merged.length + word.length - overlap);
+            System.arraycopy(word, overlap, next, merged.length, word.length - overlap);
+            used[i] = true;
+            boolean solved = solveOrders(puzzle, words, used, next, depth + 1);
+            used[i] = false;
+            if (solved) return true;
+        }
+        return false;
+    }
+
+    @Test
+    public void higherTiersHaveLongerTargetsAndLessTimeWithLimitedBuffers() {
+        int previousTime = Integer.MAX_VALUE;
+        for (int difficulty = 1; difficulty <= 5; difficulty++) {
+            var puzzle = RelicCacheHackPuzzle.generate(RandomSource.create(357), difficulty);
+            assertEquals(difficulty, puzzle.difficulty());
+            assertTrue(puzzle.timeLimitTicks() < previousTime);
+            previousTime = puzzle.timeLimitTicks();
+            assertSolvable(puzzle);
+            assertTrue(RelicCacheHackPuzzle.bufferSize(difficulty) < puzzle.gridSize() * puzzle.gridSize());
+            if (difficulty >= 4) for (int i = 0; i < puzzle.targetCount(); i++) assertTrue(puzzle.targetLengths()[i] >= 4);
+        }
+    }
     private static boolean findPath(int[] grid, int size, int[] tokens, int[] path, int depth) {
         if (depth == tokens.length) return true;
         for (int cell = 0; cell < size * size; cell++) {
@@ -88,7 +104,7 @@ public class RelicCacheHackPuzzleTest {
         assertEquals(original, puzzle.gridTokens()[0]);
         int[] lengths = puzzle.targetLengths();
         lengths[0] = -100;
-        assertEquals(3, puzzle.targetLengths()[0]);
+        assertTrue(puzzle.targetLengths()[0] >= 3);
     }
 
     @Test

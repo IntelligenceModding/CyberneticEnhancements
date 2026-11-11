@@ -1,0 +1,25 @@
+{
+  "type": "cyberneticenhancements:recycling",
+  "damaged_outputs": [
+    {
+      "count": 1,
+      "id": "minecraft:iron_nugget"
+    }
+  ],
+  "group": "fabrication",
+  "ingredient": {
+    "item": "cyberneticenhancements:alloy_plate"
+  },
+  "outputs": [
+    {
+      "count": 1,
+      "id": "minecraft:iron_nugget"
+    }
+  ],
+  "worn_outputs": [
+    {
+      "count": 1,
+      "id": "minecraft:iron_nugget"
+    }
+  ]
+}

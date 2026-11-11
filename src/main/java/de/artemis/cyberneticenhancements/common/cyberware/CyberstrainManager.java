@@ -454,6 +454,10 @@ public final class CyberstrainManager {
         persistentData.putDouble(PSYCHOSIS_INSTABILITY_KEY, Mth.clamp(persistentData.getDouble(PSYCHOSIS_INSTABILITY_KEY) + amount, 0.0D, MAX_INSTABILITY));
     }
 
+    public static double getInstability(Player player) {
+        return player.getPersistentData().getDouble(PSYCHOSIS_INSTABILITY_KEY);
+    }
+
     public static void reduceInstability(Player player, double amount) {
         if (amount <= 0.0D) {
             return;

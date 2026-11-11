@@ -1,10 +1,24 @@
 {
   "type": "cyberneticenhancements:recycling",
+  "damaged_outputs": [
+    {
+      "count": 1,
+      "id": "cyberneticenhancements:copper_wiring"
+    }
+  ],
   "ingredient": {
     "item": "cyberneticenhancements:oxy_booster"
   },
-  "result": {
-    "count": 1,
-    "id": "cyberneticenhancements:copper_wiring"
-  }
+  "outputs": [
+    {
+      "count": 1,
+      "id": "cyberneticenhancements:copper_wiring"
+    }
+  ],
+  "worn_outputs": [
+    {
+      "count": 1,
+      "id": "cyberneticenhancements:copper_wiring"
+    }
+  ]
 }

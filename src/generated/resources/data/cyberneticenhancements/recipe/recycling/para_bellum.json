@@ -1,11 +1,28 @@
 {
   "type": "cyberneticenhancements:recycling",
-  "damage_sensitive": true,
+  "damaged_outputs": [
+    {
+      "count": 1,
+      "id": "cyberneticenhancements:alloy_plate"
+    }
+  ],
   "ingredient": {
     "item": "cyberneticenhancements:para_bellum"
   },
-  "result": {
-    "count": 3,
-    "id": "cyberneticenhancements:rare_item_components"
-  }
+  "outputs": [
+    {
+      "count": 1,
+      "id": "cyberneticenhancements:alloy_plate"
+    },
+    {
+      "count": 1,
+      "id": "cyberneticenhancements:thermal_regulator"
+    }
+  ],
+  "worn_outputs": [
+    {
+      "count": 1,
+      "id": "cyberneticenhancements:alloy_plate"
+    }
+  ]
 }

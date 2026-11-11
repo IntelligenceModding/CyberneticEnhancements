@@ -1,11 +1,32 @@
 {
   "type": "cyberneticenhancements:recycling",
-  "damage_sensitive": true,
+  "damaged_outputs": [
+    {
+      "count": 1,
+      "id": "cyberneticenhancements:basic_circuit_plate"
+    }
+  ],
   "ingredient": {
     "item": "cyberneticenhancements:arasaka_shadow"
   },
-  "result": {
-    "count": 1,
-    "id": "cyberneticenhancements:common_item_components"
-  }
+  "outputs": [
+    {
+      "count": 1,
+      "id": "cyberneticenhancements:neural_interface"
+    },
+    {
+      "count": 1,
+      "id": "cyberneticenhancements:basic_circuit_plate"
+    }
+  ],
+  "worn_outputs": [
+    {
+      "count": 1,
+      "id": "cyberneticenhancements:neural_interface"
+    },
+    {
+      "count": 1,
+      "id": "cyberneticenhancements:basic_circuit_plate"
+    }
+  ]
 }

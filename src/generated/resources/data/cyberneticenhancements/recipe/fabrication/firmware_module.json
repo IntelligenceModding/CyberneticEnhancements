@@ -1,0 +1,52 @@
+{
+  "type": "cyberneticenhancements:fabrication",
+  "parts": [
+    {
+      "ingredient": {
+        "item": "minecraft:quartz"
+      },
+      "slot": 6
+    },
+    {
+      "ingredient": {
+        "item": "minecraft:redstone"
+      },
+      "slot": 7
+    },
+    {
+      "ingredient": {
+        "item": "minecraft:quartz"
+      },
+      "slot": 8
+    },
+    {
+      "ingredient": {
+        "item": "cyberneticenhancements:copper_wiring"
+      },
+      "slot": 11
+    },
+    {
+      "ingredient": {
+        "item": "cyberneticenhancements:basic_circuit_plate"
+      },
+      "slot": 12
+    },
+    {
+      "ingredient": {
+        "item": "cyberneticenhancements:copper_wiring"
+      },
+      "slot": 13
+    },
+    {
+      "ingredient": {
+        "item": "minecraft:amethyst_shard"
+      },
+      "slot": 17
+    }
+  ],
+  "result": {
+    "count": 4,
+    "id": "cyberneticenhancements:firmware_module"
+  },
+  "ticks": 80
+}

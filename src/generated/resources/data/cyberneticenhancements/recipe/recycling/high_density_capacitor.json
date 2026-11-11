@@ -1,0 +1,25 @@
+{
+  "type": "cyberneticenhancements:recycling",
+  "damaged_outputs": [
+    {
+      "count": 1,
+      "id": "cyberneticenhancements:micro_battery"
+    }
+  ],
+  "group": "fabrication",
+  "ingredient": {
+    "item": "cyberneticenhancements:high_density_capacitor"
+  },
+  "outputs": [
+    {
+      "count": 1,
+      "id": "cyberneticenhancements:micro_battery"
+    }
+  ],
+  "worn_outputs": [
+    {
+      "count": 1,
+      "id": "cyberneticenhancements:micro_battery"
+    }
+  ]
+}

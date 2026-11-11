@@ -1,0 +1,30 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "key": {
+    "A": {
+      "item": "minecraft:crafting_table"
+    },
+    "C": {
+      "item": "cyberneticenhancements:basic_circuit_plate"
+    },
+    "I": {
+      "item": "minecraft:iron_ingot"
+    },
+    "P": {
+      "item": "minecraft:piston"
+    },
+    "S": {
+      "item": "minecraft:smooth_stone"
+    }
+  },
+  "pattern": [
+    "ICI",
+    "PAP",
+    "ISI"
+  ],
+  "result": {
+    "count": 1,
+    "id": "cyberneticenhancements:cyberware_fabricator"
+  }
+}

@@ -10,6 +10,7 @@ import de.artemis.cyberneticenhancements.common.entity.NpcType;
 import de.artemis.cyberneticenhancements.common.quest.QuestContract;
 import de.artemis.cyberneticenhancements.common.quest.QuestType;
 import de.artemis.cyberneticenhancements.common.quest.PlayerQuestManager;
+import de.artemis.cyberneticenhancements.common.world.RelicCacheIntel;
 import de.artemis.cyberneticenhancements.common.registry.ModItems;
 import de.artemis.cyberneticenhancements.common.registry.ModMenuTypes;
 import net.minecraft.network.RegistryFriendlyByteBuf;
@@ -65,6 +66,7 @@ public final class FixerDialogMenu extends AbstractBaseMenu {
     public static final int RESPONSE_IDENTITY_APPEARANCE_OK = 25;
     public static final int RESPONSE_IDENTITY_INVALID = 26;
     public static final int RESPONSE_IDENTITY_COLOR_OK = 27;
+    public static final int RESPONSE_NO_CACHE_INTEL = 28;
     private static final int TRUST_MAX_POINTS = 300;
 
     private static final int DATA_TRUST = 0;
@@ -235,10 +237,12 @@ public final class FixerDialogMenu extends AbstractBaseMenu {
                 responseId = RESPONSE_INTRO;
             }
             case OPTION_CACHE_INTEL -> {
+                if (!npcType().supportsIntel()) return;
+                boolean found = RelicCacheIntel.provide(serverPlayer);
                 if (!npc.hasMet(serverPlayer)) {
                     npc.markMet(serverPlayer);
                 }
-                responseId = RESPONSE_CACHE_INTEL;
+                responseId = found ? RESPONSE_CACHE_INTEL : RESPONSE_NO_CACHE_INTEL;
             }
             case OPTION_STABILIZE -> {
                 if ((optionMask() & (1 << OPTION_STABILIZE)) == 0) {
@@ -364,7 +368,12 @@ public final class FixerDialogMenu extends AbstractBaseMenu {
             );
         }
 
+
         currentDialogueNodeId = choice.nextNodeId();
+        if (npcType().supportsIntel() && (choiceId == 1020 || choiceId == 1301)) {
+            responseId = RelicCacheIntel.provide(serverPlayer) ? RESPONSE_CACHE_INTEL : RESPONSE_NO_CACHE_INTEL;
+            return;
+        }
         responseId = switch (choice.view()) {
             case CONTRACTS -> RESPONSE_CONTRACTS;
             default -> RESPONSE_GREETING;
@@ -387,7 +396,12 @@ public final class FixerDialogMenu extends AbstractBaseMenu {
     }
 
     private void grantShopItem(ServerPlayer player, int optionId) {
-        ItemStack stack = switch (npcType()) {
+        ItemStack stack = shopItem(npcType(), optionId);
+        if (!stack.isEmpty()) player.addItem(stack);
+    }
+
+    public static ItemStack shopItem(NpcType type, int optionId) {
+        return switch (type) {
             case FIXER -> switch (optionId) {
                 case OPTION_BUY_MAXDOC_MK2 -> new ItemStack(ModItems.consumable("maxdoc_mk2").get());
                 case OPTION_BUY_RAM_JOLT -> new ItemStack(ModItems.consumable("ram_jolt").get());
@@ -403,7 +417,7 @@ public final class FixerDialogMenu extends AbstractBaseMenu {
                 default -> ItemStack.EMPTY;
             };
             case TECHIE -> switch (optionId) {
-                case OPTION_BUY_MAXDOC_MK2 -> new ItemStack(ModItems.COMMON_ITEM_COMPONENTS.get(), 2);
+                case OPTION_BUY_MAXDOC_MK2 -> new ItemStack(de.artemis.cyberneticenhancements.common.fabrication.FabricationContent.part("neural_processor"), 2);
                 case OPTION_BUY_RAM_JOLT -> new ItemStack(ModItems.cyberware("precision_miner").get());
                 case OPTION_BUY_CHROME_SUPPRESSANT -> new ItemStack(ModItems.cyberware("masons_grip").get());
                 case OPTION_BUY_IMMUNOBLOCKERS -> new ItemStack(ModItems.cyberware("cargo_spine").get());
@@ -424,9 +438,6 @@ public final class FixerDialogMenu extends AbstractBaseMenu {
                 default -> ItemStack.EMPTY;
             };
         };
-        if (!stack.isEmpty()) {
-            player.addItem(stack);
-        }
     }
 
     private void applyPrimaryService(ServerPlayer player) {
@@ -669,7 +680,11 @@ public final class FixerDialogMenu extends AbstractBaseMenu {
     }
 
     public int unlockLevelForOption(int optionId) {
-        return switch (npcType()) {
+        return requiredTrust(npcType(), optionId);
+    }
+
+    public static int requiredTrust(NpcType type, int optionId) {
+        return switch (type) {
             case FIXER -> switch (optionId) {
                 case OPTION_PURGE -> 2;
                 case OPTION_BUY_CHROME_SUPPRESSANT -> 1;

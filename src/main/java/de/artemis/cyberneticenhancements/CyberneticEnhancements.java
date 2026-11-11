@@ -1,6 +1,7 @@
 package de.artemis.cyberneticenhancements;
 
 import de.artemis.cyberneticenhancements.common.command.CyberwareDebugCommand;
+import de.artemis.cyberneticenhancements.common.blockentity.RipperStationBlockEntity;
 import de.artemis.cyberneticenhancements.common.command.CyberpsychosisCommand;
 import de.artemis.cyberneticenhancements.common.command.MoneyCommand;
 import de.artemis.cyberneticenhancements.common.command.QuestCommand;
@@ -14,6 +15,8 @@ import de.artemis.cyberneticenhancements.common.cyberware.IntegumentaryCyberware
 import de.artemis.cyberneticenhancements.common.cyberware.NervousSystemCyberwareManager;
 import de.artemis.cyberneticenhancements.common.cyberware.CyberwarePlayerEvents;
 import de.artemis.cyberneticenhancements.common.cyberware.CyberstrainManager;
+import de.artemis.cyberneticenhancements.common.cyberware.sandevistan.SandevistanManager;
+import de.artemis.cyberneticenhancements.common.cyberware.sandevistan.SandevistanTimeDilation;
 import de.artemis.cyberneticenhancements.common.datagen.DataGenerators;
 import de.artemis.cyberneticenhancements.common.network.ModPayloads;
 import de.artemis.cyberneticenhancements.common.quest.PlayerQuestManager;
@@ -29,6 +32,7 @@ import de.artemis.cyberneticenhancements.common.world.FixerVillageSpawner;
 import de.artemis.cyberneticenhancements.common.world.NpcIdentityConfig;
 import de.artemis.cyberneticenhancements.common.world.RelicCacheWorldgen;
 import net.neoforged.bus.api.IEventBus;
+import net.neoforged.bus.api.EventPriority;
 import net.neoforged.fml.common.Mod;
 import net.neoforged.neoforge.common.NeoForge;
 import net.neoforged.neoforge.event.RegisterCommandsEvent;
@@ -42,6 +46,7 @@ public class CyberneticEnhancements {
         NpcIdentityConfig.initialize();
         ModEntityTypes.register(modEventBus);
         ModItems.register(modEventBus);
+        de.artemis.cyberneticenhancements.common.fabrication.FabricationContent.register(modEventBus);
         ModBlocks.register(modEventBus);
         ModBlockEntities.register(modEventBus);
         ModMenuTypes.register(modEventBus);
@@ -52,6 +57,19 @@ public class CyberneticEnhancements {
         modEventBus.addListener(ModPayloads::register);
         modEventBus.addListener(ModEntityTypes::registerAttributes);
         NeoForge.EVENT_BUS.addListener(CyberwareEffects::onPlayerTick);
+        NeoForge.EVENT_BUS.addListener(de.artemis.cyberneticenhancements.common.fabrication.SchematicKnowledge::onSync);
+        NeoForge.EVENT_BUS.addListener(de.artemis.cyberneticenhancements.common.fabrication.SchematicKnowledge::onClone);
+        NeoForge.EVENT_BUS.addListener(de.artemis.cyberneticenhancements.common.cyberware.CyberwareUpgradeRegistry::registerReload);
+        NeoForge.EVENT_BUS.addListener(de.artemis.cyberneticenhancements.common.cyberware.CyberwareUpgradeRegistry::sync);
+        NeoForge.EVENT_BUS.addListener(SandevistanManager::onLevelTickPre);
+        NeoForge.EVENT_BUS.addListener(SandevistanManager::onIncomingDamage);
+        NeoForge.EVENT_BUS.addListener(EventPriority.LOWEST, SandevistanManager::onAttack);
+        NeoForge.EVENT_BUS.addListener(SandevistanManager::onDimensionChange);
+        NeoForge.EVENT_BUS.addListener(SandevistanManager::onServerStopped);
+        NeoForge.EVENT_BUS.addListener(EventPriority.LOWEST, SandevistanTimeDilation::onEntityTickPre);
+        NeoForge.EVENT_BUS.addListener(SandevistanTimeDilation::onEntityTickPost);
+        NeoForge.EVENT_BUS.addListener(SandevistanTimeDilation::onLevelTickPost);
+        NeoForge.EVENT_BUS.addListener(SandevistanTimeDilation::onLevelUnload);
         NeoForge.EVENT_BUS.addListener(CyberwarePlayerEvents::onPlayerClone);
         NeoForge.EVENT_BUS.addListener(CyberwarePlayerEvents::onPlayerRespawn);
         NeoForge.EVENT_BUS.addListener(CyberwarePlayerEvents::onPlayerLogin);
@@ -77,6 +95,7 @@ public class CyberneticEnhancements {
         NeoForge.EVENT_BUS.addListener(FixerVillageSpawner::onLevelTick);
         NeoForge.EVENT_BUS.addListener(FixerVillageSpawner::onLevelUnload);
         NeoForge.EVENT_BUS.addListener(RelicCacheWorldgen::onChunkLoad);
+        NeoForge.EVENT_BUS.addListener(RipperStationBlockEntity::onChunkLoad);
         NeoForge.EVENT_BUS.addListener(RelicCacheWorldgen::onLevelTick);
         NeoForge.EVENT_BUS.addListener(RelicCacheWorldgen::onLevelUnload);
     }

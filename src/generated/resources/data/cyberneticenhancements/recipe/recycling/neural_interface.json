@@ -1,0 +1,25 @@
+{
+  "type": "cyberneticenhancements:recycling",
+  "damaged_outputs": [
+    {
+      "count": 1,
+      "id": "minecraft:gold_nugget"
+    }
+  ],
+  "group": "fabrication",
+  "ingredient": {
+    "item": "cyberneticenhancements:neural_interface"
+  },
+  "outputs": [
+    {
+      "count": 1,
+      "id": "minecraft:gold_nugget"
+    }
+  ],
+  "worn_outputs": [
+    {
+      "count": 1,
+      "id": "minecraft:gold_nugget"
+    }
+  ]
+}

@@ -1,11 +1,36 @@
 {
   "type": "cyberneticenhancements:recycling",
-  "damage_sensitive": true,
+  "damaged_outputs": [
+    {
+      "count": 1,
+      "id": "cyberneticenhancements:basic_circuit_plate"
+    }
+  ],
   "ingredient": {
     "item": "cyberneticenhancements:zetatech_berserk"
   },
-  "result": {
-    "count": 3,
-    "id": "cyberneticenhancements:rare_item_components"
-  }
+  "outputs": [
+    {
+      "count": 1,
+      "id": "cyberneticenhancements:neural_processor"
+    },
+    {
+      "count": 1,
+      "id": "cyberneticenhancements:basic_circuit_plate"
+    },
+    {
+      "count": 1,
+      "id": "cyberneticenhancements:thermal_regulator"
+    }
+  ],
+  "worn_outputs": [
+    {
+      "count": 1,
+      "id": "cyberneticenhancements:neural_processor"
+    },
+    {
+      "count": 1,
+      "id": "cyberneticenhancements:basic_circuit_plate"
+    }
+  ]
 }

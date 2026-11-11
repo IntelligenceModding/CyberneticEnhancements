@@ -1,0 +1,52 @@
+{
+  "type": "cyberneticenhancements:fabrication",
+  "parts": [
+    {
+      "ingredient": {
+        "item": "cyberneticenhancements:sensor_lens"
+      },
+      "slot": 6
+    },
+    {
+      "ingredient": {
+        "item": "minecraft:amethyst_shard"
+      },
+      "slot": 7
+    },
+    {
+      "ingredient": {
+        "item": "cyberneticenhancements:sensor_lens"
+      },
+      "slot": 8
+    },
+    {
+      "ingredient": {
+        "item": "minecraft:glass_pane"
+      },
+      "slot": 11
+    },
+    {
+      "ingredient": {
+        "item": "cyberneticenhancements:basic_circuit_plate"
+      },
+      "slot": 12
+    },
+    {
+      "ingredient": {
+        "item": "minecraft:glass_pane"
+      },
+      "slot": 13
+    },
+    {
+      "ingredient": {
+        "item": "cyberneticenhancements:copper_wiring"
+      },
+      "slot": 17
+    }
+  ],
+  "result": {
+    "count": 2,
+    "id": "cyberneticenhancements:optical_array"
+  },
+  "tier": 2
+}

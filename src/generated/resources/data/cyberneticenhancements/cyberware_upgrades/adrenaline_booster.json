@@ -1,0 +1,44 @@
+{
+  "levels": [
+    {
+      "effects": {
+        "health_regen": 0.05
+      },
+      "materials": [
+        {
+          "count": 3,
+          "item": "cyberneticenhancements:common_item_components"
+        },
+        {
+          "count": 1,
+          "item": "cyberneticenhancements:microfluidic_pump"
+        }
+      ]
+    },
+    {
+      "effects": {
+        "health_regen": 0.1
+      },
+      "materials": [
+        {
+          "count": 4,
+          "item": "cyberneticenhancements:common_item_components"
+        },
+        {
+          "count": 1,
+          "item": "cyberneticenhancements:microfluidic_pump"
+        }
+      ]
+    }
+  ],
+  "repair_materials": [
+    {
+      "count": 3,
+      "item": "cyberneticenhancements:common_item_components"
+    },
+    {
+      "count": 1,
+      "item": "cyberneticenhancements:biocompatible_mesh"
+    }
+  ]
+}

@@ -3,18 +3,6 @@ package de.artemis.cyberneticenhancements.common.datagen;
 import de.artemis.cyberneticenhancements.CyberneticEnhancements;
 import de.artemis.cyberneticenhancements.common.consumable.CyberConsumableCatalog;
 import de.artemis.cyberneticenhancements.common.consumable.CyberConsumableDefinition;
-import de.artemis.cyberneticenhancements.common.cyberware.ChipwareCatalog;
-import de.artemis.cyberneticenhancements.common.cyberware.ChipwareDefinition;
-import de.artemis.cyberneticenhancements.common.cyberware.CyberwareCatalog;
-import de.artemis.cyberneticenhancements.common.cyberware.CyberwareDefinition;
-import de.artemis.cyberneticenhancements.common.cyberware.CyberwareRecycleHelper;
-import de.artemis.cyberneticenhancements.common.cyberware.CyberwareServiceHelper;
-import de.artemis.cyberneticenhancements.common.cyberware.CyberwareModuleCatalog;
-import de.artemis.cyberneticenhancements.common.cyberware.CyberwareModuleCategory;
-import de.artemis.cyberneticenhancements.common.cyberware.CyberwareModuleDefinition;
-import de.artemis.cyberneticenhancements.common.cyberware.CyberwareSlotType;
-import de.artemis.cyberneticenhancements.common.cyberware.CyberwareTier;
-import de.artemis.cyberneticenhancements.common.recipe.RecyclerRecipe;
 import de.artemis.cyberneticenhancements.common.registry.ModBlocks;
 import de.artemis.cyberneticenhancements.common.registry.ModItems;
 import net.minecraft.core.HolderLookup;
@@ -23,11 +11,7 @@ import net.minecraft.data.recipes.RecipeCategory;
 import net.minecraft.data.recipes.RecipeOutput;
 import net.minecraft.data.recipes.RecipeProvider;
 import net.minecraft.data.recipes.ShapedRecipeBuilder;
-import net.minecraft.resources.ResourceLocation;
-import net.minecraft.world.item.ItemStack;
-import net.minecraft.world.item.crafting.Ingredient;
 import net.minecraft.world.item.Items;
-import net.minecraft.world.level.ItemLike;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.concurrent.CompletableFuture;
@@ -41,9 +25,9 @@ public final class ModRecipeProvider extends RecipeProvider {
     protected void buildRecipes(@NotNull RecipeOutput recipeOutput) {
         buildMaterialRecipes(recipeOutput);
         buildConsumableRecipes(recipeOutput);
-        buildChipwareRecipes(recipeOutput);
-        buildModuleRecipes(recipeOutput);
-        buildCyberwareRecipes(recipeOutput);
+
+
+        de.artemis.cyberneticenhancements.common.fabrication.FabricationRecipes.generate(recipeOutput);
         buildRecyclerRecipes(recipeOutput);
         buildStationRecipes(recipeOutput);
     }
@@ -226,97 +210,6 @@ public final class ModRecipeProvider extends RecipeProvider {
                 .save(recipeOutput);
     }
 
-    private void buildModuleRecipes(RecipeOutput recipeOutput) {
-        for (CyberwareModuleDefinition definition : CyberwareModuleCatalog.definitions()) {
-            buildModuleRecipe(recipeOutput, definition);
-        }
-    }
-
-    private void buildCyberwareRecipes(RecipeOutput recipeOutput) {
-        for (CyberwareDefinition definition : CyberwareCatalog.definitions()) {
-            if (!definition.isCraftable()) {
-                continue;
-            }
-            buildCyberwareRecipe(recipeOutput, definition);
-        }
-    }
-
-    private void buildChipwareRecipes(RecipeOutput recipeOutput) {
-        for (ChipwareDefinition definition : ChipwareCatalog.definitions()) {
-            buildChipwareRecipe(recipeOutput, definition);
-        }
-    }
-
-    private void buildChipwareRecipe(RecipeOutput recipeOutput, ChipwareDefinition definition) {
-        ShapedRecipeBuilder.shaped(RecipeCategory.TOOLS, ModItems.chipware(definition.id()).get())
-                .pattern(" T ")
-                .pattern("CMC")
-                .pattern(" R ")
-                .define('T', componentItem(definition.tier()))
-                .define('C', ModItems.BASIC_CIRCUIT_PLATE.get())
-                .define('M', definition.motifItem())
-                .define('R', Items.REDSTONE)
-                .unlockedBy("has_basic_circuit_plate", has(ModItems.BASIC_CIRCUIT_PLATE.get()))
-                .save(recipeOutput);
-    }
-
-    private void buildModuleRecipe(RecipeOutput recipeOutput, CyberwareModuleDefinition definition) {
-        ShapedRecipeBuilder builder = ShapedRecipeBuilder.shaped(RecipeCategory.TOOLS, ModItems.module(definition.id()).get())
-                .define('T', componentItem(definition.tier()))
-                .define('C', ModItems.BASIC_CIRCUIT_PLATE.get())
-                .define('M', definition.motifItem())
-                .define('R', ModItems.REPLACEMENT_JOINT.get());
-
-        if (definition.category() == CyberwareModuleCategory.ARMS) {
-            builder.define('W', ModItems.COPPER_WIRING.get())
-                    .pattern("TWT")
-                    .pattern("CMC")
-                    .pattern("TRT");
-        } else {
-            builder.define('B', ModItems.MICRO_BATTERY.get())
-                    .pattern("TRT")
-                    .pattern("CMC")
-                    .pattern("TBT");
-        }
-
-        builder.unlockedBy("has_basic_circuit_plate", has(ModItems.BASIC_CIRCUIT_PLATE.get()))
-                .save(recipeOutput);
-    }
-
-    private void buildCyberwareRecipe(RecipeOutput recipeOutput, CyberwareDefinition definition) {
-        ShapedRecipeBuilder builder = ShapedRecipeBuilder.shaped(RecipeCategory.TOOLS, ModItems.cyberware(definition.id()).get())
-                .pattern("TST")
-                .pattern("AMA")
-                .pattern("TCT")
-                .define('T', componentItem(definition.tier()))
-                .define('S', CyberwareServiceHelper.slotSupportItem(definition.slotType()))
-                .define('A', auxiliarySupportItem(definition.slotType()))
-                .define('C', ModItems.BASIC_CIRCUIT_PLATE.get());
-
-        if (definition.upgradeFromId() != null) {
-            builder.define('M', ModItems.cyberware(definition.upgradeFromId()).get())
-                    .unlockedBy("has_previous_model", has(ModItems.cyberware(definition.upgradeFromId()).get()));
-        } else {
-            builder.define('M', definition.motifItem())
-                    .unlockedBy("has_motif_item", has(definition.motifItem()));
-        }
-
-        builder.unlockedBy("has_tier_component", has(componentItem(definition.tier())))
-                .save(recipeOutput);
-    }
-
-    private ItemLike componentItem(CyberwareTier tier) {
-        return CyberwareServiceHelper.componentItem(tier);
-    }
-
-    private ItemLike auxiliarySupportItem(CyberwareSlotType slotType) {
-        return switch (slotType) {
-            case FRONTAL_CORTEX, OPERATING_SYSTEM, NERVOUS_SYSTEM, FACE -> ModItems.MICRO_BATTERY.get();
-            case ARMS, LEGS, SKELETON, HANDS -> ModItems.SERVO_SCREWS.get();
-            case CIRCULATORY_SYSTEM, INTEGUMENTARY_SYSTEM -> ModItems.CONDUCTIVE_PASTE.get();
-        };
-    }
-
     private void buildStationRecipes(RecipeOutput recipeOutput) {
         ShapedRecipeBuilder.shaped(RecipeCategory.DECORATIONS, ModBlocks.RIPPER_STATION.get())
                 .pattern("ISI")
@@ -343,6 +236,19 @@ public final class ModRecipeProvider extends RecipeProvider {
                 .unlockedBy("has_uncommon_item_components", has(ModItems.UNCOMMON_ITEM_COMPONENTS.get()))
                 .save(recipeOutput);
 
+        ShapedRecipeBuilder.shaped(RecipeCategory.DECORATIONS, ModBlocks.UPGRADE_STATION.get())
+                .pattern("ICI")
+                .pattern("RSR")
+                .pattern("EPE")
+                .define('I', Items.IRON_INGOT)
+                .define('C', ModItems.BASIC_CIRCUIT_PLATE.get())
+                .define('R', Items.REDSTONE)
+                .define('S', Items.SMITHING_TABLE)
+                .define('E', ModItems.UNCOMMON_ITEM_COMPONENTS.get())
+                .define('P', ModItems.CONDUCTIVE_PASTE.get())
+                .unlockedBy("has_uncommon_item_components", has(ModItems.UNCOMMON_ITEM_COMPONENTS.get()))
+                .save(recipeOutput);
+
         ShapedRecipeBuilder.shaped(RecipeCategory.DECORATIONS, ModBlocks.RECYCLER_STATION.get())
                 .pattern("ISI")
                 .pattern("CBC")
@@ -358,52 +264,6 @@ public final class ModRecipeProvider extends RecipeProvider {
     }
 
     private void buildRecyclerRecipes(RecipeOutput recipeOutput) {
-        for (CyberwareDefinition definition : CyberwareCatalog.definitions()) {
-            saveRecyclerRecipe(
-                    recipeOutput,
-                    definition.id(),
-                    ModItems.cyberware(definition.id()).get(),
-                    CyberwareRecycleHelper.createCyberwareResult(definition),
-                    true
-            );
-        }
-
-        for (ChipwareDefinition definition : ChipwareCatalog.definitions()) {
-            saveRecyclerRecipe(
-                    recipeOutput,
-                    definition.id(),
-                    ModItems.chipware(definition.id()).get(),
-                    CyberwareRecycleHelper.createChipwareResult(definition),
-                    false
-            );
-        }
-
-        for (CyberwareModuleDefinition definition : CyberwareModuleCatalog.definitions()) {
-            saveRecyclerRecipe(
-                    recipeOutput,
-                    definition.id(),
-                    ModItems.module(definition.id()).get(),
-                    CyberwareRecycleHelper.createModuleResult(definition),
-                    false
-            );
-        }
-
-        for (CyberConsumableDefinition definition : CyberConsumableCatalog.definitions()) {
-            saveRecyclerRecipe(
-                    recipeOutput,
-                    definition.id(),
-                    ModItems.consumable(definition.id()).get(),
-                    CyberwareRecycleHelper.createConsumableResult(definition),
-                    false
-            );
-        }
-    }
-
-    private void saveRecyclerRecipe(RecipeOutput recipeOutput, String inputId, ItemLike input, ItemStack result, boolean damageSensitive) {
-        recipeOutput.accept(
-                ResourceLocation.fromNamespaceAndPath(CyberneticEnhancements.MOD_ID, "recycling/" + inputId),
-                new RecyclerRecipe("", Ingredient.of(input), result, damageSensitive),
-                null
-        );
+        WorkshopDefaults.recycling(recipeOutput);
     }
 }
