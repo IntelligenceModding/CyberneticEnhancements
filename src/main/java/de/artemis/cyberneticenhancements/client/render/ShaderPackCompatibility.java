@@ -2,7 +2,7 @@ package de.artemis.cyberneticenhancements.client.render;
 
 import java.lang.reflect.Method;
 
- final class ShaderPackCompatibility {
+public final class ShaderPackCompatibility {
     private static final Method GET_INSTANCE;
     private static final Method PACK_ENABLED;
     private static final Method SHADOW_PASS;
@@ -35,7 +35,7 @@ import java.lang.reflect.Method;
         }
     }
 
-    static boolean isShaderPackEnabled() {
+    public static boolean isShaderPackEnabled() {
         if (PACK_ENABLED == null) return false;
         try {
             return (boolean) PACK_ENABLED.invoke(GET_INSTANCE.invoke(null));

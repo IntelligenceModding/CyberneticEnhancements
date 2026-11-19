@@ -1,6 +1,9 @@
 package de.artemis.cyberneticenhancements.client;
 
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.gui.GuiGraphics;
+import de.artemis.cyberneticenhancements.client.ui.UiFadeLayer;
+import de.artemis.cyberneticenhancements.client.ui.UiVisibilityTransition;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -15,20 +18,53 @@ final class HudVisibilityController {
 
     private static boolean loaded;
     private static boolean hudEnabled = true;
+    private static UiVisibilityTransition visibility;
+    private static final UiFadeLayer FADE = new UiFadeLayer();
 
     private HudVisibilityController() {
     }
 
     static boolean isHudEnabled() {
         ensureLoaded();
-        return hudEnabled;
+        return effective();
     }
+
+    /** A server can keep the HUD fixed on or off while the player is connected; their own choice is left untouched. */
+    private static boolean effective() {
+        Boolean forced = EnforcedSettings.extraBoolean(EnforcedSettings.HUD_ENABLED);
+        return forced != null ? forced : hudEnabled;
+    }
+
+    static boolean enforced() { return EnforcedSettings.extraBoolean(EnforcedSettings.HUD_ENABLED) != null; }
 
     static boolean toggleHud() {
         ensureLoaded();
+        if (enforced()) return effective();
+        opacity();
         hudEnabled = !hudEnabled;
+        opacity();
         save();
         return hudEnabled;
+    }
+
+    private static float opacity() {
+        ensureLoaded();
+        if (visibility == null) visibility = new UiVisibilityTransition(effective());
+        return visibility.sample(effective(), System.nanoTime() / 1_000_000_000D);
+    }
+
+    static boolean isHudVisible() { return opacity() > .001F; }
+
+    static void render(GuiGraphics graphics, Runnable content) {
+        float opacity = opacity();
+        if (opacity <= .001F) return;
+        if (opacity >= .999F) content.run();
+        else FADE.render(graphics, opacity, 1, 0, content);
+    }
+
+    static void clear() {
+        FADE.close();
+        visibility = null;
     }
 
     private static void ensureLoaded() {

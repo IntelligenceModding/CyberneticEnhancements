@@ -82,9 +82,17 @@ public abstract class RelicCacheBlock extends BaseEntityBlock implements EntityB
     @Override
     protected void onRemove(BlockState state, Level level, BlockPos pos, BlockState newState, boolean moving) {
         if (level instanceof ServerLevel serverLevel && !state.is(newState.getBlock())) {
+            if (level.getBlockEntity(pos) instanceof RelicCacheBlockEntity cache) cache.releasePendingRewards(serverLevel, pos);
             RelicCacheStructurePlacementSavedData.get(serverLevel).remove(pos);
         }
         super.onRemove(state, level, pos, newState, moving);
+    }
+
+    @Override
+    public void setPlacedBy(Level level, BlockPos pos, BlockState state, net.minecraft.world.entity.LivingEntity placer, ItemStack stack) {
+        super.setPlacedBy(level, pos, state, placer, stack);
+        if (!level.isClientSide() && placer instanceof Player player && !player.isCreative()
+                && level.getBlockEntity(pos) instanceof RelicCacheBlockEntity cache) cache.markRelocated();
     }
 
     public ResourceKey<LootTable> lootTableKey() {
@@ -120,7 +128,7 @@ public abstract class RelicCacheBlock extends BaseEntityBlock implements EntityB
     @Override
     protected @NotNull InteractionResult useWithoutItem(@NotNull BlockState state, @NotNull Level level, BlockPos pos, Player player, BlockHitResult hitResult) {
         if (player instanceof ServerPlayer serverPlayer) {
-            RelicCacheIntel.removeCompassForCache(serverPlayer, pos);
+            RelicCacheIntel.onCacheInteracted(serverPlayer, pos);
             openHackInterface(serverPlayer, pos);
         }
         return InteractionResult.SUCCESS;
@@ -185,8 +193,6 @@ public abstract class RelicCacheBlock extends BaseEntityBlock implements EntityB
         player.openMenu(provider, buffer -> buffer.writeBlockPos(pos));
         if (!resuming) {
             player.displayClientMessage(Component.translatable("message.cyberneticenhancements.relic_cache.breach_started").withStyle(ChatFormatting.AQUA), true);
-            serverLevel.playSound(null, pos, SoundEvents.RESPAWN_ANCHOR_SET_SPAWN, SoundSource.BLOCKS, 0.5F, 1.3F);
-            serverLevel.playSound(null, pos, SoundEvents.ENCHANTMENT_TABLE_USE, SoundSource.BLOCKS, 0.35F, 1.25F);
         }
     }
 
@@ -202,6 +208,11 @@ public abstract class RelicCacheBlock extends BaseEntityBlock implements EntityB
 
     public static boolean hasPlayerOpened(Player player, ServerLevel level, BlockPos pos) {
         return openedCaches(player).contains(cacheKey(level, pos));
+    }
+
+    public static void copyState(Player original, Player clone) {
+        if (original.getPersistentData().contains(OPENED_CACHES_KEY))
+            clone.getPersistentData().put(OPENED_CACHES_KEY, original.getPersistentData().get(OPENED_CACHES_KEY).copy());
     }
 
     public static void markPlayerOpened(Player player, ServerLevel level, BlockPos pos) {

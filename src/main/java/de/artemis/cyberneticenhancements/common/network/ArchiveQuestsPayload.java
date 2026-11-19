@@ -3,6 +3,7 @@ package de.artemis.cyberneticenhancements.common.network;
 import de.artemis.cyberneticenhancements.CyberneticEnhancements;
 import de.artemis.cyberneticenhancements.common.quest.PlayerQuestManager;
 import net.minecraft.network.RegistryFriendlyByteBuf;
+import net.minecraft.network.chat.Component;
 import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
 import net.minecraft.resources.ResourceLocation;
@@ -11,7 +12,8 @@ import net.minecraft.server.level.ServerPlayer;
 import java.util.ArrayList;
 import java.util.List;
 
-public record ArchiveQuestsPayload(List<QuestEntry> quests) implements CustomPacketPayload {
+public record ArchiveQuestsPayload(List<QuestEntry> quests, boolean dropoffPlaced, boolean setupItemGiven) implements CustomPacketPayload {
+    public ArchiveQuestsPayload(List<QuestEntry> quests) { this(quests, false, false); }
     public static final Type<ArchiveQuestsPayload> TYPE =
             new Type<>(ResourceLocation.fromNamespaceAndPath(CyberneticEnhancements.MOD_ID, "archive_quests"));
     public static final StreamCodec<RegistryFriendlyByteBuf, ArchiveQuestsPayload> STREAM_CODEC =
@@ -36,6 +38,8 @@ public record ArchiveQuestsPayload(List<QuestEntry> quests) implements CustomPac
                     buffer.writeInt(quest.z());
                     buffer.writeVarInt(quest.sortGroup());
                 }
+                buffer.writeBoolean(payload.dropoffPlaced);
+                buffer.writeBoolean(payload.setupItemGiven);
             }, buffer -> {
                 int count = buffer.readVarInt();
                 List<QuestEntry> quests = new ArrayList<>(count);
@@ -60,7 +64,7 @@ public record ArchiveQuestsPayload(List<QuestEntry> quests) implements CustomPac
                             buffer.readVarInt()
                     ));
                 }
-                return new ArchiveQuestsPayload(List.copyOf(quests));
+                return new ArchiveQuestsPayload(List.copyOf(quests), buffer.readBoolean(), buffer.readBoolean());
             });
 
     @Override
@@ -69,6 +73,8 @@ public record ArchiveQuestsPayload(List<QuestEntry> quests) implements CustomPac
     }
 
     public static ArchiveQuestsPayload capture(ServerPlayer player) {
+        var deliveries = de.artemis.cyberneticenhancements.common.quest.QuestRewardDeliveries.get(player.server);
+        if (!deliveries.hasPlacedDropoff(player.getUUID())) return new ArchiveQuestsPayload(List.of(), false, deliveries.setupItemGiven(player.getUUID()));
         List<QuestEntry> quests = new ArrayList<>();
         for (PlayerQuestManager.QuestLogEntry quest : PlayerQuestManager.questLog(player)) {
             quests.add(new QuestEntry(
@@ -91,7 +97,18 @@ public record ArchiveQuestsPayload(List<QuestEntry> quests) implements CustomPac
                     quest.sortGroup()
             ));
         }
-        return new ArchiveQuestsPayload(List.copyOf(quests));
+        int legacy = 0;
+        for (var items : deliveries.unlinkedPendingRewards(player.getUUID())) {
+            String rewards = items.stream().map(stack -> stack.getCount() + "x " + stack.getHoverName().getString())
+                    .collect(java.util.stream.Collectors.joining(", "));
+            quests.add(new QuestEntry("pending_delivery_legacy_" + legacy++, "",
+                    Component.translatableWithFallback("screen.cyberneticenhancements.archive.quests.pending.legacy_issuer", "Remote delivery").getString(),
+                    "", "", Component.translatableWithFallback("screen.cyberneticenhancements.archive.quests.pending.legacy_title", "Pending reward shipment").getString(),
+                    Component.translatableWithFallback("screen.cyberneticenhancements.archive.quests.pending.legacy_note", "This shipment has no saved contract link. Its remaining rewards are still awaiting delivery.").getString(),
+                    rewards, "pending_delivery", Component.translatableWithFallback("quest.cyberneticenhancements.status.pending_delivery", "Pending delivery").getString(),
+                    0, false, "", 0, 0, 0, 2));
+        }
+        return new ArchiveQuestsPayload(List.copyOf(quests), true, deliveries.setupItemGiven(player.getUUID()));
     }
 
     public record QuestEntry(

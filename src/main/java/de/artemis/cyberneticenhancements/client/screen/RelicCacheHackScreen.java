@@ -3,7 +3,9 @@ package de.artemis.cyberneticenhancements.client.screen;
 import de.artemis.cyberneticenhancements.common.menu.RelicCacheHackLayout;
 import de.artemis.cyberneticenhancements.common.menu.RelicCacheHackMenu;
 import de.artemis.cyberneticenhancements.common.network.RelicCacheHackSelectPayload;
+import de.artemis.cyberneticenhancements.common.registry.ModSounds;
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.resources.sounds.SimpleSoundInstance;
 import net.minecraft.client.gui.GuiGraphics;
 import de.artemis.cyberneticenhancements.client.ui.UiRenderer;
 import de.artemis.cyberneticenhancements.client.ui.ResponsiveContainerScreen;
@@ -40,6 +42,7 @@ public final class RelicCacheHackScreen extends ResponsiveContainerScreen<RelicC
     private int lastSelectedCount;
     private int lastCompletedMask;
     private int lastSecondBucket = -1;
+    private boolean openingSoundPlayed;
 
     public RelicCacheHackScreen(RelicCacheHackMenu menu, Inventory playerInventory, Component title) {
         super(menu, playerInventory, title);
@@ -49,6 +52,17 @@ public final class RelicCacheHackScreen extends ResponsiveContainerScreen<RelicC
         this.inventoryLabelY = 10000;
         this.titleLabelX = 10000;
         this.titleLabelY = 10000;
+    }
+
+    @Override
+    protected void init() {
+        super.init();
+        // Resizing reinitializes this screen; only a newly opened GUI plays the cue.
+        if (!openingSoundPlayed) {
+            // The two-argument UI helper defaults to only 25% volume.
+            minecraft.getSoundManager().play(SimpleSoundInstance.forUI(ModSounds.HACKING_ACCESS.get(), 1.0F, 1.0F));
+            openingSoundPlayed = true;
+        }
     }
 
     @Override
@@ -82,7 +96,9 @@ public final class RelicCacheHackScreen extends ResponsiveContainerScreen<RelicC
         guiGraphics.drawString(font, timer, targetPanelInnerX(), RelicCacheHackLayout.TARGET_PANEL_Y1 + PANEL_TEXT_PADDING_Y + 12, colorForRemainingTime(), false);
 
         guiGraphics.drawString(font, Component.translatable("screen.cyberneticenhancements.relic_cache_hack.buffer", menu.selectedCount(), menu.bufferSize()), footerPanelInnerX(), footerPanelInnerY(), ACCENT, false);
-        drawWrappedText(guiGraphics, Component.translatable("screen.cyberneticenhancements.relic_cache_hack.rule"), footerPanelInnerX(), footerPanelInnerY() + 46, footerPanelInnerWidth(), TEXT_SECONDARY, 4);
+        drawWrappedText(guiGraphics, Component.translatable(menu.isQuestCache()
+                ? "screen.cyberneticenhancements.relic_cache_hack.quest_rule" : "screen.cyberneticenhancements.relic_cache_hack.rule"),
+                footerPanelInnerX(), footerPanelInnerY() + 46, footerPanelInnerWidth(), TEXT_SECONDARY, 4);
     }
 
     @Override
@@ -158,7 +174,7 @@ public final class RelicCacheHackScreen extends ResponsiveContainerScreen<RelicC
 
                 guiGraphics.fill(x, y, x + cellSize, y + cellSize, fillColor);
                 UiRenderer.outline(guiGraphics, x, y, cellSize, cellSize,
-                        selected ? ACCENT : hoveredCell ? UiRenderer.PANEL_EDGE_ACTIVE : selectable ? ACCENT : PANEL_EDGE);
+                        selected ? UiRenderer.SELECTED_EDGE : hoveredCell || selectable ? UiRenderer.PANEL_EDGE_ACTIVE : PANEL_EDGE);
 
                 String token = menu.tokenLabel(menu.tokenAtCell(cellIndex));
                 int tokenColor = selected ? 0xFFE9FFF6 : selectable ? 0xFFBFEFE1 : TEXT_SECONDARY;
@@ -216,7 +232,7 @@ public final class RelicCacheHackScreen extends ResponsiveContainerScreen<RelicC
         int y = topPos + footerPanelInnerY() + 18;
         for (int i = 0; i < count; i++) {
             boolean filled = i < menu.selectedCount();
-            UiRenderer.panel(g, x, y, cellWidth, 18, filled ? UiRenderer.ROW_SELECTED : UiRenderer.FIELD, filled ? ACCENT : UiRenderer.FIELD_EDGE);
+            UiRenderer.panel(g, x, y, cellWidth, 18, filled ? UiRenderer.ROW_SELECTED : UiRenderer.FIELD, filled ? UiRenderer.SELECTED_EDGE : UiRenderer.FIELD_EDGE);
             String label = filled ? menu.tokenLabel(menu.tokenAtCell(menu.selectedCell(i))) : "--";
             g.drawString(font, label, x + (cellWidth - font.width(label)) / 2, y + 5, filled ? TEXT_PRIMARY : TEXT_SECONDARY, false);
             x += cellWidth + gap;

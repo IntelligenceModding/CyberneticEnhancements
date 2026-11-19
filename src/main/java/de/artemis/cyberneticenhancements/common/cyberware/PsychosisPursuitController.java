@@ -21,7 +21,6 @@ import java.util.UUID;
 public final class PsychosisPursuitController {
     private static final String WANDER_YAW_KEY = "cyberneticenhancements.psychosis_wander_yaw";
     private static final double IMMEDIATE_VISIBLE_TARGET_RANGE = 3.0D;
-    private static final double IMMEDIATE_COMBAT_OVERRIDE_RANGE = 8.0D;
     private static final double MAX_HIDDEN_TARGET_DIRECT_DISTANCE = CyberwareBalance.doubleValue("cyberstrain.psychosis.hidden_target_max_direct_distance");
     private static final double MAX_HIDDEN_TARGET_PATH_DISTANCE = CyberwareBalance.doubleValue("cyberstrain.psychosis.hidden_target_max_path_distance");
     private static final long PATH_RECALC_INTERVAL_TICKS = 10L;
@@ -35,22 +34,40 @@ public final class PsychosisPursuitController {
     private PsychosisPursuitController() {
     }
 
+    private record CachedTarget(LivingEntity entity, long until) {}
+    private static final Map<UUID, CachedTarget> TARGETS = new HashMap<>();
+    private static final Map<UUID, PsychosisPursuitProgress> PROGRESS = new HashMap<>();
+
     public static LivingEntity findTarget(Player player) {
+        long now = player.level().getGameTime();
+        var progress = PROGRESS.computeIfAbsent(player.getUUID(), ignored -> new PsychosisPursuitProgress());
+        var cached = TARGETS.get(player.getUUID());
+        boolean reuse = cached != null && now < cached.until() && (cached.entity() == null ||
+                cached.entity().isAlive() && cached.entity().level() == player.level()
+                && player.distanceToSqr(cached.entity()) <= 24 * 24 && isValidTarget(cached.entity())
+                && !progress.skipped(cached.entity().getUUID(), now));
+        LivingEntity target = reuse ? cached.entity() : selectTarget(player);
+        if (target != null && progress.stalled(target.getUUID(), player.position(), player.distanceTo(target),
+                player.distanceToSqr(target) <= 2.8 * 2.8 && player.hasLineOfSight(target), now)) {
+            PATH_STATES.remove(player.getUUID());
+            target = selectTarget(player);
+        }
+        TARGETS.put(player.getUUID(), new CachedTarget(target, now + 5));
+        return target;
+    }
+
+    private static LivingEntity selectTarget(Player player) {
         List<LivingEntity> targets = player.level().getEntitiesOfClass(
                 LivingEntity.class,
                 player.getBoundingBox().inflate(24.0D),
-                entity -> entity != player && entity.isAlive() && isValidTarget(entity));
+                entity -> entity != player && entity.isAlive() && isValidTarget(entity)
+                        && !PROGRESS.get(player.getUUID()).skipped(entity.getUUID(), player.level().getGameTime()));
 
         LivingEntity recentAggressor = player.getLastHurtByMob();
         List<TargetCandidate> candidates = targets.stream()
                 .map(entity -> createTargetCandidate(player, entity, recentAggressor))
                 .filter(candidate -> candidate != null)
                 .toList();
-
-        LivingEntity immediateCombatTarget = selectImmediateCombatTarget(candidates);
-        if (immediateCombatTarget != null) {
-            return immediateCombatTarget;
-        }
 
         Integer bestPriority = candidates.stream()
                 .map(TargetCandidate::priority)
@@ -75,21 +92,9 @@ public final class PsychosisPursuitController {
                 .orElse(null);
     }
 
-    private static LivingEntity selectImmediateCombatTarget(List<TargetCandidate> candidates) {
-        double maxDistanceSqr = IMMEDIATE_COMBAT_OVERRIDE_RANGE * IMMEDIATE_COMBAT_OVERRIDE_RANGE;
-        return candidates.stream()
-                .filter(TargetCandidate::visible)
-                .filter(candidate -> candidate.directDistanceSqr() <= maxDistanceSqr)
-                .sorted(Comparator
-                        .comparingInt(TargetCandidate::priority)
-                        .thenComparingDouble(TargetCandidate::directDistanceSqr)
-                        .thenComparingInt(candidate -> candidate.recentAggressor() ? 0 : 1))
-                .map(TargetCandidate::entity)
-                .findFirst()
-                .orElse(null);
-    }
-
     public static PursuitIntent buildHuntIntent(Player player, LivingEntity target, long gameTime) {
+        if (player.hasLineOfSight(target) && player.distanceToSqr(target) <= 2.4D * 2.4D)
+            return buildCloseRangeIntent(player, target);
         PathFollowTarget pathFollowTarget = resolvePathTargetPosition(player, target, gameTime);
         Vec3 pathTargetPosition = pathFollowTarget.position();
         Vec3 moveDelta = pathTargetPosition.subtract(player.position());
@@ -135,35 +140,40 @@ public final class PsychosisPursuitController {
 
     public static void clear(Player player) {
         PATH_STATES.remove(player.getUUID());
+        TARGETS.remove(player.getUUID());
+        PROGRESS.remove(player.getUUID());
         player.getPersistentData().remove(WANDER_YAW_KEY);
     }
 
-    private static boolean isValidTarget(LivingEntity entity) {
+    public static boolean isValidTarget(LivingEntity entity) {
+        if (!entity.isAlive() || entity.isDeadOrDying() || entity.deathTime > 0
+                || de.artemis.cyberneticenhancements.common.world.DeathBodySync.fallen(entity)
+                || de.artemis.cyberneticenhancements.common.world.CityNpcMedicine.downed(entity)
+                || entity instanceof net.minecraft.server.level.ServerPlayer player
+                    && de.artemis.cyberneticenhancements.common.world.TraumaCoverage.downed(player)) return false;
         if (shouldIgnoreTarget(entity)) {
             return false;
         }
         if (entity instanceof Player targetPlayer) {
             return !targetPlayer.isCreative() && !targetPlayer.isSpectator();
         }
-        return entity instanceof Monster || entity instanceof Animal;
+        return entity instanceof net.minecraft.world.entity.Mob;
     }
 
     private static boolean shouldIgnoreTarget(LivingEntity entity) {
-        return entity instanceof TamableAnimal tamableAnimal && tamableAnimal.isTame() && PsychosisTargetingConfig.ignoreTamedAnimals()
-                || PsychosisTargetingConfig.ignoredEntityTypes().contains(BuiltInRegistries.ENTITY_TYPE.getKey(entity.getType()).toString());
+        return PsychosisTargetingConfig.ignoredEntityTypes().contains(BuiltInRegistries.ENTITY_TYPE.getKey(entity.getType()).toString());
     }
 
     private static int targetPriority(LivingEntity entity) {
         if (entity instanceof Player) {
             return 0;
         }
-        if (entity instanceof Monster) {
-            return 1;
-        }
-        if (entity instanceof Animal) {
-            return 2;
-        }
-        return 3;
+        if (entity instanceof de.artemis.cyberneticenhancements.common.entity.AbstractCityNpcEntity
+                || entity instanceof net.minecraft.world.entity.npc.AbstractVillager) return 1;
+        if (entity instanceof TamableAnimal pet && pet.isTame()
+                || entity instanceof net.minecraft.world.entity.animal.horse.AbstractHorse horse && horse.isTamed()) return 2;
+        if (entity instanceof net.minecraft.world.entity.monster.Enemy) return 3;
+        return 4;
     }
 
     private static PathFollowTarget resolvePathTargetPosition(Player player, LivingEntity target, long gameTime) {
@@ -179,6 +189,7 @@ public final class PsychosisPursuitController {
 
         Zombie navigator = state.navigator();
         navigator.moveTo(player.getX(), player.getY(), player.getZ(), player.getYRot(), player.getXRot());
+        navigator.setOnGround(true); // Detached navigation proxies never receive an entity physics tick.
         navigator.setCanPickUpLoot(false);
 
         boolean targetChanged = !target.getUUID().equals(state.targetId());
@@ -286,6 +297,7 @@ public final class PsychosisPursuitController {
 
         Zombie navigator = new Zombie(serverLevel);
         navigator.moveTo(player.getX(), player.getY(), player.getZ(), player.getYRot(), player.getXRot());
+        navigator.setOnGround(true); // Detached navigation proxies never receive an entity physics tick.
         Path path = navigator.getNavigation().createPath(target, 0);
         if (path == null || !path.canReach() || path.isDone()) {
             return null;
@@ -315,7 +327,7 @@ public final class PsychosisPursuitController {
 
         float yaw = (float) (Math.toDegrees(Math.atan2(lookHorizontal.z, lookHorizontal.x)) - 90.0D);
         float pitch = (float) Mth.clamp(-Math.toDegrees(Math.atan2(lookDelta.y, Math.max(0.001D, lookHorizontal.length()))), -45.0D, 45.0D);
-        return new PursuitIntent(yaw, pitch, 0.4F, 0.0F, false, true);
+        return new PursuitIntent(yaw, pitch, lookHorizontal.length() > 1.9D ? 0.4F : 0.0F, 0.0F, false, false);
     }
 
     private static double computePathDistance(Zombie navigator, Path path, Vec3 startPosition) {

@@ -55,11 +55,11 @@
   ],
   "repair_materials": [
     {
-      "count": 2,
-      "item": "cyberneticenhancements:rare_item_components"
+      "count": 1,
+      "item": "cyberneticenhancements:uncommon_item_components"
     },
     {
-      "count": 2,
+      "count": 1,
       "item": "cyberneticenhancements:sensor_lens"
     }
   ]

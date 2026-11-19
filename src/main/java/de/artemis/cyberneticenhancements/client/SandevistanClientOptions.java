@@ -7,13 +7,30 @@ import java.nio.file.Files;
 import java.util.Properties;
 
 public final class SandevistanClientOptions {
-    public static boolean afterimages = true;
-    public static boolean edgeEffects = true;
-    public static boolean restrainedFov = true;
-    public static float flashIntensity = 0.20F;
-    public static float soundVolume = 0.50F;
+    private static boolean afterimages = true;
+    private static boolean edgeEffects = true;
+    private static boolean restrainedFov = true;
+    private static float flashIntensity = 0.20F;
+    private static float soundVolume = 0.50F;
 
     private SandevistanClientOptions() {
+    }
+
+    // A server can enforce these while the player is connected, without touching their file.
+    public static boolean afterimages() { return forced(EnforcedSettings.SANDEVISTAN_AFTERIMAGES, afterimages); }
+    public static boolean edgeEffects() { return forced(EnforcedSettings.SANDEVISTAN_EDGE_EFFECTS, edgeEffects); }
+    public static boolean restrainedFov() { return forced(EnforcedSettings.SANDEVISTAN_RESTRAINED_FOV, restrainedFov); }
+    public static float flashIntensity() { return forced(EnforcedSettings.SANDEVISTAN_FLASH_INTENSITY, flashIntensity); }
+    public static float soundVolume() { return forced(EnforcedSettings.SANDEVISTAN_SOUND_VOLUME, soundVolume); }
+
+    private static boolean forced(String key, boolean stored) {
+        Boolean forced = EnforcedSettings.extraBoolean(key);
+        return forced != null ? forced : stored;
+    }
+
+    private static float forced(String key, float stored) {
+        Double forced = EnforcedSettings.extraNumber(key);
+        return forced != null ? forced.floatValue() : stored;
     }
 
     public static void initialize() {

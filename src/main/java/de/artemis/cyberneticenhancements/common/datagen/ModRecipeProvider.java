@@ -23,6 +23,9 @@ public final class ModRecipeProvider extends RecipeProvider {
 
     @Override
     protected void buildRecipes(@NotNull RecipeOutput recipeOutput) {
+        net.minecraft.data.recipes.ShapelessRecipeBuilder.shapeless(RecipeCategory.DECORATIONS, ModBlocks.DROPOFF_POINT.get())
+                .requires(Items.BARREL).requires(Items.PAPER).requires(Items.IRON_INGOT)
+                .unlockedBy("has_barrel", has(Items.BARREL)).save(recipeOutput);
         buildMaterialRecipes(recipeOutput);
         buildConsumableRecipes(recipeOutput);
 
@@ -33,6 +36,17 @@ public final class ModRecipeProvider extends RecipeProvider {
     }
 
     private void buildMaterialRecipes(RecipeOutput recipeOutput) {
+        net.minecraft.data.recipes.ShapelessRecipeBuilder.shapeless(RecipeCategory.MISC, ModItems.CHROMIUM_ALLOY.get(), 2)
+                .requires(ModItems.RAW_CHROMIUM.get(), 2).requires(Items.IRON_INGOT).requires(Items.CHARCOAL)
+                .unlockedBy("has_chromium", has(ModItems.RAW_CHROMIUM.get())).save(recipeOutput);
+        net.minecraft.data.recipes.ShapelessRecipeBuilder.shapeless(RecipeCategory.MISC, ModItems.CHROMIUM_ALLOY.get())
+                .requires(ModItems.CHROMIUM_SCRAP.get(), 9)
+                .unlockedBy("has_chromium_scrap", has(ModItems.CHROMIUM_SCRAP.get()))
+                .save(recipeOutput, "cyberneticenhancements:chromium_alloy_from_scrap");
+        net.minecraft.data.recipes.ShapelessRecipeBuilder.shapeless(RecipeCategory.MISC, ModItems.CHROMIUM_ALLOY.get(), 2)
+                .requires(ModItems.RAW_CHROMIUM.get(), 2).requires(Items.IRON_INGOT).requires(Items.COAL)
+                .unlockedBy("has_chromium", has(ModItems.RAW_CHROMIUM.get()))
+                .save(recipeOutput, "cyberneticenhancements:chromium_alloy_from_coal");
         ShapedRecipeBuilder.shaped(RecipeCategory.MISC, ModItems.COPPER_WIRING.get(), 4)
                 .pattern(" C ")
                 .pattern("CRC")
@@ -57,7 +71,7 @@ public final class ModRecipeProvider extends RecipeProvider {
                 .pattern("NIN")
                 .pattern(" N ")
                 .define('N', Items.IRON_NUGGET)
-                .define('I', Items.IRON_INGOT)
+                .define('I', ModItems.CHROMIUM_ALLOY.get())
                 .unlockedBy("has_iron_ingot", has(Items.IRON_INGOT))
                 .save(recipeOutput);
 
@@ -77,7 +91,7 @@ public final class ModRecipeProvider extends RecipeProvider {
                 .pattern(" G ")
                 .define('C', ModItems.COPPER_WIRING.get())
                 .define('R', Items.REDSTONE)
-                .define('I', Items.IRON_INGOT)
+                .define('I', ModItems.CHROMIUM_ALLOY.get())
                 .define('G', Items.GOLD_NUGGET)
                 .unlockedBy("has_copper_wiring", has(ModItems.COPPER_WIRING.get()))
                 .save(recipeOutput);
@@ -88,7 +102,7 @@ public final class ModRecipeProvider extends RecipeProvider {
                 .pattern(" P ")
                 .define('S', ModItems.SERVO_SCREWS.get())
                 .define('W', ModItems.COPPER_WIRING.get())
-                .define('I', Items.IRON_INGOT)
+                .define('I', ModItems.CHROMIUM_ALLOY.get())
                 .define('P', ModItems.CONDUCTIVE_PASTE.get())
                 .unlockedBy("has_servo_screws", has(ModItems.SERVO_SCREWS.get()))
                 .save(recipeOutput);
@@ -141,7 +155,7 @@ public final class ModRecipeProvider extends RecipeProvider {
                 .pattern(" E ")
                 .pattern("RLR")
                 .pattern(" C ")
-                .define('E', Items.ECHO_SHARD)
+                .define('E', Items.ENDER_PEARL)
                 .define('R', ModItems.RARE_ITEM_COMPONENTS.get())
                 .define('L', ModItems.SENSOR_LENS.get())
                 .define('C', ModItems.BASIC_CIRCUIT_PLATE.get())
@@ -152,7 +166,7 @@ public final class ModRecipeProvider extends RecipeProvider {
                 .pattern(" N ")
                 .pattern("EBE")
                 .pattern(" L ")
-                .define('N', Items.NETHER_STAR)
+                .define('N', Items.NETHERITE_SCRAP)
                 .define('E', ModItems.EPIC_ITEM_COMPONENTS.get())
                 .define('B', ModItems.MICRO_BATTERY.get())
                 .define('L', ModItems.SENSOR_LENS.get())
@@ -215,7 +229,7 @@ public final class ModRecipeProvider extends RecipeProvider {
                 .pattern("ISI")
                 .pattern("CBC")
                 .pattern("IPI")
-                .define('I', Items.IRON_INGOT)
+                .define('I', ModItems.CHROMIUM_ALLOY.get())
                 .define('S', ModItems.SENSOR_LENS.get())
                 .define('C', ModItems.BASIC_CIRCUIT_PLATE.get())
                 .define('B', Items.SMOOTH_STONE)
@@ -227,7 +241,7 @@ public final class ModRecipeProvider extends RecipeProvider {
                 .pattern("ICI")
                 .pattern("RBR")
                 .pattern("EPE")
-                .define('I', Items.IRON_INGOT)
+                .define('I', ModItems.CHROMIUM_ALLOY.get())
                 .define('C', ModItems.BASIC_CIRCUIT_PLATE.get())
                 .define('R', ModItems.REPLACEMENT_JOINT.get())
                 .define('B', Items.SMOOTH_STONE)
@@ -240,7 +254,7 @@ public final class ModRecipeProvider extends RecipeProvider {
                 .pattern("ICI")
                 .pattern("RSR")
                 .pattern("EPE")
-                .define('I', Items.IRON_INGOT)
+                .define('I', ModItems.CHROMIUM_ALLOY.get())
                 .define('C', ModItems.BASIC_CIRCUIT_PLATE.get())
                 .define('R', Items.REDSTONE)
                 .define('S', Items.SMITHING_TABLE)
@@ -253,7 +267,7 @@ public final class ModRecipeProvider extends RecipeProvider {
                 .pattern("ISI")
                 .pattern("CBC")
                 .pattern("RPR")
-                .define('I', Items.IRON_INGOT)
+                .define('I', ModItems.CHROMIUM_ALLOY.get())
                 .define('S', ModItems.SERVO_SCREWS.get())
                 .define('C', ModItems.BASIC_CIRCUIT_PLATE.get())
                 .define('B', Items.SMOOTH_STONE)

@@ -10,6 +10,12 @@
     },
     {
       "ingredient": {
+        "item": "cyberneticenhancements:common_item_components"
+      },
+      "slot": 2
+    },
+    {
+      "ingredient": {
         "item": "cyberneticenhancements:alloy_plate"
       },
       "slot": 4

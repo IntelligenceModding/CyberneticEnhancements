@@ -28,6 +28,11 @@ public abstract class AbstractBaseMenu extends AbstractContainerMenu {
         }
     }
 
+    protected void addHiddenPlayerInventorySlots(Inventory inventory) {
+        for (int index = 9; index < 36; index++) addSlot(new HiddenPlayerInventorySlot(inventory, index));
+        for (int index = 0; index < 9; index++) addSlot(new HiddenPlayerInventorySlot(inventory, index));
+    }
+
     protected int findSlotIndexForContainerSlot(int machineSlotCount, int containerSlot) {
         for (int slotIndex = 0; slotIndex < machineSlotCount; slotIndex++) {
             Slot slot = this.slots.get(slotIndex);

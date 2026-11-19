@@ -49,7 +49,7 @@ public final class UiScrollbar {
         boolean hovered = mouseX >= x && mouseX < x + width && mouseY >= y && mouseY < y + height;
 
         int fill = dragging ? UiRenderer.PANEL_EDGE_ACTIVE : hovered ? UiRenderer.ROW_SELECTED : UiRenderer.ROW;
-        int edge = dragging ? UiRenderer.ACCENT : hovered ? UiRenderer.PANEL_EDGE_ACTIVE : UiRenderer.FIELD_EDGE;
+        int edge = dragging ? UiRenderer.SELECTED_EDGE : hovered ? UiRenderer.PANEL_EDGE_ACTIVE : UiRenderer.FIELD_EDGE;
         graphics.fill(x, y, x + width, y + height, fill);
         UiRenderer.outline(graphics, x, y, width, height, edge);
     }

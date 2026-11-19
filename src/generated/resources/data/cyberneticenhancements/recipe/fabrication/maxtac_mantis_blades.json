@@ -10,6 +10,12 @@
     },
     {
       "ingredient": {
+        "item": "cyberneticenhancements:epic_item_components"
+      },
+      "slot": 2
+    },
+    {
+      "ingredient": {
         "item": "cyberneticenhancements:reinforced_alloy"
       },
       "slot": 4

@@ -1,0 +1,40 @@
+{
+  "type": "cyberneticenhancements:fabrication",
+  "parts": [
+    {
+      "ingredient": {
+        "item": "cyberneticenhancements:raw_chromium"
+      },
+      "slot": 6
+    },
+    {
+      "ingredient": {
+        "item": "minecraft:charcoal"
+      },
+      "slot": 7
+    },
+    {
+      "ingredient": {
+        "item": "cyberneticenhancements:raw_chromium"
+      },
+      "slot": 11
+    },
+    {
+      "ingredient": {
+        "item": "minecraft:iron_ingot"
+      },
+      "slot": 12
+    },
+    {
+      "ingredient": {
+        "item": "minecraft:charcoal"
+      },
+      "slot": 13
+    }
+  ],
+  "result": {
+    "count": 3,
+    "id": "cyberneticenhancements:chromium_alloy_ingot"
+  },
+  "ticks": 80
+}

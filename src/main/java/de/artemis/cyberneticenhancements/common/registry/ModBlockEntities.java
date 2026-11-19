@@ -14,6 +14,12 @@ import net.neoforged.neoforge.registries.DeferredRegister;
 public final class ModBlockEntities {
     public static final DeferredRegister<BlockEntityType<?>> BLOCK_ENTITIES =
             DeferredRegister.create(BuiltInRegistries.BLOCK_ENTITY_TYPE, CyberneticEnhancements.MOD_ID);
+    public static final DeferredHolder<BlockEntityType<?>, BlockEntityType<de.artemis.cyberneticenhancements.common.blockentity.DropoffPointBlockEntity>> DROPOFF_POINT =
+            BLOCK_ENTITIES.register("dropoff_point", () -> BlockEntityType.Builder.of(de.artemis.cyberneticenhancements.common.blockentity.DropoffPointBlockEntity::new, ModBlocks.DROPOFF_POINT.get()).build(null));
+    public static final DeferredHolder<BlockEntityType<?>, BlockEntityType<de.artemis.cyberneticenhancements.common.blockentity.HoloBarrierBlockEntity>> HOLO_BARRIER =
+            BLOCK_ENTITIES.register("holo_barrier", () -> BlockEntityType.Builder.of(de.artemis.cyberneticenhancements.common.blockentity.HoloBarrierBlockEntity::new, ModBlocks.HOLO_BARRIER.get()).build(null));
+    public static final DeferredHolder<BlockEntityType<?>, BlockEntityType<de.artemis.cyberneticenhancements.common.blockentity.IronQuestCrateBlockEntity>> IRON_QUEST_CRATE =
+            BLOCK_ENTITIES.register("iron_quest_crate", () -> BlockEntityType.Builder.of(de.artemis.cyberneticenhancements.common.blockentity.IronQuestCrateBlockEntity::new, ModBlocks.IRON_QUEST_CRATE.get()).build(null));
     public static final DeferredHolder<BlockEntityType<?>, BlockEntityType<de.artemis.cyberneticenhancements.common.fabrication.FabricatorBlockEntity>> FABRICATOR =
             BLOCK_ENTITIES.register("cyberware_fabricator", () -> BlockEntityType.Builder.of(de.artemis.cyberneticenhancements.common.fabrication.FabricatorBlockEntity::new, ModBlocks.CYBERWARE_FABRICATOR.get()).build(null));
 
@@ -41,5 +47,15 @@ public final class ModBlockEntities {
 
     public static void register(IEventBus eventBus) {
         BLOCK_ENTITIES.register(eventBus);
+        eventBus.addListener(ModBlockEntities::registerCapabilities);
+    }
+
+    private static void registerCapabilities(net.neoforged.neoforge.capabilities.RegisterCapabilitiesEvent event) {
+        event.registerBlockEntity(net.neoforged.neoforge.capabilities.Capabilities.ItemHandler.BLOCK,
+                TECH_STATION.get(), de.artemis.cyberneticenhancements.common.blockentity.TechStationAutomation::new);
+        event.registerBlockEntity(net.neoforged.neoforge.capabilities.Capabilities.ItemHandler.BLOCK,
+                RECYCLER_STATION.get(), de.artemis.cyberneticenhancements.common.blockentity.RecyclerAutomation::new);
+        event.registerBlockEntity(net.neoforged.neoforge.capabilities.Capabilities.ItemHandler.BLOCK,
+                FABRICATOR.get(), de.artemis.cyberneticenhancements.common.fabrication.FabricatorAutomation::new);
     }
 }

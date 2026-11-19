@@ -4,9 +4,21 @@
   "parts": [
     {
       "ingredient": {
+        "item": "cyberneticenhancements:epic_item_components"
+      },
+      "slot": 1
+    },
+    {
+      "ingredient": {
         "item": "cyberneticenhancements:micro_actuator"
       },
       "slot": 2
+    },
+    {
+      "ingredient": {
+        "item": "cyberneticenhancements:epic_item_components"
+      },
+      "slot": 3
     },
     {
       "ingredient": {

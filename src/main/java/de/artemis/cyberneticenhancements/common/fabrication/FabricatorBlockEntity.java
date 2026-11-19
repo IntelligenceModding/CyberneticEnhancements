@@ -15,19 +15,60 @@ import net.minecraft.world.level.block.state.BlockState;
 
 import java.util.*;
 
-public final class FabricatorBlockEntity extends BlockEntity implements Container {
+public final class FabricatorBlockEntity extends BlockEntity implements WorldlyContainer {
     private NonNullList<ItemStack> items = NonNullList.withSize(27, ItemStack.EMPTY);
-    public int capability = 1, progress = 0;
+    public int progress = 0;
     public String selected = "";
     private String running = "";
     private String authorizedSchematic = "";
+    private UUID journalOwner;
+    private String automationRecipe = "";
+    private String automationSchematic = "";
+    private boolean wasPowered;
+    private boolean singleCraft;
+
+    public boolean selectDesign(ServerPlayer player, ResourceLocation id) {
+        var holder = recipe(id.toString());
+        if (working() || holder == null || !holder.value().unlockedFor(player)) return false;
+        selected = id.toString();
+        automationRecipe = selected;
+        automationSchematic = holder.value().schematic();
+        journalOwner = player.getUUID();
+        setChanged();
+        return true;
+    }
+
+    public void updateRedstone() {
+        if (level == null || level.isClientSide) return;
+        boolean powered = level.hasNeighborSignal(worldPosition);
+        if (wasPowered != powered) {
+            wasPowered = powered;
+            setChanged();
+            if (powered) startFromRedstone();
+        }
+    }
+
+    private void startFromRedstone() {
+        var holder = selectedRecipe();
+        if (working() || holder == null) return;
+        var recipe = holder.value();
+        if (!recipe.schematic().isEmpty() && (!selected.equals(automationRecipe)
+                || !recipe.schematic().equals(automationSchematic))) return;
+        if (recipe.tier() > supportedTier() || !recipe.matches(input(), level)
+                || !outputFits(recipe.assemble(input(), level.registryAccess()))) return;
+        running = selected;
+        authorizedSchematic = recipe.schematic();
+        singleCraft = true;
+        progress = 0;
+        setChanged();
+    }
 
     public FabricatorBlockEntity(BlockPos pos, BlockState state) {
         super(ModBlockEntities.FABRICATOR.get(), pos, state);
     }
 
     public int supportedTier() {
-        return capability == 1 ? 2 : capability == 2 ? 4 : 5;
+        return 5;
     }
 
     public List<RecipeHolder<FabricationRecipe>> recipes() {
@@ -70,8 +111,6 @@ public final class FabricatorBlockEntity extends BlockEntity implements Containe
         if (holder == null) return "Select a design";
         var r = holder.value();
         if (working()) return "Fabricating";
-        if (supportedTier() < r.tier())
-            return "Upgrade machine to " + (r.tier() == 5 ? "Restricted" : "Precision") + " Assembly";
         boolean known = level.isClientSide ? SchematicKnowledge.clientKnows(r.schematic()) : SchematicKnowledge.knows(player, r.schematic());
         if (!known) return "Schematic not learned";
         if (!r.matches(input(), level)) return "Missing or misplaced parts";
@@ -83,7 +122,11 @@ public final class FabricatorBlockEntity extends BlockEntity implements Containe
         if (selectedRecipe() == null)
             recipes().stream().filter(r -> r.value().unlockedFor(player) && r.value().matches(input(), level)).findFirst().ifPresent(r -> selected = r.id().toString());
         if (!canStart(player)) return false;
+        selectDesign(player, selectedRecipe().id());
         running = selected;
+        journalOwner = player.getUUID();
+        singleCraft = false;
+        de.artemis.cyberneticenhancements.common.journal.PlayerJournal.recordAt(player, worldPosition, "workshop", "fabrication_started", selectedRecipe().value().result().getHoverName());
         authorizedSchematic = selectedRecipe().value().schematic();
         progress = 0;
         setChanged();
@@ -92,22 +135,14 @@ public final class FabricatorBlockEntity extends BlockEntity implements Containe
 
     public void cancel() {
         running = "";
+        singleCraft = false;
         authorizedSchematic = "";
         progress = 0;
         setChanged();
     }
 
-    public boolean upgrade(ItemStack module) {
-        boolean valid = capability == 1 && module.is(FabricationContent.part("precision_assembly_module")) || capability == 2 && module.is(FabricationContent.part("high_spec_fabrication_module"));
-        if (!valid || working()) return false;
-        capability++;
-        module.shrink(1);
-        setChanged();
-        return true;
-    }
-
     public static void tick(Level level, BlockPos pos, BlockState state, FabricatorBlockEntity station) {
-
+        station.updateRedstone();
         if (!station.items.get(25).isEmpty()) {
             Containers.dropItemStack(level, pos.getX() + 0.5, pos.getY() + 1, pos.getZ() + 0.5, station.removeItemNoUpdate(25));
             station.setChanged();
@@ -121,7 +156,10 @@ public final class FabricatorBlockEntity extends BlockEntity implements Containe
         }
         var recipe = holder.value();
         ItemStack result = recipe.assemble(station.input(), level.registryAccess());
-        if (!station.outputFits(result)) return;
+        if (!station.outputFits(result)) {
+            station.cancel();
+            return;
+        }
         if (++station.progress < recipe.ticks()) {
             station.setChanged();
             return;
@@ -137,28 +175,45 @@ public final class FabricatorBlockEntity extends BlockEntity implements Containe
         else station.items.get(26).grow(result.getCount());
         for (ItemStack remainder : remainders)
             Containers.dropItemStack(level, pos.getX() + 0.5, pos.getY() + 1, pos.getZ() + 0.5, remainder);
-        station.cancel();
+        if (station.journalOwner != null && level instanceof net.minecraft.server.level.ServerLevel server)
+            de.artemis.cyberneticenhancements.common.journal.PlayerJournal.recordFor(server.getServer(), station.journalOwner, level.dimension().location().toString(), pos,
+                    "workshop", "fabricated", result.getCount(), result.getHoverName());
+        // GUI starts repeat; a redstone edge authorizes only one complete batch.
+        // Reassemble against the remaining inputs because service recipes can preserve item data.
+        if (!station.singleCraft && recipe.matches(station.input(), level)
+                && station.outputFits(recipe.assemble(station.input(), level.registryAccess()))) {
+            station.progress = 0;
+            station.setChanged();
+        } else station.cancel();
     }
 
     protected void saveAdditional(CompoundTag tag, HolderLookup.Provider lookup) {
         super.saveAdditional(tag, lookup);
         ContainerHelper.saveAllItems(tag, items, lookup);
-        tag.putInt("capability", capability);
         tag.putInt("progress", progress);
         tag.putString("selected", selected);
         tag.putString("running", running);
         tag.putString("authorized_schematic", authorizedSchematic);
+        tag.putString("automation_recipe", automationRecipe);
+        tag.putString("automation_schematic", automationSchematic);
+        tag.putBoolean("was_powered", wasPowered);
+        tag.putBoolean("single_craft", singleCraft);
+        if (journalOwner != null) tag.putUUID("JournalOwner", journalOwner);
     }
 
     protected void loadAdditional(CompoundTag tag, HolderLookup.Provider lookup) {
         super.loadAdditional(tag, lookup);
         items = NonNullList.withSize(27, ItemStack.EMPTY);
         ContainerHelper.loadAllItems(tag, items, lookup);
-        capability = Math.clamp(tag.getInt("capability"), 1, 3);
         progress = Math.max(0, tag.getInt("progress"));
         selected = tag.getString("selected");
         running = tag.getString("running");
         authorizedSchematic = tag.getString("authorized_schematic");
+        automationRecipe = tag.getString("automation_recipe");
+        automationSchematic = tag.getString("automation_schematic");
+        wasPowered = tag.getBoolean("was_powered");
+        singleCraft = tag.getBoolean("single_craft");
+        journalOwner = tag.hasUUID("JournalOwner") ? tag.getUUID("JournalOwner") : null;
     }
 
     public int getContainerSize() {
@@ -198,7 +253,36 @@ public final class FabricatorBlockEntity extends BlockEntity implements Containe
     }
 
     public boolean canPlaceItem(int slot, ItemStack stack) {
-        return !working() && slot >= 0 && slot < 25;
+        var holder = selectedRecipe();
+        return holder != null && slot >= 0 && slot < 25 && holder.value().parts().stream()
+                .anyMatch(part -> part.slot() == slot && part.ingredient().test(stack));
+    }
+
+    public int[] getSlotsForFace(Direction side) {
+        return side == Direction.DOWN ? new int[]{26} : java.util.stream.IntStream.range(0, 25).toArray();
+    }
+
+    /** Limit each automated insertion to the least-filled matching recipe positions. */
+    public int automationInsertLimit(int slot, ItemStack stack) {
+        var holder = selectedRecipe();
+        if (holder == null || !canPlaceItem(slot, stack)) return 0;
+        var part = holder.value().parts().stream().filter(p -> p.slot() == slot).findFirst().orElseThrow();
+        ItemStack current = items.get(slot);
+        if (!current.isEmpty() && !ItemStack.isSameItemSameComponents(current, stack)) return 0;
+        double least = holder.value().parts().stream().filter(p -> p.slot() != slot && p.ingredient().test(stack))
+                .filter(p -> items.get(p.slot()).isEmpty() || ItemStack.isSameItemSameComponents(items.get(p.slot()), stack))
+                .mapToDouble(p -> (double) items.get(p.slot()).getCount() / p.count()).min().orElse(Double.POSITIVE_INFINITY);
+        int target = Double.isInfinite(least) ? stack.getMaxStackSize()
+                : Math.min(stack.getMaxStackSize(), (int) Math.floor(least) * part.count() + part.count());
+        return Math.max(0, target - current.getCount());
+    }
+
+    public boolean canPlaceItemThroughFace(int slot, ItemStack stack, Direction side) {
+        return side != Direction.DOWN && automationInsertLimit(slot, stack) > 0;
+    }
+
+    public boolean canTakeItemThroughFace(int slot, ItemStack stack, Direction side) {
+        return slot == 26;
     }
 
     public boolean canTakeItem(Container destination, int slot, ItemStack stack) {

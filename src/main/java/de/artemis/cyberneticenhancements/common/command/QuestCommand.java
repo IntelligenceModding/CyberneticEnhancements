@@ -66,12 +66,12 @@ public final class QuestCommand {
     private static void sendResult(CommandSourceStack source, String keyBase, Collection<ServerPlayer> targets, int affectedPlayers, int removedEntries, String questId) {
         if (targets.size() == 1) {
             ServerPlayer target = targets.iterator().next();
-            source.sendSuccess(() -> questId == null
+            de.artemis.cyberneticenhancements.common.feedback.GameplayMessages.success(source, () -> questId == null
                     ? Component.translatable(keyBase + ".single", target.getDisplayName(), removedEntries)
                     : Component.translatable(keyBase + ".single", questId, target.getDisplayName(), removedEntries), true);
             return;
         }
-        source.sendSuccess(() -> questId == null
+        de.artemis.cyberneticenhancements.common.feedback.GameplayMessages.success(source, () -> questId == null
                 ? Component.translatable(keyBase + ".multi", targets.size(), removedEntries)
                 : Component.translatable(keyBase + ".multi", questId, targets.size(), removedEntries), true);
     }

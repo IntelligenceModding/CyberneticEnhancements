@@ -4,49 +4,14 @@
     {
       "entries": [
         {
-          "type": "minecraft:item",
-          "name": "cyberneticenhancements:biodyn_berserk_schematic",
-          "weight": 3
+          "type": "minecraft:loot_table",
+          "value": "cyberneticenhancements:fabrication/schematics_2",
+          "weight": 65
         },
         {
-          "type": "minecraft:item",
-          "name": "cyberneticenhancements:biotech_sigma_schematic",
-          "weight": 3
-        },
-        {
-          "type": "minecraft:item",
-          "name": "cyberneticenhancements:militech_paraline_schematic",
-          "weight": 3
-        },
-        {
-          "type": "minecraft:item",
-          "name": "cyberneticenhancements:dynalar_sandevistan_schematic",
-          "weight": 3
-        },
-        {
-          "type": "minecraft:item",
-          "name": "cyberneticenhancements:zetatech_sandevistan_schematic",
-          "weight": 3
-        },
-        {
-          "type": "minecraft:item",
-          "name": "cyberneticenhancements:chrome_compressor_schematic",
-          "weight": 3
-        },
-        {
-          "type": "minecraft:item",
-          "name": "cyberneticenhancements:neural_processor",
-          "weight": 8
-        },
-        {
-          "type": "minecraft:item",
-          "name": "cyberneticenhancements:high_torque_servo",
-          "weight": 8
-        },
-        {
-          "type": "minecraft:item",
-          "name": "cyberneticenhancements:optical_array",
-          "weight": 8
+          "type": "minecraft:loot_table",
+          "value": "cyberneticenhancements:fabrication/parts_2",
+          "weight": 35
         }
       ],
       "rolls": 1

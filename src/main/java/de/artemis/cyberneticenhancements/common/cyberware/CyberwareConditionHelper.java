@@ -8,6 +8,38 @@ import net.minecraft.world.item.component.CustomData;
 public final class CyberwareConditionHelper {
     private static final String INTEGRITY_KEY = "CyberwareIntegrity";
 
+    private static final String FAULT_KEY = "CyberwareNeuralFault";
+    private static final String WEAR_REMAINDER_KEY = "CyberwareWearQuarter";
+    public static boolean hasNeuralFault(ItemStack stack) {
+        return stack.getOrDefault(DataComponents.CUSTOM_DATA, CustomData.EMPTY).copyTag().getBoolean(FAULT_KEY);
+    }
+    public static double getPerformanceRatio(ItemStack stack, CyberwareDefinition definition) {
+        return hasNeuralFault(stack) ? 0 : getIntegrityRatio(stack, definition);
+    }
+    public static void applyNeuralFault(ItemStack stack, CyberwareDefinition definition, int damage) {
+        damage(stack, definition, damage);
+        var tag = stack.getOrDefault(DataComponents.CUSTOM_DATA, CustomData.EMPTY).copyTag();
+        tag.putBoolean(FAULT_KEY, true);
+        stack.set(DataComponents.CUSTOM_DATA, CustomData.of(tag));
+    }
+    public static void clearNeuralFault(ItemStack stack) {
+        var tag = stack.getOrDefault(DataComponents.CUSTOM_DATA, CustomData.EMPTY).copyTag();
+        tag.remove(FAULT_KEY);
+        if (tag.isEmpty()) stack.remove(DataComponents.CUSTOM_DATA);
+        else stack.set(DataComponents.CUSTOM_DATA, CustomData.of(tag));
+    }
+    /** Carry fractional wear so even one-point wear events are reduced to exactly one quarter. */
+    public static boolean wear(ItemStack stack, CyberwareDefinition definition, int amount) {
+        if (stack.isEmpty() || amount <= 0) return false;
+        var tag = stack.getOrDefault(DataComponents.CUSTOM_DATA, CustomData.EMPTY).copyTag();
+        int total = Math.max(0, tag.getInt(WEAR_REMAINDER_KEY)) + amount;
+        int remainder = total % 4;
+        if (remainder == 0) tag.remove(WEAR_REMAINDER_KEY); else tag.putInt(WEAR_REMAINDER_KEY, remainder);
+        if (tag.isEmpty()) stack.remove(DataComponents.CUSTOM_DATA); else stack.set(DataComponents.CUSTOM_DATA, CustomData.of(tag));
+        damage(stack, definition, total / 4);
+        return true;
+    }
+
     private CyberwareConditionHelper() {
     }
 

@@ -2,6 +2,9 @@ package de.artemis.cyberneticenhancements.common.network;
 
 import de.artemis.cyberneticenhancements.CyberneticEnhancements;
 import de.artemis.cyberneticenhancements.common.entity.AbstractCityNpcEntity;
+import de.artemis.cyberneticenhancements.common.world.FixerIdentitySavedData;
+import net.minecraft.ChatFormatting;
+import net.minecraft.network.chat.Component;
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.RegistryFriendlyByteBuf;
 import net.minecraft.network.codec.StreamCodec;
@@ -34,6 +37,10 @@ public record ArchiveContactsPayload(List<ContactEntry> contacts) implements Cus
                     buffer.writeInt(contact.x());
                     buffer.writeInt(contact.y());
                     buffer.writeInt(contact.z());
+                    buffer.writeBoolean(contact.deceased());
+                    buffer.writeUtf(contact.appearance());
+                    buffer.writeUtf(contact.nameColor());
+                    buffer.writeUtf(contact.callStatus(), 32);
                 }
             }, buffer -> {
                 int count = buffer.readVarInt();
@@ -54,7 +61,11 @@ public record ArchiveContactsPayload(List<ContactEntry> contacts) implements Cus
                             buffer.readBoolean(),
                             buffer.readInt(),
                             buffer.readInt(),
-                            buffer.readInt()
+                            buffer.readInt(),
+                            buffer.readBoolean(),
+                            buffer.readUtf(),
+                            buffer.readUtf(),
+                            buffer.readUtf(32)
                     ));
                 }
                 return new ArchiveContactsPayload(List.copyOf(contacts));
@@ -68,7 +79,10 @@ public record ArchiveContactsPayload(List<ContactEntry> contacts) implements Cus
     public static ArchiveContactsPayload capture(ServerPlayer player) {
         List<ContactEntry> contacts = new ArrayList<>();
         for (AbstractCityNpcEntity.ArchiveContact contact : AbstractCityNpcEntity.archiveContacts(player)) {
-            AbstractCityNpcEntity.ArchiveContactLocation location = AbstractCityNpcEntity.archiveContactLocation(player, contact.npcId(), contact.dimensionId(), contact.homePos());
+            var identity = FixerIdentitySavedData.get(player.serverLevel()).identity(contact.npcId());
+            AbstractCityNpcEntity.ArchiveContactLocation location = contact.deceased()
+                    ? new AbstractCityNpcEntity.ArchiveContactLocation(contact.dimensionId(), contact.homePos())
+                    : AbstractCityNpcEntity.archiveContactLocation(player, contact.npcId(), contact.dimensionId(), contact.homePos());
             BlockPos position = location.pos();
             contacts.add(new ContactEntry(
                     contact.npcId().toString(),
@@ -85,9 +99,13 @@ public record ArchiveContactsPayload(List<ContactEntry> contacts) implements Cus
                     position != null,
                     position == null ? 0 : position.getX(),
                     position == null ? 0 : position.getY(),
-                    position == null ? 0 : position.getZ()
+                    position == null ? 0 : position.getZ(),
+                    contact.deceased(),
+                    identity == null ? "" : identity.appearance(),
+                    de.artemis.cyberneticenhancements.common.world.NpcDisposition.color(player, contact.npcId())
             ));
         }
+        contacts.addAll(de.artemis.cyberneticenhancements.common.dialogue.PlayerCallManager.contacts(player));
         return new ArchiveContactsPayload(List.copyOf(contacts));
     }
 
@@ -106,7 +124,23 @@ public record ArchiveContactsPayload(List<ContactEntry> contacts) implements Cus
             boolean hasLocation,
             int x,
             int y,
-            int z
+            int z,
+            boolean deceased,
+            String appearance,
+            String nameColor,
+            String callStatus
     ) {
+        public ContactEntry(String npcId, String npcTypeId, String name, String categoryId, int trustLevel, boolean pinned,
+                            boolean hidden, boolean purgeReady, boolean surchargeActive, boolean refusing, String dimensionId,
+                            boolean hasLocation, int x, int y, int z, boolean deceased, String appearance, String nameColor) {
+            this(npcId, npcTypeId, name, categoryId, trustLevel, pinned, hidden, purgeReady, surchargeActive, refusing,
+                    dimensionId, hasLocation, x, y, z, deceased, appearance, nameColor, "");
+        }
+        public boolean isPlayer() { return "player".equals(npcTypeId); }
+        public Component displayName() {
+            ChatFormatting color = ChatFormatting.getByName(nameColor);
+            return Component.literal(name).withStyle(color != null && color.isColor() ? color
+                    : "hidden".equals(nameColor) ? ChatFormatting.WHITE : ChatFormatting.AQUA);
+        }
     }
 }

@@ -1,0 +1,17 @@
+{
+  "chapters": [
+    {
+      "title": "tutorial.cyberneticenhancements.chapter.orientation",
+      "steps": [
+        { "id": "welcome", "objective": "tutorial.cyberneticenhancements.step.welcome", "trigger": { "type": "ticks", "ticks": 100 } },
+        { "id": "walk", "objective": "tutorial.cyberneticenhancements.step.walk",
+          "trigger": { "type": "area", "x": 12, "y": 0, "z": 0, "relative": true, "radius": 3 } },
+        { "id": "archive", "objective": "tutorial.cyberneticenhancements.step.archive", "args": ["key:key.cyberneticenhancements.open_archive"], "reveal": ["archive"],
+          "trigger": { "type": "signal", "signal": "archive_opened" } },
+        { "id": "chat", "objective": "tutorial.cyberneticenhancements.step.chat", "args": ["key:key.chat"], "allow": ["chat"],
+          "trigger": { "type": "signal", "signal": "chat_opened" } },
+        { "id": "wrap_up", "objective": "tutorial.cyberneticenhancements.step.wrap_up", "trigger": { "type": "ticks", "ticks": 120 } }
+      ]
+    }
+  ]
+}

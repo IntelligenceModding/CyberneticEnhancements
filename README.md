@@ -11,8 +11,10 @@
 </p>
 
 <p align="center">
-  Build a loadout of implants, manage the strain on your body, work with specialist NPCs, complete contracts, and breach relic caches for rewards.<br>
-  The Neural Archive brings together the wiki, schematic collection, contacts, banking, and your quest log.
+  Build a loadout of implants, manage the strain on your body, work with specialist NPCs, take on contracts and cyberpsycho sightings, and breach relic caches for rewards.<br>
+  The Neural Archive brings together the wiki, schematic collection, contacts, banking, your quest log and a personal event journal.<br>
+  Open Journal from the main menu to browse a saved world's journal or locally saved server history, with search, category filters and chronological sorting. Server history is saved while you play and can then be read offline.<br>
+  Joining a world plays a short neural-link animation in which your HUD materializes behind a scan beam. Server owners can enforce any client setting for everyone on their server; see the <a href="CONFIG.md">config reference</a>.
 </p>
 
 <br>
@@ -32,7 +34,15 @@
 </p>
 
 <p align="center">
-  <strong>JEI is optional.</strong> Browse recycling recipes and learned fabrication recipes through its recipe integration.
+  <strong>JEI is optional.</strong> Browse recycling recipes, learned fabrication recipes, upgrade steps and repair cycles through its recipe integration. Press U on an implant to see how to repair it, including how to clear a Neural Fault.
+  <br><strong>Simple Voice Chat is optional.</strong> Add it to both clients and the server for player-to-player voice calls through Neural Link.
+  During a connected player call, Alt+6 hides or restores just the call window while voice continues; Alt+0 still ends the call.
+</p>
+
+<p align="center">
+  <strong>Screen customization compatibility:</strong> FancyMenu, Drippy Loading Screen, PackMenu, and Custom Main Menu produce a NeoForge compatibility warning, but do not block startup.<br>
+  Overlapping screen customizations default to off when these mods are detected. Existing saved settings are preserved, and modpack developers can explicitly re-enable any option.
+  Disable the relevant <code>customTitleScreen</code>, <code>customTitleBackground</code>, <code>customLoadingScreen</code>, <code>customDeathScreen</code>, or <code>showLaunchIntro</code> options in the <a href="CONFIG.md">client config</a> when another mod replaces those visuals. This does not disable cyberware gameplay.
 </p>
 
 <br>
@@ -58,13 +68,21 @@
 <p align="center">
   Learn schematics to unlock recipes at the <strong>Cyberware Fabricator</strong>, then install implants at the <strong>Ripper Station</strong>.<br>
   Maintain your loadout with separate <strong>Repair</strong>, <strong>Upgrade</strong>, and <strong>Recycler Stations</strong>.<br>
-  Meet Fixers, Ripperdocs, Techies, Netrunners, and Mercs for contracts, supplies, and specialist services.<br>
+  Meet Fixers, Ripperdocs, Techies, Netrunners, Mercs, and Med-techs for contracts, supplies, and specialist services.<br>
+  Buy Trauma Team coverage for emergency NPC rescue and revival.<br>
   Explore tiered relic caches, get compass leads from Fixers and Netrunners, and solve timed breach puzzles.
 </p>
 
 <p align="center">
   Track learned schematics, browse the cyberware wiki, manage contacts and quests, and use Eurodollar banking in the Neural Archive.<br>
-  A configurable HUD displays cyberware load, cyberstrain, ability cooldowns, and active effects.
+  Press K for quick-call contacts with faces and colored names. Use Alt + number to call, accept contracts, discuss jobs, or arrange meetings while playing. Contacts can also call you with reminders and requests.<br>
+  A configurable HUD displays cyberware load, cyberstrain, ability cooldowns, active effects, and a slim compass with quest and named banner markers. Press Alt+M to add a personal marker at the block you are looking at, or at your position when aiming into the air. Manage display, names, colors and deletion in the archive's Compass tab.
+  Compact quest panels show three ongoing contracts per page, including collection counts, elimination progress, survey readings and travel instructions. Press Alt+4 to cycle pages. They align with the call window and disappear when no quests remain.
+  Ready quests that allow remote hand-in show Alt+1, Alt+2 or Alt+3 on their HUD row to call the issuer directly. Failing a quest cache triggers an angry follow-up call once the player and issuer are free.
+  Connected NPCs hang up after ten seconds without a conversation reply. Idling costs no trust, money or quest progress; player-to-player calls are unaffected.
+  Lost delivery packages require calling the issuer for a replacement, reducing completion rewards to 50%. Return evidence missing for ten seconds triggers an angry call: confirm it is still yours in external storage, or admitting the loss, declining or missing the call fails the quest.
+  Replacements remove older copies from loaded ground items, inventories, portable containers and AE2 storage. Unloaded storage is cleaned when it loads again; distant chunks are not force-loaded.
+  Center a quest compass marker to outline matching hotbar and offhand items, or hover it with an inventory open to highlight matching slots. Holding the related item in either hand makes its marker slightly larger; collection turn-in markers also recognize the requested materials.
 </p>
 
 <p align="center">

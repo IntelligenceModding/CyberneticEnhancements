@@ -559,7 +559,7 @@ public final class ArmCyberwareManager {
 
     private static int countInstalledArmModules(PlayerCyberwareInventory inventory, String moduleId) {
         int count = 0;
-        for (CyberwareModuleItem moduleItem : inventory.getInstalledModuleItems()) {
+        for (CyberwareModuleItem moduleItem : inventory.getOperationalModuleItems()) {
             if (moduleItem.getDefinition().category() == CyberwareModuleCategory.ARMS
                     && moduleItem.getDefinition().id().equals(moduleId)) {
                 count++;
@@ -623,6 +623,7 @@ public final class ArmCyberwareManager {
     }
 
     private static void notify(Player player, String translationKey, Object... args) {
+        de.artemis.cyberneticenhancements.common.journal.JournalEvents.ability(player, translationKey, args);
         player.displayClientMessage(Component.translatable(translationKey, args).withStyle(ChatFormatting.AQUA), true);
     }
 

@@ -1,0 +1,14 @@
+{
+  "placement": {
+    "type": "minecraft:random_spread",
+    "salt": 482915307,
+    "separation": 10,
+    "spacing": 36
+  },
+  "structures": [
+    {
+      "structure": "cyberneticenhancements:med_tec_av",
+      "weight": 1
+    }
+  ]
+}

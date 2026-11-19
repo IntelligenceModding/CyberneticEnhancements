@@ -56,8 +56,9 @@ import java.util.concurrent.CompletableFuture;
             String components = List.of("common", "uncommon", "rare", "epic", "legendary").get(tier - 1) + "_item_components";
             JsonObject root = new JsonObject();
             JsonArray repairs = new JsonArray();
-            repairs.add(material(components, tier <= 2 ? 3 : 2));
-            repairs.add(material(repairPart(d), tier >= 3 ? 2 : 1));
+            String repairComponents = tier <= 2 ? "common_item_components" : tier <= 4 ? "uncommon_item_components" : "rare_item_components";
+            repairs.add(material(repairComponents, tier <= 2 || tier == 4 ? 2 : 1));
+            repairs.add(material(repairPart(d), tier >= 4 ? 2 : 1));
             root.add("repair_materials", repairs);
             JsonArray levels = new JsonArray();
             for (int level = 1; level <= cap; level++) {
@@ -128,9 +129,9 @@ import java.util.concurrent.CompletableFuture;
                 case CIRCULATORY_SYSTEM, INTEGUMENTARY_SYSTEM -> "polymer_shell";
                 default -> "basic_circuit_plate";
             };
-            var healthy = batch(primary, secondary, d.tier().ordinal() >= 2 ? "thermal_regulator" : null);
-            var worn = batch(primary, secondary, null);
-            var damaged = batch(secondary, null, null);
+            var healthy = new ArrayList<>(batch(primary, secondary, null)); healthy.add(new ItemStack(ModItems.CHROMIUM_SCRAP.get(), 2));
+            var worn = new ArrayList<>(batch(primary, secondary, null)); worn.add(new ItemStack(ModItems.CHROMIUM_SCRAP.get()));
+            var damaged = new ArrayList<>(batch(secondary, null, null)); damaged.add(new ItemStack(ModItems.CHROMIUM_SCRAP.get()));
             save(out, d.id(), ModItems.cyberware(d.id()).get(), healthy, worn, damaged);
         }
         for (var d : ChipwareCatalog.definitions()) constant(out, d.id(), ModItems.chipware(d.id()).get(), "firmware_module");

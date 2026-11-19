@@ -10,9 +10,21 @@
     },
     {
       "ingredient": {
+        "item": "cyberneticenhancements:uncommon_item_components"
+      },
+      "slot": 1
+    },
+    {
+      "ingredient": {
         "item": "cyberneticenhancements:alloy_plate"
       },
       "slot": 2
+    },
+    {
+      "ingredient": {
+        "item": "cyberneticenhancements:uncommon_item_components"
+      },
+      "slot": 3
     },
     {
       "ingredient": {

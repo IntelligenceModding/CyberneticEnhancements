@@ -10,24 +10,41 @@ public final class UiRenderer {
             3, 0, -7, 10, -5, 12, 7, 0
     };
     public static final int PANEL = 0xF0181F28;
-    public static final int PANEL_EDGE = 0xFF2C4B63;
-    public static final int PANEL_EDGE_ACTIVE = 0xFF4F7793;
+    // Structural borders stay subdued across archive, wiki and station screens.
+    public static final int PANEL_EDGE = 0xFF2A3542;
+    public static final int PANEL_EDGE_ACTIVE = 0xFF536B7D;
+    public static final int SELECTED_EDGE = 0xFF668393;
     public static final int ROW = 0xE6232C36;
     public static final int ROW_SELECTED = 0xF03B5369;
     public static final int ROW_DISABLED = 0xB01A222B;
     public static final int FIELD = 0xFF111820;
-    public static final int FIELD_EDGE = 0xFF314252;
+    public static final int FIELD_EDGE = 0xFF303C48;
     public static final int TEXT = 0xFFF1F4F8;
     public static final int TEXT_SECONDARY = 0xFF95A4B2;
     public static final int ACCENT = 0xFF8BDAF8;
     public static final int WARNING = 0xFFF0B36A;
+    public static final int SHADOW = 0x30000000;
+    public static final int SHADOW_OFFSET_X = 2;
+    public static final int SHADOW_OFFSET_Y = 3;
+
+    public static boolean highlighted(net.minecraft.client.gui.components.AbstractWidget widget) {
+        return widget.isHovered() || (widget.isFocused()
+                && net.minecraft.client.Minecraft.getInstance().getLastInputType().isKeyboard());
+    }
 
     private UiRenderer() {
     }
 
+    public static void listPin(GuiGraphics graphics, Font font, int x, int y, boolean pinned, boolean hovered) {
+        Component icon = de.artemis.cyberneticenhancements.common.ui.Icons.OBJECTIVE.component();
+        graphics.drawString(font, icon, x + (18 - font.width(icon)) / 2, y + 6,
+                pinned || hovered ? ACCENT : TEXT_SECONDARY, false);
+    }
+
     public static void panel(GuiGraphics graphics, int x, int y, int width, int height, int fill, int edge) {
         if (width <= 0 || height <= 0) return;
-        graphics.fill(x + 2, y + 3, x + width + 2, y + height + 3, ((fill >>> 24) * 0x30 / 255) << 24);
+        graphics.fill(x + SHADOW_OFFSET_X, y + SHADOW_OFFSET_Y, x + width + SHADOW_OFFSET_X,
+                y + height + SHADOW_OFFSET_Y, ((fill >>> 24) * (SHADOW >>> 24) / 255) << 24);
         graphics.fill(x, y, x + width, y + height, fill);
         outline(graphics, x, y, width, height, edge);
     }
@@ -75,11 +92,8 @@ public final class UiRenderer {
         if (active) {
             fill = blend(fill, selected ? ACCENT : ROW_SELECTED, highlight * (selected ? 0.14F : 0.65F));
         }
-        int edge = !active ? FIELD_EDGE : selected ? ACCENT : blend(FIELD_EDGE, PANEL_EDGE_ACTIVE, highlight);
+        int edge = !active ? FIELD_EDGE : selected ? SELECTED_EDGE : blend(FIELD_EDGE, PANEL_EDGE_ACTIVE, highlight);
         panel(graphics, x, y, width, height, opacity(fill, alphaMask), opacity(edge, alphaMask));
-        if (active && selected) {
-            graphics.fill(x + 1, y + 1, x + 3, y + height - 1, opacity(ACCENT, alphaMask));
-        }
     }
 
     public static void button(GuiGraphics graphics, Font font, int x, int y, int width, int height,

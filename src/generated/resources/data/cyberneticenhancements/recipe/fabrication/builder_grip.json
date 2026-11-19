@@ -42,7 +42,19 @@
       "ingredient": {
         "item": "cyberneticenhancements:replacement_joint"
       },
+      "slot": 16
+    },
+    {
+      "ingredient": {
+        "item": "cyberneticenhancements:common_item_components"
+      },
       "slot": 17
+    },
+    {
+      "ingredient": {
+        "item": "cyberneticenhancements:replacement_joint"
+      },
+      "slot": 18
     }
   ],
   "result": {

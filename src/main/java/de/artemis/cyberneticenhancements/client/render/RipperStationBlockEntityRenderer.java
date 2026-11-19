@@ -27,8 +27,7 @@ import java.util.Map;
 public final class RipperStationBlockEntityRenderer implements BlockEntityRenderer<RipperStationBlockEntity> {
     private static final Map<BlockPos, Runnable> PENDING = new LinkedHashMap<>();
     private static final float PROJECTION_Y = 1.08F;
-    private static final float PLAYER_RENDER_SCALE = 0.9375F;
-    private static final int RING_SEGMENTS = 48;
+    private static final float PLAYER_RENDER_SCALE = HologramPixels.PLAYER_SCALE;
     private final ModelPart wideRoot;
     private final ModelPart slimRoot;
     private final PlayerModel<AbstractClientPlayer> wideModel;
@@ -93,10 +92,10 @@ public final class RipperStationBlockEntityRenderer implements BlockEntityRender
         poseStack.scale(playerScale, playerScale, playerScale);
 
         VertexConsumer projection = buffers.getBuffer(HologramRenderTypes.PROJECTION);
-        renderRing(poseStack, projection, 0.0F, 0.43F, 0.025F, 0xA05DDEFF);
-        renderRing(poseStack, projection, 0.008F, 0.34F, 0.008F, 0x505DDEFF);
-        float scanY = (time % 80.0F) / 80.0F * 1.9F;
-        renderRing(poseStack, projection, scanY, 0.40F, 0.015F, 0x685DDEFF);
+        HologramPixelGeometry.ring(poseStack, projection, 0, 7, 6, HologramPixels.PLAYER_PIXEL, 0xA05DDEFF);
+        HologramPixelGeometry.ring(poseStack, projection, 0, 5, 4, HologramPixels.PLAYER_PIXEL, 0x505DDEFF);
+        float scanY = HologramPixels.sweepRow(time, 32) * HologramPixels.PLAYER_PIXEL;
+        HologramPixelGeometry.ring(poseStack, projection, scanY, 6, 5, HologramPixels.PLAYER_PIXEL, 0x685DDEFF);
 
         var projectionPose = new org.joml.Matrix4f(poseStack.last().pose());
         poseStack.mulPose(Axis.YP.rotationDegrees(time * 0.45F));
@@ -130,19 +129,6 @@ public final class RipperStationBlockEntityRenderer implements BlockEntityRender
         model.rightSleeve.copyFrom(model.rightArm);
     }
 
-    private static void renderRing(PoseStack poseStack, VertexConsumer vertices, float y,
-                                   float radius, float thickness, int color) {
-        var matrix = poseStack.last().pose();
-        float innerRadius = radius - thickness;
-        for (int segment = 0; segment < RING_SEGMENTS; segment++) {
-            float first = segment * Mth.TWO_PI / RING_SEGMENTS;
-            float second = (segment + 1) * Mth.TWO_PI / RING_SEGMENTS;
-            vertices.addVertex(matrix, Mth.cos(first) * radius, y, Mth.sin(first) * radius).setColor(color);
-            vertices.addVertex(matrix, Mth.cos(second) * radius, y, Mth.sin(second) * radius).setColor(color);
-            vertices.addVertex(matrix, Mth.cos(second) * innerRadius, y, Mth.sin(second) * innerRadius).setColor(color);
-            vertices.addVertex(matrix, Mth.cos(first) * innerRadius, y, Mth.sin(first) * innerRadius).setColor(color);
-        }
-    }
 
     @Override
     public AABB getRenderBoundingBox(RipperStationBlockEntity station) {

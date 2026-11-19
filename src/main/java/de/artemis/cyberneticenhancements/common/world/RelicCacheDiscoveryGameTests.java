@@ -141,41 +141,54 @@ public final class RelicCacheDiscoveryGameTests {
             return getWorldPos(x, y, z).immutable();
         }
     }
-    @GameTest(template = "sandevistan_test", batch = "cache_compass_delivery", timeoutTicks = 30)
-    public static void fullInventoryDropsTheTunedCompassWithoutReplacingItems(GameTestHelper h) {
+    @GameTest(template = "sandevistan_test", batch = "cache_hud_delivery", timeoutTicks = 30)
+    public static void npcIntelMarksHudWithAFullInventoryAndSurvivesRespawn(GameTestHelper h) {
         var player = player(h);
         BlockPos target = h.absolutePos(new BlockPos(5, 1, 2));
         try {
+            h.setBlock(new BlockPos(5, 1, 2), ModBlocks.RARE_RELIC_CACHE.get());
             for (int i = 0; i < 36; i++) player.getInventory().setItem(i, new ItemStack(Items.COBBLESTONE, 64));
-            h.assertTrue(RelicCacheIntel.giveCompass(player, target), "Full inventory prevented delivery");
+            h.assertTrue(RelicCacheIntel.provide(player), "Full inventory prevented the NPC cache lead");
             for (int i = 0; i < 36; i++) {
                 ItemStack stack = player.getInventory().getItem(i);
-                h.assertTrue(stack.is(Items.COBBLESTONE) && stack.getCount() == 64, "Compass delivery replaced an inventory item");
+                h.assertTrue(stack.is(Items.COBBLESTONE) && stack.getCount() == 64, "Cache intel replaced an inventory item");
             }
             var drops = h.getLevel().getEntitiesOfClass(net.minecraft.world.entity.item.ItemEntity.class,
                     player.getBoundingBox().inflate(3), item -> item.getItem().is(Items.COMPASS));
-            h.assertTrue(drops.size() == 1 && drops.getFirst().getItem().getCount() == 1, "Compass was lost or duplicated when the inventory was full");
-            var tracker = drops.getFirst().getItem().get(DataComponents.LODESTONE_TRACKER);
-            h.assertTrue(tracker != null && tracker.target().orElseThrow().pos().equals(target), "Dropped compass lost its target");
-            drops.forEach(net.minecraft.world.entity.item.ItemEntity::discard);
+            h.assertTrue(drops.isEmpty(), "NPC intel still dropped an item compass");
+            var navigation = de.artemis.cyberneticenhancements.common.quest.QuestNavigation.capture(player);
+            h.assertTrue(navigation.targets().size() == 1 && navigation.targets().getFirst().pos().equals(target), "NPC intel did not reach the HUD compass");
+            var clone = new ServerPlayer(player.server, h.getLevel(), player.getGameProfile(), net.minecraft.server.level.ClientInformation.createDefault());
+            RelicCacheIntel.copyState(player, clone);
+            h.assertTrue(RelicCacheIntel.navigationTargets(clone).equals(navigation.targets()), "Respawn lost the cache lead");
+            var stranger = new ServerPlayer(player.server, h.getLevel(), new com.mojang.authlib.GameProfile(UUID.randomUUID(), "cache-stranger"), net.minecraft.server.level.ClientInformation.createDefault());
+            h.assertTrue(RelicCacheIntel.navigationTargets(stranger).isEmpty(), "Another player received the private cache marker");
+            String markerId = navigation.targets().getFirst().questId();
+            h.assertTrue(RelicCacheIntel.deleteMarker(player, markerId) && RelicCacheIntel.navigationTargets(player).isEmpty(), "Deleting cache intel did not remove its saved marker");
+            h.assertTrue(RelicCacheIntel.navigationTargets(clone).equals(navigation.targets()), "Deleting cache intel affected another player's marker");
+            h.assertTrue(h.getLevel().getBlockState(target).is(ModBlocks.RARE_RELIC_CACHE.get()) && RelicCacheIntel.provide(player),
+                    "Deleting a cache marker removed the cache or prevented explicitly requesting another lead");
         } finally {
+            RelicCacheStructurePlacementSavedData.get(h.getLevel()).remove(target);
             player.server.getPlayerList().remove(player);
         }
         h.succeed();
     }
-    @GameTest(template = "sandevistan_test", batch = "cache_compass_arrival", timeoutTicks = 30)
-    public static void clickingCacheRemovesOnlyItsIssuedCompassesBeforeBreachCompletion(GameTestHelper h) {
+    @GameTest(template = "sandevistan_test", batch = "cache_hud_arrival", timeoutTicks = 30)
+    public static void legacyCompassesMigrateAndClickingCacheRemovesOnlyItsHudMarker(GameTestHelper h) {
         var player = player(h);
         BlockPos relative = new BlockPos(3, 1, 2);
         BlockPos target = h.absolutePos(relative);
         BlockPos other = h.absolutePos(new BlockPos(5, 1, 2));
         try {
             h.setBlock(relative, ModBlocks.RARE_RELIC_CACHE.get());
-            RelicCacheIntel.giveCompass(player, target);
-            ItemStack issued = player.getInventory().getItem(0).copy();
+            h.setBlock(new BlockPos(5, 1, 2), ModBlocks.EPIC_RELIC_CACHE.get());
+            ItemStack issued = legacyCompass(h, target);
             issued.set(DataComponents.CUSTOM_NAME, net.minecraft.network.chat.Component.literal("My renamed lead"));
+            player.getInventory().setItem(0, issued.copy());
             player.getInventory().setItem(40, issued.copy());
-            RelicCacheIntel.giveCompass(player, other);
+            player.getInventory().setItem(1, legacyCompass(h, other));
+            player.containerMenu.setCarried(issued.copy());
             ItemStack otherDimension = issued.copy();
             otherDimension.set(DataComponents.LODESTONE_TRACKER, new net.minecraft.world.item.component.LodestoneTracker(
                     java.util.Optional.of(net.minecraft.core.GlobalPos.of(net.minecraft.world.level.Level.NETHER, target)), false));
@@ -185,24 +198,40 @@ public final class RelicCacheDiscoveryGameTests {
                     java.util.Optional.of(net.minecraft.core.GlobalPos.of(h.getLevel().dimension(), target)), false));
             player.getInventory().setItem(3, personal);
             player.getInventory().setItem(4, new ItemStack(Items.COMPASS));
-            ItemStack legacy = player.getInventory().getItem(0).copy();
+            ItemStack legacy = legacyCompass(h, target);
             legacy.remove(DataComponents.CUSTOM_DATA);
             player.getInventory().setItem(5, legacy);
+            var migrated = de.artemis.cyberneticenhancements.common.quest.QuestNavigation.capture(player);
+            h.assertTrue(migrated.targets().size() == 2, "Legacy compass leads were lost or duplicated during migration");
+            h.assertTrue(player.containerMenu.getCarried().isEmpty(), "A legacy compass on the cursor was not migrated");
             var hit = new net.minecraft.world.phys.BlockHitResult(net.minecraft.world.phys.Vec3.atCenterOf(target),
                     net.minecraft.core.Direction.UP, target, false);
             h.getLevel().getBlockState(target).useWithoutItem(h.getLevel(), player, hit);
             h.assertTrue(player.getInventory().getItem(0).isEmpty() && player.getInventory().getItem(40).isEmpty()
                     && player.getInventory().getItem(5).isEmpty(), "Clicking the cache left a matching issued compass in inventory or offhand");
-            h.assertTrue(player.getInventory().getItem(1).is(Items.COMPASS), "Compass for a different cache was removed");
-            h.assertTrue(player.getInventory().getItem(2).is(Items.COMPASS), "Compass for another dimension was removed");
+            var remaining = de.artemis.cyberneticenhancements.common.quest.QuestNavigation.capture(player).targets();
+            h.assertTrue(remaining.size() == 1 && remaining.getFirst().pos().equals(other), "Cache interaction removed the wrong HUD marker");
+            h.assertTrue(player.getInventory().getItem(1).isEmpty() && player.getInventory().getItem(2).isEmpty(), "Issued item compasses were retained after migration");
             h.assertTrue(player.getInventory().getItem(3).is(Items.COMPASS) && player.getInventory().getItem(4).is(Items.COMPASS),
                     "Personal or ordinary compass was removed");
             h.assertTrue(!RelicCacheBlock.hasPlayerOpened(player, h.getLevel(), target), "Fixture completed the breach before checking compass removal");
         } finally {
+            RelicCacheStructurePlacementSavedData.get(h.getLevel()).remove(target);
+            RelicCacheStructurePlacementSavedData.get(h.getLevel()).remove(other);
             player.closeContainer();
             player.server.getPlayerList().remove(player);
         }
         h.succeed();
+    }
+    private static ItemStack legacyCompass(GameTestHelper h, BlockPos target) {
+        ItemStack stack = new ItemStack(Items.COMPASS);
+        stack.set(DataComponents.CUSTOM_NAME, net.minecraft.network.chat.Component.translatable("item.cyberneticenhancements.cache_compass"));
+        stack.set(DataComponents.LODESTONE_TRACKER, new net.minecraft.world.item.component.LodestoneTracker(
+                java.util.Optional.of(net.minecraft.core.GlobalPos.of(h.getLevel().dimension(), target)), false));
+        CompoundTag tag = new CompoundTag();
+        tag.putBoolean("cyberneticenhancements.cache_compass", true);
+        stack.set(DataComponents.CUSTOM_DATA, net.minecraft.world.item.component.CustomData.of(tag));
+        return stack;
     }
     private static ServerPlayer player(GameTestHelper h) {
         var profile = new com.mojang.authlib.GameProfile(UUID.randomUUID(), "cache-test");
@@ -235,7 +264,7 @@ public final class RelicCacheDiscoveryGameTests {
     }
 
     @GameTest(template = "sandevistan_test", batch = "cache_discovery", timeoutTicks = 30)
-    public static void intelSkipsClaimedAndDestroyedCachesAndCompassDoesNotDuplicate(GameTestHelper h) {
+    public static void intelSkipsClaimedAndDestroyedCachesAndHudMarkerDoesNotDuplicate(GameTestHelper h) {
         var player = player(h);
         var data = RelicCacheStructurePlacementSavedData.get(h.getLevel());
         BlockPos near = h.absolutePos(new BlockPos(3, 1, 2));
@@ -252,10 +281,11 @@ public final class RelicCacheDiscoveryGameTests {
             h.assertTrue(data.tier(stale) == null, "Destroyed cache was retained");
             RelicCacheBlock.markPlayerOpened(player, h.getLevel(), near);
             h.assertTrue(RelicCacheIntel.nearest(player).orElseThrow().equals(far), "Already claimed cache was offered");
-            h.assertTrue(RelicCacheIntel.giveCompass(player, far), "Contact did not give a compass to an empty inventory");
+            h.assertTrue(RelicCacheIntel.provide(player), "Contact did not provide a HUD cache lead");
             player.getInventory().setItem(1, new ItemStack(Items.COMPASS, 3));
-            h.assertTrue(!RelicCacheIntel.giveCompass(player, far), "Repeated request gave a duplicate compass");
-            h.assertTrue(!RelicCacheIntel.giveCompass(player, far), "Repeated request lost the compass target");
+            h.assertTrue(RelicCacheIntel.provide(player), "Repeated request lost the cache lead");
+            var markers = de.artemis.cyberneticenhancements.common.quest.QuestNavigation.capture(player).targets();
+            h.assertTrue(markers.size() == 1 && markers.getFirst().pos().equals(far), "Repeated intel duplicated or lost the HUD marker");
             int count = 0;
             int bound = 0;
             for (int i = 0; i < player.getInventory().getContainerSize(); i++) {
@@ -268,12 +298,13 @@ public final class RelicCacheDiscoveryGameTests {
                     h.assertTrue(!tracker.tracked() && tracker.target().orElseThrow().pos().equals(far), "Compass requires a lodestone or points elsewhere");
                 }
             }
-            h.assertTrue(count == 4 && bound == 1, "Compass was duplicated, consumed or tuned repeatedly");
+            h.assertTrue(count == 3 && bound == 0, "NPC intel still created or modified item compasses");
             CompoundTag saved = data.save(new CompoundTag(), h.getLevel().registryAccess());
             var restored = RelicCacheStructurePlacementSavedData.load(saved, h.getLevel().registryAccess());
             h.assertTrue(restored.tier(far) == RelicCacheTier.EPIC, "Cache index lost its position or tier on reload");
             h.setBlock(new BlockPos(5, 1, 2), Blocks.AIR);
             h.assertTrue(data.tier(far) == null, "Destroyed cache remained in the server index");
+            h.assertTrue(de.artemis.cyberneticenhancements.common.quest.QuestNavigation.capture(player).targets().isEmpty(), "Destroyed cache retained a HUD marker");
         } finally {
             data.remove(near);
             data.remove(far);

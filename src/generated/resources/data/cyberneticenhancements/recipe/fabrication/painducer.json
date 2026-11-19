@@ -34,6 +34,12 @@
     },
     {
       "ingredient": {
+        "item": "cyberneticenhancements:epic_item_components"
+      },
+      "slot": 5
+    },
+    {
+      "ingredient": {
         "item": "cyberneticenhancements:biocompatible_mesh"
       },
       "slot": 6
@@ -49,6 +55,12 @@
         "item": "cyberneticenhancements:biocompatible_mesh"
       },
       "slot": 8
+    },
+    {
+      "ingredient": {
+        "item": "cyberneticenhancements:epic_item_components"
+      },
+      "slot": 9
     },
     {
       "ingredient": {

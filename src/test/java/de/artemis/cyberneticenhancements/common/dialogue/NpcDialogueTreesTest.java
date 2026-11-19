@@ -14,10 +14,28 @@ public class NpcDialogueTreesTest {
     public void cacheQuestionsAreAvailableWithoutNavigatingOtherTopics() {
         for (NpcType type : new NpcType[]{NpcType.FIXER, NpcType.NETRUNNER}) {
             var tree = NpcDialogueTrees.tree(type);
-            int cacheChoiceId = type == NpcType.FIXER ? 1020 : 1301;
-            var choice = tree.choice(tree.rootNodeId(), cacheChoiceId);
-            assertEquals(NpcDialogueView.DIALOGUE, choice.view());
+            var choice = tree.node(tree.rootNodeId()).choices().stream().filter(candidate -> candidate.view() == NpcDialogueView.CACHE_INTEL).findFirst().orElseThrow();
+            assertEquals(NpcDialogueView.CACHE_INTEL, choice.view());
             assertEquals(0, choice.trustDelta());
+        }
+    }
+    @Test
+    public void mainMenuOffersEverySupportedActionDirectlyAndNoUnsupportedActions() {
+        for (NpcType type : NpcType.values()) {
+            var tree = NpcDialogueTrees.tree(type);
+            var choices = tree.node(tree.rootNodeId()).choices();
+            var views = java.util.EnumSet.noneOf(NpcDialogueView.class);
+            choices.forEach(choice -> views.add(choice.view()));
+            assertEquals(type.supportsShop(), views.contains(NpcDialogueView.SHOP));
+            assertEquals(!NpcService.forNpc(type).isEmpty(), views.contains(NpcDialogueView.SERVICES));
+            assertTrue(views.contains(NpcDialogueView.DIALOGUE));
+            // A world encounter's contact opens straight onto their one quest, so no choice leads there.
+            if (type != NpcType.WORLD_MED_TECH) assertEquals(type.supportsContracts(), views.contains(NpcDialogueView.CONTRACTS));
+            assertEquals(type.supportsIntel(), views.contains(NpcDialogueView.CACHE_INTEL));
+            for (var choice : choices) {
+                assertEquals(0, choice.trustDelta());
+                assertEquals(0, choice.annoyanceDelta());
+            }
         }
     }
     @Test
@@ -27,6 +45,7 @@ public class NpcDialogueTreesTest {
         for (NpcType type : NpcType.values()) {
             NpcDialogueTree tree = NpcDialogueTrees.tree(type);
             assertSame(tree, NpcDialogueTrees.tree(type));
+            if (type == NpcType.WORLD_MED_TECH) { assertEquals(3, tree.nodes().size()); continue; } // A short quest-only talk.
             assertEquals(6, tree.nodes().size());
             Set<Integer> visited = new HashSet<>();
             ArrayDeque<Integer> pending = new ArrayDeque<>();
@@ -36,7 +55,7 @@ public class NpcDialogueTreesTest {
                 if (!visited.add(id)) continue;
                 NpcDialogueNode node = tree.node(id);
                 assertTrue(language.contains(node.npcLineKey()));
-                assertTrue(node.choices().size() <= 4);
+                assertTrue(node.choices().size() <= 5);
                 for (NpcDialogueChoice choice : node.choices()) {
                     assertTrue("Duplicate choice " + choice.id(), ids.add(choice.id()));
                     assertTrue(language.contains(choice.translationKey()));

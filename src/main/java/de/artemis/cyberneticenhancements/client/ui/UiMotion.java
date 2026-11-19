@@ -4,6 +4,11 @@ public final class UiMotion {
     private long lastUpdate = System.nanoTime();
     private float amount;
 
+    public void reset() {
+        amount = 0;
+        lastUpdate = System.nanoTime();
+    }
+
     public float update(boolean highlighted) {
         long now = System.nanoTime();
         double elapsed = Math.min(0.1, Math.max(0, (now - lastUpdate) / 1_000_000_000.0));

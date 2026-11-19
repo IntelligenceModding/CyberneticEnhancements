@@ -12,6 +12,6 @@ public record NpcDialogueChoice(
         String rewardMemoryKey
 ) {
     public boolean opensView() {
-        return view != null && view != NpcDialogueView.DIALOGUE && view != NpcDialogueView.CLOSE;
+        return view == NpcDialogueView.SHOP || view == NpcDialogueView.SERVICES || view == NpcDialogueView.CONTRACTS;
     }
 }

@@ -4,6 +4,7 @@ import de.artemis.cyberneticenhancements.common.registry.ModItems;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.nbt.CompoundTag;
+import net.minecraft.nbt.Tag;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.util.Mth;
@@ -41,10 +42,34 @@ public final class QuestContract {
     private static final String GENERATED_DAY_TAG = "GeneratedDay";
     private static final String RESOLVED_DAY_TAG = "ResolvedDay";
 
+    public static final int REWARD_CHROMIUM = 4;
+    public boolean chromiumSurvey() { return type == QuestType.INVESTIGATION && targetIndex == 1; }
     public static final int REWARD_NONE = 0;
     public static final int REWARD_MAXDOC = 1;
     public static final int REWARD_RAM_JOLT = 2;
     public static final int REWARD_CHROME_SUPPRESSANT = 3;
+    /** A year of free Trauma Team coverage, as a patient quest's bonus; there is no item behind it. */
+    public static final int REWARD_COVERAGE = 5;
+    /** How far a patient quest has come: still looking, patient revived (beacon in hand), beacon planted. */
+    public static final int PATIENT_SEARCHING = 0, PATIENT_REVIVED = 1, PATIENT_MARKED = 2;
+    private int patientStage;
+    private @Nullable BlockPos beaconPos;
+    private @Nullable BlockPos patientPos;
+    public int patientStage() { return patientStage; }
+    public void setPatientStage(int stage) { patientStage = stage; }
+    /** Where the beacon was planted beside the patient. */
+    public @Nullable BlockPos beaconPos() { return beaconPos; }
+    public void setBeaconPos(@Nullable BlockPos pos) { beaconPos = pos; }
+    /** Where the patient actually lies, known once they have been spawned in. */
+    public @Nullable BlockPos patientPos() { return patientPos; }
+    public void setPatientPos(@Nullable BlockPos pos) { patientPos = pos; }
+    public boolean patientRevived() { return (patientStage & PATIENT_REVIVED) != 0; }
+    public boolean beaconLogged() { return (patientStage & PATIENT_MARKED) != 0; }
+    public void addPatientStage(int flag) { patientStage |= flag; }
+    /** A beacon logged within ten blocks of a revived patient: anything else is a false report. */
+    public boolean honestReport() {
+        return patientRevived() && beaconPos != null && patientPos != null && beaconPos.distSqr(patientPos) <= 100;
+    }
 
     private final String id;
     private final UUID issuerId;
@@ -67,6 +92,106 @@ public final class QuestContract {
     private final int rewardItemCount;
     private final long generatedDay;
     private long resolvedDay;
+    private long acceptedPlayTicks = Long.MIN_VALUE;
+    private @Nullable InvestigationSurvey investigation;
+    private boolean breachAttemptStarted;
+    private boolean urgent;
+    private long urgentDeadline;
+    private boolean urgentExpired;
+    private boolean returnItemCollected, itemLossPending, externalItemConfirmed, replacementPenalty, deliveryItemMissing;
+    private boolean itemLossCallDeferred;
+    public boolean itemLossCallDeferred() { return itemLossCallDeferred; }
+    public void deferItemLossCall() { itemLossCallDeferred = true; }
+
+    public boolean returnItemCollected() { return returnItemCollected || psychoShardCollected; }
+    public void markReturnItemCollected() { returnItemCollected = true; }
+    public boolean itemLossPending() { return itemLossPending; }
+    public boolean externalItemConfirmed() { return externalItemConfirmed; }
+    public void markItemLossPending() { itemLossPending = true; itemLossCallDeferred = false; }
+    public void confirmExternalItem() { itemLossPending = false; externalItemConfirmed = true; itemLossCallDeferred = false; }
+    public void foundReturnItem() { returnItemCollected = true; itemLossPending = false; externalItemConfirmed = false; itemLossCallDeferred = false; }
+    public boolean replacementPenalty() { return replacementPenalty; }
+    public void markReplacementPenalty() { replacementPenalty = true; deliveryItemMissing = false; }
+    public boolean deliveryItemMissing() { return deliveryItemMissing; }
+    public void setDeliveryItemMissing(boolean missing) { deliveryItemMissing = missing; }
+    private int adjustedReward(int value) { return replacementPenalty ? value / 2 : value; }
+    private boolean psychoSpawned, psychoShardCollected;
+    private @Nullable BlockPos returnPos;
+    private String cancellationReason = "";
+    private int siteBindingVersion = 1;
+    public boolean allowsLegacyContainerMigration() { return siteBindingVersion == 0; }
+    public boolean markSiteBound() {
+        if (siteBindingVersion != 0) return false;
+        siteBindingVersion = 1;
+        return true;
+    }
+
+    public void cancel(String reason) {
+        status = QuestStatus.CANCELLED;
+        cancellationReason = reason;
+    }
+
+    public Component cancellationReason() {
+        return Component.translatable("quest.cyberneticenhancements.cancelled." + cancellationReason);
+    }
+
+    public boolean psychoSpawned() { return psychoSpawned; }
+    public void markPsychoSpawned() { psychoSpawned = true; }
+    public boolean psychoShardCollected() { return psychoShardCollected; }
+    public void markPsychoShardCollected() { psychoShardCollected = true; }
+    public UUID psychoId() { return UUID.nameUUIDFromBytes((id + "/cyberpsycho").getBytes(java.nio.charset.StandardCharsets.UTF_8)); }
+    public String psychoName() { return CyberpsychoEncounter.subjectName(id); }
+
+    public boolean isUrgent() { return urgent; }
+    public void markUrgent() { urgent = true; }
+
+    public int urgentLimitMinutes() {
+        return switch (QuestDimension.of(dimensionId)) {
+            case STANDARD -> 20;
+            case NETHER -> 30;
+            case END -> 40;
+        };
+    }
+
+    boolean initializeUrgentDeadline(long playTicks) {
+        if (!urgent || urgentDeadline != 0) return false;
+        urgentDeadline = isReady() ? -1 : playTicks + urgentLimitMinutes() * 60L * 20L;
+        return true;
+    }
+
+    void completeUrgentObjective() {
+        if (urgent) urgentDeadline = -1;
+    }
+
+    boolean urgentTimeIsUp(long playTicks) {
+        return urgent && status == QuestStatus.ACTIVE && urgentDeadline > 0 && playTicks >= urgentDeadline;
+    }
+
+    void expireUrgent() {
+        urgentExpired = true;
+        status = QuestStatus.FAILED;
+    }
+
+    /** The title for the quest HUD: a running urgent timer replaces the "Urgent" prefix with the time left. */
+    Component hudTitle(long playTicks) {
+        if (!urgent || status != QuestStatus.ACTIVE || urgentDeadline <= 0) return title();
+        long seconds = Math.ceilDiv(Math.max(0, urgentDeadline - playTicks), 20);
+        String remaining = String.format(java.util.Locale.ROOT, "%d:%02d", seconds / 60, seconds % 60);
+        return Component.translatable("quest.cyberneticenhancements.title.timed", remaining, QuestDimension.of(dimensionId).title(baseTitle()));
+    }
+
+    Component timedObjective(Component objective, long playTicks) {
+        if (!urgent || status != QuestStatus.ACTIVE || urgentDeadline <= 0) return objective;
+        long seconds = Math.ceilDiv(Math.max(0, urgentDeadline - playTicks), 20);
+        String remaining = String.format(java.util.Locale.ROOT, "%d:%02d", seconds / 60, seconds % 60);
+        return Component.translatable("quest.cyberneticenhancements.objective.time_remaining", remaining, objective);
+    }
+
+    public boolean breachAttemptStarted() { return breachAttemptStarted; }
+    public void startBreachAttempt() { breachAttemptStarted = true; }
+
+    public @Nullable InvestigationSurvey investigation() { return investigation; }
+    public void setInvestigation(InvestigationSurvey investigation) { this.investigation = investigation; }
 
     public QuestContract(
             String id,
@@ -180,6 +305,11 @@ public final class QuestContract {
         return areaRadius;
     }
 
+    /** Where a world-encounter quest is handed in; null for ordinary contracts, which use their issuer's contact record. */
+    public @Nullable BlockPos returnPos() { return returnPos; }
+    public void setReturnPos(@Nullable BlockPos pos) { returnPos = pos; }
+    public UUID patientId() { return UUID.nameUUIDFromBytes((id + "/patient").getBytes(java.nio.charset.StandardCharsets.UTF_8)); }
+
     public void setTargetLocation(String dimensionId, @Nullable BlockPos targetPos, int areaRadius) {
         this.dimensionId = dimensionId == null ? "" : dimensionId;
         this.targetPos = targetPos;
@@ -187,11 +317,12 @@ public final class QuestContract {
     }
 
     public int rewardMoney() {
-        return rewardMoney;
+        int payout = QuestDimension.of(dimensionId).reward(rewardMoney);
+        return adjustedReward(urgent ? (int) Math.min(Integer.MAX_VALUE, ((long) payout * 125 + 99) / 100) : payout);
     }
 
     public int rewardTrust() {
-        return rewardTrust;
+        return adjustedReward(urgent ? (int) Math.min(Integer.MAX_VALUE, (long) rewardTrust + 1) : rewardTrust);
     }
 
     public int rewardItemKind() {
@@ -199,12 +330,16 @@ public final class QuestContract {
     }
 
     public int rewardItemCount() {
-        return rewardItemCount;
+        return adjustedReward(rewardItemCount);
     }
 
     public long generatedDay() {
         return generatedDay;
     }
+
+    public long acceptedPlayTicks() { return acceptedPlayTicks; }
+
+    public void setAcceptedPlayTicks(long ticks) { acceptedPlayTicks = ticks; }
 
     public long resolvedDay() {
         return resolvedDay;
@@ -225,15 +360,23 @@ public final class QuestContract {
     public boolean isProgressComplete() {
         return switch (type) {
             case DELIVERY, EXTRACTION -> destinationReached;
-            case ELIMINATION, RECOVERY, INVESTIGATION, BREACH -> progress >= targetCount;
+            case INVESTIGATION -> destinationReached;
+            case LOCATE -> beaconLogged();
+            case CYBERPSYCHO -> destinationReached && progress >= targetCount;
+            case ELIMINATION, RECOVERY, BREACH -> progress >= targetCount;
         };
     }
 
     public ItemStack rewardItemStack() {
+        return rewardItemStack(rewardItemKind, rewardItemCount());
+    }
+
+    public static ItemStack rewardItemStack(int rewardItemKind, int rewardItemCount) {
         if (rewardItemCount <= 0) {
             return ItemStack.EMPTY;
         }
         return switch (rewardItemKind) {
+            case REWARD_CHROMIUM -> new ItemStack(ModItems.CHROMIUM_ALLOY.get(), rewardItemCount);
             case REWARD_MAXDOC -> new ItemStack(ModItems.consumable("maxdoc_mk2").get(), rewardItemCount);
             case REWARD_RAM_JOLT -> new ItemStack(ModItems.consumable("ram_jolt").get(), rewardItemCount);
             case REWARD_CHROME_SUPPRESSANT -> new ItemStack(ModItems.consumable("chrome_suppressant").get(), rewardItemCount);
@@ -247,6 +390,8 @@ public final class QuestContract {
             case 2 -> ResourceLocation.withDefaultNamespace("gold_ingot");
             case 3 -> ResourceLocation.withDefaultNamespace("diamond");
             case 4 -> ResourceLocation.withDefaultNamespace("ender_pearl");
+            case 5 -> ResourceLocation.withDefaultNamespace("quartz");
+            case 6 -> ResourceLocation.withDefaultNamespace("chorus_fruit");
             default -> ResourceLocation.withDefaultNamespace("redstone");
         };
         return BuiltInRegistries.ITEM.get(id);
@@ -259,6 +404,8 @@ public final class QuestContract {
             case 3 -> ResourceLocation.withDefaultNamespace("creeper");
             case 4 -> ResourceLocation.withDefaultNamespace("husk");
             case 5 -> ResourceLocation.withDefaultNamespace("drowned");
+            case 6 -> ResourceLocation.withDefaultNamespace("wither_skeleton");
+            case 7 -> ResourceLocation.withDefaultNamespace("enderman");
             default -> ResourceLocation.withDefaultNamespace("zombie");
         };
         return BuiltInRegistries.ENTITY_TYPE.get(id);
@@ -299,6 +446,26 @@ public final class QuestContract {
         tag.putInt(REWARD_ITEM_COUNT_TAG, rewardItemCount);
         tag.putLong(GENERATED_DAY_TAG, generatedDay);
         tag.putLong(RESOLVED_DAY_TAG, resolvedDay);
+        if (acceptedPlayTicks != Long.MIN_VALUE) tag.putLong("AcceptedPlayTicks", acceptedPlayTicks);
+        if (investigation != null) tag.put("Investigation", investigation.toTag());
+        tag.putBoolean("BreachAttemptStarted", breachAttemptStarted);
+        tag.putBoolean("Urgent", urgent);
+        if (urgentDeadline != 0) tag.putLong("UrgentDeadline", urgentDeadline);
+        if (urgentExpired) tag.putBoolean("UrgentExpired", true);
+        tag.putBoolean("ReturnItemCollected", returnItemCollected);
+        tag.putBoolean("ItemLossPending", itemLossPending);
+        tag.putBoolean("ItemLossCallDeferred", itemLossCallDeferred);
+        tag.putBoolean("ExternalItemConfirmed", externalItemConfirmed);
+        tag.putBoolean("ReplacementPenalty", replacementPenalty);
+        tag.putBoolean("DeliveryItemMissing", deliveryItemMissing);
+        tag.putBoolean("PsychoSpawned", psychoSpawned);
+        tag.putBoolean("PsychoShardCollected", psychoShardCollected);
+        tag.putString("CancellationReason", cancellationReason);
+        if (returnPos != null) tag.putLong("ReturnPos", returnPos.asLong());
+        if (patientStage != 0) tag.putInt("PatientStage", patientStage);
+        if (beaconPos != null) tag.putLong("BeaconPos", beaconPos.asLong());
+        if (patientPos != null) tag.putLong("PatientPos", patientPos.asLong());
+        tag.putInt("SiteBindingVersion", siteBindingVersion);
         return tag;
     }
 
@@ -333,6 +500,26 @@ public final class QuestContract {
                 tag.getLong(RESOLVED_DAY_TAG)
         );
         contract.huntSpawnedCount = Math.max(0, tag.getInt("HuntSpawnedCount"));
+        if (tag.contains("AcceptedPlayTicks", Tag.TAG_LONG)) contract.acceptedPlayTicks = tag.getLong("AcceptedPlayTicks");
+        if (tag.contains("Investigation", Tag.TAG_COMPOUND)) contract.investigation = InvestigationSurvey.fromTag(tag.getCompound("Investigation"));
+        contract.breachAttemptStarted = tag.getBoolean("BreachAttemptStarted");
+        contract.urgent = tag.getBoolean("Urgent");
+        contract.urgentDeadline = tag.getLong("UrgentDeadline");
+        contract.urgentExpired = tag.getBoolean("UrgentExpired");
+        contract.returnItemCollected = tag.getBoolean("ReturnItemCollected");
+        contract.itemLossPending = tag.getBoolean("ItemLossPending");
+        contract.itemLossCallDeferred = tag.getBoolean("ItemLossCallDeferred");
+        contract.externalItemConfirmed = tag.getBoolean("ExternalItemConfirmed");
+        contract.replacementPenalty = tag.getBoolean("ReplacementPenalty");
+        contract.deliveryItemMissing = tag.getBoolean("DeliveryItemMissing");
+        contract.psychoSpawned = tag.getBoolean("PsychoSpawned");
+        contract.psychoShardCollected = tag.getBoolean("PsychoShardCollected");
+        contract.cancellationReason = tag.getString("CancellationReason");
+        if (tag.contains("ReturnPos", Tag.TAG_LONG)) contract.returnPos = BlockPos.of(tag.getLong("ReturnPos"));
+        contract.patientStage = tag.getInt("PatientStage");
+        if (tag.contains("BeaconPos", Tag.TAG_LONG)) contract.beaconPos = BlockPos.of(tag.getLong("BeaconPos"));
+        if (tag.contains("PatientPos", Tag.TAG_LONG)) contract.patientPos = BlockPos.of(tag.getLong("PatientPos"));
+        contract.siteBindingVersion = tag.getInt("SiteBindingVersion");
         return contract;
     }
 
@@ -344,10 +531,18 @@ public final class QuestContract {
             case BREACH -> Component.translatable("quest.cyberneticenhancements.type.breach");
             case ELIMINATION -> Component.translatable("quest.cyberneticenhancements.type.elimination");
             case RECOVERY -> Component.translatable("quest.cyberneticenhancements.type.recovery");
+            case CYBERPSYCHO -> Component.translatable("quest.cyberneticenhancements.type.cyberpsycho");
+            case LOCATE -> Component.translatable("quest.cyberneticenhancements.type.locate");
         };
     }
 
     public Component title() {
+        var title = QuestDimension.of(dimensionId).title(baseTitle());
+        return urgent ? Component.translatable("quest.cyberneticenhancements.title.urgent", title) : title;
+    }
+
+    private Component baseTitle() {
+        if (chromiumSurvey()) return Component.translatable("quest.cyberneticenhancements.title.chromium_survey");
         if (!issuerType.isBlank()) {
             return Component.translatable("quest.cyberneticenhancements.title." + issuerType + "." + type.id());
         }
@@ -362,31 +557,53 @@ public final class QuestContract {
             case BREACH -> Component.translatable("quest.cyberneticenhancements.title.breach");
             case ELIMINATION -> Component.translatable("quest.cyberneticenhancements.title.elimination");
             case RECOVERY -> Component.translatable("quest.cyberneticenhancements.title.recovery");
+            case CYBERPSYCHO -> Component.translatable("quest.cyberneticenhancements.title.cyberpsycho");
+            case LOCATE -> Component.translatable("quest.cyberneticenhancements.title.locate");
         };
     }
 
     public Component targetLabel() {
+        if (chromiumSurvey()) return Component.translatable("quest.cyberneticenhancements.target.chromium_deposit");
         return switch (type) {
             case DELIVERY -> Component.translatable("quest.cyberneticenhancements.target.hidden_stash");
             case EXTRACTION -> Component.translatable("quest.cyberneticenhancements.target.exfil_shard");
-            case INVESTIGATION -> Component.translatable("quest.cyberneticenhancements.target.signal_site");
+            case INVESTIGATION -> Component.translatable(investigation != null && investigation.located()
+                    ? "quest.cyberneticenhancements.target.signal_source" : "quest.cyberneticenhancements.target.signal_site");
             case BREACH -> Component.translatable("quest.cyberneticenhancements.target.breach_cache");
             case ELIMINATION -> eliminationTarget().getDescription();
             case RECOVERY -> recoveryItem().getDefaultInstance().getHoverName();
+            case CYBERPSYCHO -> Component.literal(psychoName());
+            case LOCATE -> Component.translatable("quest.cyberneticenhancements.target.patient");
         };
     }
 
     public Component objectiveLine() {
-        if (isReady()) {
-            return Component.translatable("quest.cyberneticenhancements.objective.return", issuerName);
+        if (urgentExpired) return Component.translatable("quest.cyberneticenhancements.objective.urgent_expired");
+        if (status == QuestStatus.CANCELLED) return cancellationReason();
+        if (status == QuestStatus.ACTIVE || status == QuestStatus.READY) {
+            if (itemLossPending) return Component.translatable("quest.cyberneticenhancements.objective.item_missing", issuerName);
+            if (deliveryItemMissing) return Component.translatable("quest.cyberneticenhancements.objective.replacement", issuerName);
         }
+        if (isReady()) {
+            return Component.translatable(type.returnsItems() ? "quest.cyberneticenhancements.objective.return.in_person"
+                    : type.requiresInPersonTurnIn() ? "quest.cyberneticenhancements.objective.report.in_person" : "quest.cyberneticenhancements.objective.return", issuerName);
+        }
+        if (chromiumSurvey()) return Component.translatable("quest.cyberneticenhancements.objective.chromium_survey", progress, InvestigationSurvey.READINGS);
         return switch (type) {
             case DELIVERY -> Component.translatable("quest.cyberneticenhancements.objective.delivery.stash");
             case EXTRACTION -> Component.translatable("quest.cyberneticenhancements.objective.extraction", targetLabel());
-            case INVESTIGATION -> Component.translatable("quest.cyberneticenhancements.objective.investigation", progress, targetCount);
+            case INVESTIGATION -> investigation != null && investigation.located()
+                    ? Component.translatable("quest.cyberneticenhancements.objective.investigation.source")
+                    : Component.translatable("quest.cyberneticenhancements.objective.investigation", investigation == null ? 0 : investigation.count(), InvestigationSurvey.READINGS);
             case BREACH -> Component.translatable("quest.cyberneticenhancements.objective.breach", targetLabel());
             case ELIMINATION -> Component.translatable("quest.cyberneticenhancements.objective.elimination", progress, targetCount, targetLabel());
-            case RECOVERY -> Component.translatable("quest.cyberneticenhancements.objective.recovery", progress, targetCount, targetLabel());
+            case RECOVERY -> QuestDimension.of(dimensionId) != QuestDimension.STANDARD && !destinationReached
+                    ? Component.translatable("quest.cyberneticenhancements.objective.recovery_dimension", targetCount, targetLabel(), QuestDimension.name(dimensionId))
+                    : Component.translatable("quest.cyberneticenhancements.objective.recovery", progress, targetCount, targetLabel());
+            case CYBERPSYCHO -> Component.translatable(destinationReached ? "quest.cyberneticenhancements.objective.cyberpsycho.shard"
+                    : "quest.cyberneticenhancements.objective.cyberpsycho", psychoName());
+            case LOCATE -> Component.translatable(patientStage == PATIENT_REVIVED ? "quest.cyberneticenhancements.objective.locate.beacon"
+                    : "quest.cyberneticenhancements.objective.locate");
         };
     }
 
@@ -398,22 +615,33 @@ public final class QuestContract {
             case COMPLETED -> Component.translatable("quest.cyberneticenhancements.status.completed");
             case FAILED -> Component.translatable("quest.cyberneticenhancements.status.failed");
             case ABANDONED -> Component.translatable("quest.cyberneticenhancements.status.abandoned");
+            case CANCELLED -> Component.translatable("quest.cyberneticenhancements.status.cancelled");
         };
     }
 
     public Component rewardSummary() {
         ItemStack rewardStack = rewardItemStack();
-        if (!rewardStack.isEmpty()) {
-            return Component.translatable("quest.cyberneticenhancements.reward.bundle.item", rewardMoney, rewardTrust, rewardStack.getHoverName());
-        }
-        return Component.translatable("quest.cyberneticenhancements.reward.bundle", rewardMoney, rewardTrust);
+        var summary = rewardItemKind == REWARD_COVERAGE
+                ? Component.translatable("quest.cyberneticenhancements.reward.bundle.item", rewardMoney(), rewardTrust(),
+                        Component.translatable("quest.cyberneticenhancements.reward.coverage"))
+                : rewardStack.isEmpty()
+                ? Component.translatable("quest.cyberneticenhancements.reward.bundle", rewardMoney(), rewardTrust())
+                : Component.translatable("quest.cyberneticenhancements.reward.bundle.item", rewardMoney(), rewardTrust(), rewardStack.getHoverName());
+        summary.append(Component.translatable("quest.cyberneticenhancements.reward.xp", rewardExperience()));
+        if (replacementPenalty) summary.append(Component.translatable("quest.cyberneticenhancements.reward.replacement_penalty"));
+        if (chromiumSurvey()) summary.append(Component.translatable("quest.cyberneticenhancements.reward.chromium_marker"));
+        return summary;
+    }
+
+    public int rewardExperience() {
+        return adjustedReward(QuestDimension.of(dimensionId).reward(de.artemis.cyberneticenhancements.common.progression.ExperienceRewards.quest(type, tier)));
     }
 
     public static int rewardItemKindForTier(int tier, QuestType type) {
         if (tier >= 3) {
             return switch (type) {
                 case DELIVERY, EXTRACTION -> REWARD_CHROME_SUPPRESSANT;
-                case BREACH, INVESTIGATION, ELIMINATION, RECOVERY -> REWARD_RAM_JOLT;
+                case BREACH, INVESTIGATION, ELIMINATION, RECOVERY, CYBERPSYCHO, LOCATE -> REWARD_RAM_JOLT;
             };
         }
         return switch (type) {
@@ -430,14 +658,17 @@ public final class QuestContract {
         return switch (type) {
             case DELIVERY -> 1;
             case EXTRACTION -> 1;
-            case INVESTIGATION -> 2 + Math.max(0, tier - 1);
+            case INVESTIGATION -> InvestigationSurvey.READINGS;
             case BREACH -> 1;
             case ELIMINATION -> 2 + tier * 2;
+            case CYBERPSYCHO, LOCATE -> 1;
             case RECOVERY -> switch (targetIndex) {
                 case 1 -> 6 + tier * 3;
                 case 2 -> 4 + tier * 2;
                 case 3 -> 1 + tier;
                 case 4 -> 2 + tier;
+                case 5 -> 6 + tier * 3;
+                case 6 -> 4 + tier * 2;
                 default -> 8 + tier * 4;
             };
         };

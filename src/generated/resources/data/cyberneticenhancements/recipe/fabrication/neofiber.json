@@ -4,9 +4,21 @@
   "parts": [
     {
       "ingredient": {
+        "item": "cyberneticenhancements:uncommon_item_components"
+      },
+      "slot": 1
+    },
+    {
+      "ingredient": {
         "item": "cyberneticenhancements:thermal_regulator"
       },
       "slot": 2
+    },
+    {
+      "ingredient": {
+        "item": "cyberneticenhancements:uncommon_item_components"
+      },
+      "slot": 3
     },
     {
       "ingredient": {

@@ -1,0 +1,8 @@
+{
+  "feature": "cyberneticenhancements:chromium_deposit",
+  "placement": [
+    {
+      "type": "minecraft:biome"
+    }
+  ]
+}

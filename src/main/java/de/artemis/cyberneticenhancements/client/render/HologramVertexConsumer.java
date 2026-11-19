@@ -14,7 +14,7 @@ final class HologramVertexConsumer implements VertexConsumer {
     HologramVertexConsumer(VertexConsumer delegate, Matrix4f projectionPose, float time) {
         this.delegate = delegate;
         inverseProjection = new Matrix4f(projectionPose).invert();
-        phase = Math.round((time % 80.0F) * 256.0F);
+        phase = Math.floorMod((int) Math.floor(time * 256F), 80 * 256);
     }
 
     @Override

@@ -36,12 +36,12 @@ public final class SandevistanClientEffects {
             var entity = minecraft.level.getEntity(user.entityId());
             if (user.mode() == 1 && newActivation && entity != null && entity.getUUID().equals(user.uuid())) {
                 minecraft.level.playLocalSound(entity.getX(), entity.getY(), entity.getZ(), SoundEvents.BEACON_ACTIVATE,
-                        SoundSource.PLAYERS, SandevistanClientOptions.soundVolume * 0.65F, 1.5F, false);
+                        SoundSource.PLAYERS, SandevistanClientOptions.soundVolume() * 0.65F, 1.5F, false);
                 if (entity == minecraft.player) pulseAt = tick;
             } else if (user.mode() != 1 && previous != null && previous.mode() == 1 && entity != null) {
                 minecraft.level.playLocalSound(entity.getX(), entity.getY(), entity.getZ(),
                         user.mode() == 2 ? SoundEvents.RESPAWN_ANCHOR_DEPLETE.value() : SoundEvents.BEACON_DEACTIVATE,
-                        SoundSource.PLAYERS, SandevistanClientOptions.soundVolume * 0.65F, user.mode() == 2 ? 0.75F : 1.25F, false);
+                        SoundSource.PLAYERS, SandevistanClientOptions.soundVolume() * 0.65F, user.mode() == 2 ? 0.75F : 1.25F, false);
                 if (entity == minecraft.player && user.mode() == 2) overloadAt = tick;
             }
             next.put(user.uuid(), user);
@@ -58,7 +58,7 @@ public final class SandevistanClientEffects {
         SandevistanEchoRenderer.tick(USERS.values());
         if (active() && minecraft.player.tickCount % 40 == 0) {
             minecraft.level.playLocalSound(minecraft.player.getX(), minecraft.player.getY(), minecraft.player.getZ(),
-                    SoundEvents.CONDUIT_AMBIENT_SHORT, SoundSource.PLAYERS, SandevistanClientOptions.soundVolume * 0.07F, 1.5F, false);
+                    SoundEvents.CONDUIT_AMBIENT_SHORT, SoundSource.PLAYERS, SandevistanClientOptions.soundVolume() * 0.07F, 1.5F, false);
         }
     }
 
@@ -78,7 +78,7 @@ public final class SandevistanClientEffects {
     }
 
     public static void onFov(ComputeFovModifierEvent event) {
-        if (event.getPlayer() != Minecraft.getInstance().player || !active() || !SandevistanClientOptions.restrainedFov) return;
+        if (event.getPlayer() != Minecraft.getInstance().player || !active() || !SandevistanClientOptions.restrainedFov()) return;
         float pulse = pulse(pulseAt, 8, 0);
         event.setNewFovModifier(Math.min(event.getNewFovModifier(), 1.08F) + pulse * 0.025F);
     }
@@ -90,11 +90,11 @@ public final class SandevistanClientEffects {
 
     public static void renderOverlay(GuiGraphics graphics, float partialTick) {
         Minecraft minecraft = Minecraft.getInstance();
-        if (minecraft.player == null || minecraft.screen != null || minecraft.options.hideGui || !SandevistanClientOptions.edgeEffects) return;
+        if (minecraft.player == null || minecraft.screen != null || minecraft.options.hideGui || !SandevistanClientOptions.edgeEffects()) return;
         float activation = pulse(pulseAt, 8, partialTick);
         float overload = pulse(overloadAt, 12, partialTick);
-        float intensity = (active() ? 0.018F : 0) + activation * SandevistanClientOptions.flashIntensity
-                + overload * SandevistanClientOptions.flashIntensity;
+        float intensity = (active() ? 0.018F : 0) + activation * SandevistanClientOptions.flashIntensity()
+                + overload * SandevistanClientOptions.flashIntensity();
         if (intensity < 0.002F) return;
         int rgb = overload > 0 ? 0xFF6856 : activation > 0 ? 0x4AFFA0 : 0x50DFFF;
         int color = ((int) (Math.min(0.4F, intensity) * 255) << 24) | rgb;

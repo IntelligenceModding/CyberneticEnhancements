@@ -1,20 +1,24 @@
 package de.artemis.cyberneticenhancements.client.screen;
 
+import de.artemis.cyberneticenhancements.common.quest.QuestContract;
+import de.artemis.cyberneticenhancements.common.quest.QuestDimension;
+import de.artemis.cyberneticenhancements.common.quest.QuestType;
 import de.artemis.cyberneticenhancements.client.render.FixerEntityRenderer;
+import de.artemis.cyberneticenhancements.client.render.SchematicIconRenderer;
 import de.artemis.cyberneticenhancements.common.dialogue.NpcDialogueChoice;
+import de.artemis.cyberneticenhancements.common.dialogue.NpcService;
+import de.artemis.cyberneticenhancements.common.dialogue.NpcShopCatalog;
 import de.artemis.cyberneticenhancements.common.dialogue.NpcDialogueNode;
 import de.artemis.cyberneticenhancements.common.dialogue.NpcDialogueTree;
 import de.artemis.cyberneticenhancements.common.entity.AbstractCityNpcEntity;
 import de.artemis.cyberneticenhancements.common.entity.FixerEntity;
 import de.artemis.cyberneticenhancements.common.entity.MercEntity;
 import de.artemis.cyberneticenhancements.common.entity.NetrunnerEntity;
-import de.artemis.cyberneticenhancements.common.entity.NpcType;
 import de.artemis.cyberneticenhancements.common.entity.RipperdocEntity;
 import de.artemis.cyberneticenhancements.common.entity.TechieEntity;
 import de.artemis.cyberneticenhancements.common.menu.FixerDialogMenu;
 import de.artemis.cyberneticenhancements.common.network.FixerDialogueChoicePayload;
 import de.artemis.cyberneticenhancements.common.network.NpcIdentityAppearancePayload;
-import de.artemis.cyberneticenhancements.common.network.NpcIdentityNameColorPayload;
 import de.artemis.cyberneticenhancements.common.network.NpcIdentityNicknamePayload;
 import de.artemis.cyberneticenhancements.common.registry.ModEntityTypes;
 import de.artemis.cyberneticenhancements.common.registry.ModItems;
@@ -25,6 +29,8 @@ import net.minecraft.client.gui.GuiGraphics;
 import de.artemis.cyberneticenhancements.client.ui.UiRenderer;
 import de.artemis.cyberneticenhancements.client.ui.UiScrollbar;
 import de.artemis.cyberneticenhancements.client.ui.UiMotion;
+import de.artemis.cyberneticenhancements.client.ui.UiButton;
+import de.artemis.cyberneticenhancements.client.ui.ShopGridLayout;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.components.EditBox;
 import de.artemis.cyberneticenhancements.client.ui.UiEditBox;
@@ -60,24 +66,20 @@ public final class FixerDialogScreen extends ResponsiveContainerScreen<FixerDial
     private static final int PANEL_GAP = 8;
     private static final int HEADER_HEIGHT = 54;
     private static final int STATUS_HEIGHT = 52;
-    private static final int CHOICES_HEIGHT = 146;
     private static final int CHOICE_BUTTON_HEIGHT = 18;
     private static final int CHOICE_BUTTON_GAP = 4;
     private static final int CHOICE_ICON_Y_OFFSET = 1;
     private static final int TRANSCRIPT_TITLE_GAP = 8;
     private static final int TRANSCRIPT_BUBBLE_GAP = 8;
     private static final int TRUST_BAR_HEIGHT = 8;
-    private static final int SHOP_ROW_GAP = 2;
-    private static final int SHOP_ROW_MIN_HEIGHT = 24;
-    private static final int SHOP_ICON_BOX_SIZE = 16;
+    private static final int SHOP_TILE_GAP = 10;
+    private static final int SHOP_TILE_WIDTH = 136;
+    private static final int SHOP_TILE_HEIGHT = 156;
     private static final int SHOP_DETAIL_GAP = 8;
-    private static final int SHOP_MAX_VISIBLE_ROWS = 6;
-    private static final int SHOP_VISIBLE_ACTIONS = 2;
+    private static final int SHOP_VISIBLE_ACTIONS = 1;
     private static final int IDENTITY_LABEL_Y_OFFSET = 28;
     private static final int IDENTITY_FIELD_Y_OFFSET = 40;
     private static final int IDENTITY_GALLERY_Y_OFFSET = 68;
-    private static final int IDENTITY_COLOR_BUTTON_SIZE = 18;
-    private static final int IDENTITY_COLOR_BUTTON_GAP = 4;
     private static final int IDENTITY_TILE_MIN_HEIGHT = 70;
     private static final int IDENTITY_TILE_GAP = 8;
     private static final int IDENTITY_VISIBLE_SKINS = 4;
@@ -87,26 +89,15 @@ public final class FixerDialogScreen extends ResponsiveContainerScreen<FixerDial
     private static final int IMAGE_H = 484;
 
     private final List<ChoiceButton> choiceButtons = new ArrayList<>();
-    private final List<ColorPresetButton> colorButtons = new ArrayList<>();
-    private static final NameColorPreset[] NAME_COLOR_PRESETS = new NameColorPreset[] {
-            new NameColorPreset("aqua", 0xFF4FE9E2),
-            new NameColorPreset("blue", 0xFF5D86F1),
-            new NameColorPreset("gold", 0xFFF0C04D),
-            new NameColorPreset("green", 0xFF57C26E),
-            new NameColorPreset("red", 0xFFD65D5D),
-            new NameColorPreset("light_purple", 0xFFD88FF7),
-            new NameColorPreset("white", 0xFFE8EDF2),
-            new NameColorPreset("hidden", 0x00000000)
-    };
+    private final List<UiButton> shopBuyButtons = new ArrayList<>();
+    private final List<UiButton> serviceBuyButtons = new ArrayList<>();
     private EditBox nicknameField;
     private ConversationMode mode = ConversationMode.DIALOGUE;
     private String lastPlayerLineKey;
     private String localNpcLineKey;
     private String selectedAppearanceId = "";
-    private String selectedNameColorId = "aqua";
     private final UiScrollbar shopScrollbar = new UiScrollbar(), identityScrollbar = new UiScrollbar();
     private int skinPage;
-    private int selectedShopSlot;
     private int shopScrollOffset;
     private AbstractCityNpcEntity previewNpc;
     private int lastMouseX;
@@ -122,28 +113,47 @@ public final class FixerDialogScreen extends ResponsiveContainerScreen<FixerDial
         this.titleLabelY = 10000;
         this.lastPlayerLineKey = playerKey("open");
         this.localNpcLineKey = greetingKey();
+        if (menu.npcType() == de.artemis.cyberneticenhancements.common.entity.NpcType.WORLD_MED_TECH) {
+            // Their one request is all they have to offer, so it is laid out at once instead of behind a choice.
+            this.mode = ConversationMode.CONTRACTS;
+            this.lastPlayerLineKey = "screen.cyberneticenhancements.npc.dialogue.world_encounter.player.work";
+            this.localNpcLineKey = "screen.cyberneticenhancements.npc.dialogue.world_encounter.line.work";
+        }
     }
 
     @Override
     protected void init() {
         String nicknameDraft = nicknameField == null ? null : nicknameField.getValue();
         super.init();
+        if (minecraft.player != null) minecraft.player.stopUsingItem();
+        minecraft.options.keyUse.setDown(false);
         choiceButtons.clear();
+        shopBuyButtons.clear();
+        serviceBuyButtons.clear();
+        for (NpcService service : NpcService.forNpc(menu.npcType())) {
+            UiButton button = new UiButton(0, 0, 1, CHOICE_BUTTON_HEIGHT, Component.empty(), pressed ->
+                    sendOption(service.optionId(), playerKey(service.optionId() == FixerDialogMenu.OPTION_STABILIZE ? "service_stabilize" : "service_purge")));
+            button.visible = false;
+            serviceBuyButtons.add(button);
+            addRenderableWidget(button);
+        }
+        for (int slot = 0; slot < shopItemCount(); slot++) {
+            final int itemSlot = slot;
+            UiButton button = new UiButton(0, 0, 1, CHOICE_BUTTON_HEIGHT, Component.empty(), pressed -> {
+                sendOption(-itemSlot - 1, playerKey("shop"));
+            });
+            button.visible = false;
+            shopBuyButtons.add(button);
+            addRenderableWidget(button);
+        }
         nicknameField = new UiEditBox(font, identityFieldX(), identityFieldY(), identityFieldWidth(), 18, Component.translatable("screen.cyberneticenhancements.npc.identity.nickname"));
         nicknameField.setMaxLength(32);
         nicknameField.setVisible(false);
         addRenderableWidget(nicknameField);
-        colorButtons.clear();
-        for (int index = 0; index < NAME_COLOR_PRESETS.length; index++) {
-            NameColorPreset preset = NAME_COLOR_PRESETS[index];
-            ColorPresetButton button = new ColorPresetButton(0, 0, IDENTITY_COLOR_BUTTON_SIZE, IDENTITY_COLOR_BUTTON_SIZE, preset);
-            colorButtons.add(button);
-            addRenderableWidget(button);
-        }
         int buttonX = actionButtonsX();
         int buttonWidth = actionButtonsWidth();
         int startY = actionButtonsStartY();
-        for (int index = 0; index < 5; index++) {
+        for (int index = 0; index < 6; index++) {
             ChoiceButton button = new ChoiceButton(buttonX, startY + index * (CHOICE_BUTTON_HEIGHT + CHOICE_BUTTON_GAP), buttonWidth, CHOICE_BUTTON_HEIGHT);
             choiceButtons.add(button);
             addRenderableWidget(button);
@@ -166,23 +176,6 @@ public final class FixerDialogScreen extends ResponsiveContainerScreen<FixerDial
             nicknameField.setVisible(mode == ConversationMode.IDENTITY);
             nicknameField.setEditable(mode == ConversationMode.IDENTITY && menu.identityUnlocked());
         }
-        for (int index = 0; index < colorButtons.size(); index++) {
-            ColorPresetButton button = colorButtons.get(index);
-            button.setX(identityColorButtonsX() + index * (IDENTITY_COLOR_BUTTON_SIZE + IDENTITY_COLOR_BUTTON_GAP));
-            button.setY(identityFieldY());
-            button.visible = mode == ConversationMode.IDENTITY;
-            button.active = menu.identityUnlocked();
-            button.selected = button.preset.colorId().equals(selectedNameColorId);
-        }
-        int buttonX = actionButtonsX();
-        int buttonWidth = actionButtonsWidth();
-        int startY = actionButtonsStartY();
-        for (int index = 0; index < choiceButtons.size(); index++) {
-            ChoiceButton button = choiceButtons.get(index);
-            button.setX(buttonX);
-            button.setY(startY + index * (CHOICE_BUTTON_HEIGHT + CHOICE_BUTTON_GAP));
-            button.setWidth(buttonWidth);
-        }
         refreshChoices();
     }
 
@@ -192,21 +185,21 @@ public final class FixerDialogScreen extends ResponsiveContainerScreen<FixerDial
         int y0 = topPos;
         guiGraphics.fill(x0, y0, x0 + imageWidth, y0 + imageHeight, OUTER_BG);
         drawPanel(guiGraphics, x0, y0, imageWidth, imageHeight, PANEL_BG);
-        drawPanel(guiGraphics, headerX(), headerY(), headerWidth(), headerHeight(), PANEL_ALT);
-        if (mode != ConversationMode.IDENTITY) {
+        if (!menu.temporary()) drawPanel(guiGraphics, headerX(), headerY(), headerWidth(), headerHeight(), PANEL_ALT);
+        if (mode == ConversationMode.CONTRACTS) {
             drawPanel(guiGraphics, statusX(), statusY(), statusWidth(), statusHeight(), PANEL_ALT);
         }
         drawPanel(guiGraphics, transcriptX(), transcriptY(), transcriptWidth(), transcriptHeight(), PANEL_ALT);
-        if (mode != ConversationMode.IDENTITY && mode != ConversationMode.SHOP) {
+        if (mode != ConversationMode.IDENTITY && mode != ConversationMode.SHOP && mode != ConversationMode.SERVICES) {
             drawPanel(guiGraphics, choicesX(), choicesY(), choicesWidth(), choicesHeight(), PANEL_ALT);
         }
 
-        renderHeader(guiGraphics);
-        if (mode != ConversationMode.IDENTITY) {
+        if (!menu.temporary()) renderHeader(guiGraphics);
+        if (mode == ConversationMode.CONTRACTS) {
             renderStatus(guiGraphics);
         }
         renderTranscript(guiGraphics);
-        if (mode != ConversationMode.IDENTITY && mode != ConversationMode.SHOP) {
+        if (mode != ConversationMode.IDENTITY && mode != ConversationMode.SHOP && mode != ConversationMode.SERVICES) {
             renderChoiceHeader(guiGraphics);
         }
     }
@@ -222,7 +215,6 @@ public final class FixerDialogScreen extends ResponsiveContainerScreen<FixerDial
         super.renderContent(guiGraphics, mouseX, mouseY, partialTick);
         renderTooltip(guiGraphics, mouseX, mouseY);
         renderChoiceTooltip(guiGraphics, mouseX, mouseY);
-        renderShopTooltip(guiGraphics, mouseX, mouseY);
     }
 
     @Override
@@ -261,11 +253,11 @@ public final class FixerDialogScreen extends ResponsiveContainerScreen<FixerDial
             }
         }
         if (mode == ConversationMode.SHOP && button == 0) {
-            int shopSlot = clickedShopSlot(mouseX, mouseY);
-            if (shopSlot >= 0) {
-                selectedShopSlot = shopSlot;
-                alignShopScrollToSelection();
-                return true;
+            for (UiButton buyButton : shopBuyButtons) {
+                if (buyButton.visible && buyButton.isMouseOver(mouseX, mouseY)) {
+                    buyButton.mouseClicked(mouseX, mouseY, button);
+                    return true;
+                }
             }
             if (clickedShopScrollbar(mouseX, mouseY)) {
                 return true;
@@ -338,20 +330,70 @@ public final class FixerDialogScreen extends ResponsiveContainerScreen<FixerDial
 
     private void refreshChoices() {
         List<ChoiceSpec> specs = currentChoices();
+        int buttonX = actionButtonsX();
+        int buttonWidth = actionButtonsWidth();
+        int startY = actionButtonsStartY();
         for (int index = 0; index < choiceButtons.size(); index++) {
             ChoiceButton button = choiceButtons.get(index);
+            button.setX(buttonX);
+            button.setY(startY + index * (CHOICE_BUTTON_HEIGHT + CHOICE_BUTTON_GAP));
+            button.setWidth(buttonWidth);
             if (index >= specs.size()) {
                 button.visible = false;
                 button.active = false;
+                clearChoiceHighlight(button);
                 button.spec = null;
                 continue;
             }
-            button.spec = specs.get(index);
+            ChoiceSpec replacement = specs.get(index);
+            if (button.spec == null || button.spec.icon() != replacement.icon()
+                    || !button.spec.message().equals(replacement.message())) {
+                clearChoiceHighlight(button);
+            }
+            button.spec = replacement;
             button.visible = true;
             button.active = button.spec.enabled();
             button.setMessage(button.spec.message());
         }
+        updateShopBuyButtons();
+        updateServiceBuyButtons();
     }
+
+    private void updateShopBuyButtons() {
+        for (int slot = 0; slot < shopBuyButtons.size(); slot++) {
+            UiButton button = shopBuyButtons.get(slot);
+            if (mode != ConversationMode.SHOP) {
+                button.visible = false;
+                button.active = false;
+                if (getFocused() == button) setFocused(null);
+                button.setFocused(false);
+                continue;
+            }
+            NpcShopCatalog.Offer entry = shopEntry(slot);
+            int y = shopTileY(slot) + SHOP_TILE_HEIGHT - CHOICE_BUTTON_HEIGHT - 8;
+            boolean visible = mode == ConversationMode.SHOP && menu.shopOfferAvailable(slot)
+                    && shopTileY(slot) >= shopRowsTop() && y + CHOICE_BUTTON_HEIGHT <= shopRowsBottom();
+            button.visible = visible;
+            button.active = visible && menu.balance() >= menu.shopPrice(slot);
+            if (!visible && getFocused() == button) setFocused(null);
+            if (!visible) button.setFocused(false);
+            button.setX(shopTileX(slot) + 8);
+            button.setY(y);
+            button.setWidth(shopTileWidth() - 16);
+            button.setMessage(Component.translatable("screen.cyberneticenhancements.fixer.option.buy", menu.shopPrice(slot)));
+            button.setTooltip(net.minecraft.client.gui.components.Tooltip.create(Component.translatable(
+                    "screen.cyberneticenhancements.npc.choice.shop.buy", entry.label(), menu.shopPrice(slot))));
+        }
+    }
+
+    private void clearChoiceHighlight(ChoiceButton button) {
+        if (getFocused() == button) setFocused(null);
+        button.setFocused(false);
+        button.highlight.reset();
+    }
+
+    private int devQuestPage;
+    private QuestDimension devQuestDimension;
 
     private List<ChoiceSpec> currentChoices() {
         return switch (mode) {
@@ -374,6 +416,7 @@ public final class FixerDialogScreen extends ResponsiveContainerScreen<FixerDial
                     () -> runDialogueChoice(choice)
             ));
         }
+        if (menu.temporary()) return choices;
         boolean identityUnlocked = menu.identityUnlocked();
         choices.add(customChoice(
                 ChoiceIcon.IDENTITY,
@@ -390,6 +433,7 @@ public final class FixerDialogScreen extends ResponsiveContainerScreen<FixerDial
             case SHOP -> ChoiceIcon.SHOP;
             case SERVICES -> ChoiceIcon.SERVICE;
             case CONTRACTS -> ChoiceIcon.QUEST;
+            case CACHE_INTEL -> ChoiceIcon.INTEL;
             case CLOSE -> ChoiceIcon.BACK;
             case DIALOGUE -> ChoiceIcon.TALK;
         };
@@ -397,33 +441,21 @@ public final class FixerDialogScreen extends ResponsiveContainerScreen<FixerDial
 
     private List<ChoiceSpec> serviceChoices() {
         List<ChoiceSpec> choices = new ArrayList<>();
-        choices.add(serviceChoice(FixerDialogMenu.OPTION_STABILIZE, "service_stabilize"));
-        choices.add(serviceChoice(FixerDialogMenu.OPTION_PURGE, "service_purge"));
         choices.add(localChoice(ChoiceIcon.BACK, "screen.cyberneticenhancements.fixer.choice.back", playerKey("back"), npcLineKey("back"), () -> switchMode(ConversationMode.DIALOGUE, playerKey("back"), npcLineKey("back"))));
         return choices;
     }
 
     private List<ChoiceSpec> shopChoices() {
-        normalizeSelectedShopSlot();
-        ShopEntry entry = shopEntry(selectedShopSlot);
-        int optionId = entry.optionId();
         List<ChoiceSpec> choices = new ArrayList<>();
-        choices.add(customChoice(
-                ChoiceIcon.TRADE,
-                Component.translatable("screen.cyberneticenhancements.npc.choice.shop.buy", entry.label(), menu.priceForOption(optionId)),
-                menu.isOptionAvailable(optionId),
-                menu.isOptionAvailable(optionId) ? null : lockedTrustTooltip(optionId),
-                () -> {
-                    lastPlayerLineKey = playerKey("shop");
-                    PacketDistributor.sendToServer(new FixerDialogueChoicePayload(optionId));
-                }
-        ));
         choices.add(localChoice(ChoiceIcon.BACK, "screen.cyberneticenhancements.fixer.choice.back", playerKey("back"), npcLineKey("back"), () -> switchMode(ConversationMode.DIALOGUE, playerKey("back"), npcLineKey("back"))));
         return choices;
     }
 
     private List<ChoiceSpec> contractChoices() {
+        if (menu.isDevTest() && !menu.hasActiveContract()) return devQuestChoices();
         List<ChoiceSpec> choices = new ArrayList<>();
+        if (menu.offersPreparing() && !menu.hasActiveContract())
+            choices.add(customChoice(ChoiceIcon.QUEST, Component.translatable("screen.cyberneticenhancements.fixer.contracts_preparing"), false, () -> {}));
         if (menu.hasActiveContract()) {
             choices.add(customChoice(
                     ChoiceIcon.QUEST,
@@ -438,7 +470,7 @@ public final class FixerDialogScreen extends ResponsiveContainerScreen<FixerDial
                     () -> sendOption(FixerDialogMenu.OPTION_ABANDON_CONTRACT, playerKey("abandon_contract"))
             ));
         } else {
-            for (int slot = 0; slot < 3; slot++) {
+            for (int slot = 0; slot < menu.offerSlots(); slot++) {
                 if (!menu.offerPresent(slot)) {
                     continue;
                 }
@@ -447,11 +479,50 @@ public final class FixerDialogScreen extends ResponsiveContainerScreen<FixerDial
                         ChoiceIcon.QUEST,
                         Component.translatable("screen.cyberneticenhancements.fixer.choice.contract.accept", menu.offerTitle(slot), menu.offerRewardMoney(slot)),
                         true,
-                        () -> sendOption(FixerDialogMenu.OPTION_ACCEPT_CONTRACT_1 + offerSlot, playerKey("accept_contract"))
+                        () -> sendOption(menu.acceptOfferOption(offerSlot), playerKey("accept_contract"))
                 ));
             }
         }
-        choices.add(localChoice(ChoiceIcon.BACK, "screen.cyberneticenhancements.fixer.choice.back", playerKey("back"), npcLineKey("back"), () -> switchMode(ConversationMode.DIALOGUE, playerKey("back"), npcLineKey("back"))));
+        boolean encounter = menu.npcType() == de.artemis.cyberneticenhancements.common.entity.NpcType.WORLD_MED_TECH;
+        // With no contract to take or hand in, a leader who has withdrawn the offer says so rather than showing nothing.
+        if (encounter && choices.isEmpty())
+            choices.add(customChoice(ChoiceIcon.QUEST, Component.translatable("screen.cyberneticenhancements.fixer.contracts_withheld"), false, () -> {}));
+        String backPlayer = encounter ? "screen.cyberneticenhancements.npc.dialogue.world_encounter.player.back" : playerKey("back");
+        String backNpc = encounter ? currentNpcLineKey() : npcLineKey("back");
+        choices.add(localChoice(ChoiceIcon.BACK, "screen.cyberneticenhancements.fixer.choice.back", backPlayer, backNpc, () -> switchMode(ConversationMode.DIALOGUE, backPlayer, backNpc)));
+        return choices;
+    }
+
+    private List<ChoiceSpec> devQuestChoices() {
+        if (menu.offersPreparing()) return List.of(customChoice(ChoiceIcon.QUEST,
+                Component.translatable("screen.cyberneticenhancements.fixer.contracts_preparing"), false, () -> {}));
+        var choices = new ArrayList<ChoiceSpec>();
+        if (devQuestDimension == null) {
+            for (var dimension : QuestDimension.values()) {
+                choices.add(customChoice(ChoiceIcon.QUEST, dimension.displayName(), true, () -> {
+                    devQuestDimension = dimension;
+                    devQuestPage = 0;
+                    refreshChoices();
+                }));
+            }
+            choices.add(localChoice(ChoiceIcon.BACK, "screen.cyberneticenhancements.fixer.choice.back", playerKey("back"),
+                    npcLineKey("back"), () -> switchMode(ConversationMode.DIALOGUE, playerKey("back"), npcLineKey("back"))));
+            return choices;
+        }
+        var dimension = devQuestDimension;
+        int count = dimension == QuestDimension.STANDARD ? menu.offerSlots() : QuestType.values().length;
+        int pages = Math.ceilDiv(count, 3);
+        for (int slot = devQuestPage * 3; slot < Math.min(count, devQuestPage * 3 + 3); slot++) {
+            int option = FixerDialogMenu.devQuestOption(dimension, slot);
+            Component title = slot == QuestType.values().length
+                    ? Component.translatable("quest.cyberneticenhancements.title.chromium_survey")
+                    : QuestContract.titleForType(QuestType.values()[slot]);
+            choices.add(customChoice(ChoiceIcon.QUEST, title, true, () -> sendOption(option, playerKey("accept_contract"))));
+        }
+        choices.add(customChoice(ChoiceIcon.QUEST, Component.translatable("screen.cyberneticenhancements.dev_test.quest_page", devQuestPage + 1, pages),
+                true, () -> { devQuestPage = (devQuestPage + 1) % pages; refreshChoices(); }));
+        choices.add(customChoice(ChoiceIcon.BACK, Component.translatable("screen.cyberneticenhancements.dev_test.quest_dimensions"),
+                true, () -> { devQuestDimension = null; refreshChoices(); }));
         return choices;
     }
 
@@ -463,81 +534,16 @@ public final class FixerDialogScreen extends ResponsiveContainerScreen<FixerDial
                 menu.identityUnlocked(),
                 this::resetIdentityCustomization
         ));
-        choices.add(customChoice(
-                ChoiceIcon.PREV,
-                Component.translatable("screen.cyberneticenhancements.npc.identity.previous_page"),
-                skinPage > 0,
-                () -> scrollSkinGallery(-1)
-        ));
-        choices.add(customChoice(
-                ChoiceIcon.NEXT,
-                Component.translatable("screen.cyberneticenhancements.npc.identity.next_page"),
-                hasNextSkinScroll(),
-                () -> scrollSkinGallery(1)
-        ));
         choices.add(localChoice(ChoiceIcon.BACK, "screen.cyberneticenhancements.fixer.choice.back", playerKey("back"), npcLineKey("back"), () -> switchMode(ConversationMode.DIALOGUE, playerKey("back"), npcLineKey("back"))));
         return choices;
     }
 
-    private ChoiceSpec serviceChoice(int optionId, String labelSuffix) {
-        return customChoice(
-                ChoiceIcon.SERVICE,
-                Component.translatable(choiceKey(labelSuffix), menu.priceForOption(optionId)),
-                menu.isOptionAvailable(optionId),
-                menu.isOptionAvailable(optionId) ? null : lockedTrustTooltip(optionId),
-                () -> {
-                    lastPlayerLineKey = playerKey(labelSuffix);
-                    PacketDistributor.sendToServer(new FixerDialogueChoicePayload(optionId));
-                }
-        );
-    }
-
-    private void normalizeSelectedShopSlot() {
-        int count = shopItemCount();
-        selectedShopSlot = Math.max(0, Math.min(count - 1, selectedShopSlot));
+    private void clampShopScroll() {
         shopScrollOffset = Math.max(0, Math.min(maxShopScrollOffset(), shopScrollOffset));
-        if (selectedShopSlot < shopScrollOffset) {
-            shopScrollOffset = selectedShopSlot;
-        }
-        int lastVisible = shopScrollOffset + visibleShopRowCount() - 1;
-        if (selectedShopSlot > lastVisible) {
-            shopScrollOffset = Math.max(0, selectedShopSlot - visibleShopRowCount() + 1);
-        }
     }
 
-    private ShopEntry shopEntry(int slot) {
-        return switch (menu.npcType()) {
-            case FIXER -> switch (slot) {
-                case 0 -> new ShopEntry(FixerDialogMenu.OPTION_BUY_MAXDOC_MK2, "screen.cyberneticenhancements.npc.shop.fixer.maxdoc", "screen.cyberneticenhancements.npc.shopdesc.fixer.0", new ItemStack(ModItems.consumable("maxdoc_mk2").get()));
-                case 1 -> new ShopEntry(FixerDialogMenu.OPTION_BUY_RAM_JOLT, "screen.cyberneticenhancements.npc.shop.fixer.ram_jolt", "screen.cyberneticenhancements.npc.shopdesc.fixer.1", new ItemStack(ModItems.consumable("ram_jolt").get()));
-                case 2 -> new ShopEntry(FixerDialogMenu.OPTION_BUY_CHROME_SUPPRESSANT, "screen.cyberneticenhancements.npc.shop.fixer.memory_boost", "screen.cyberneticenhancements.npc.shopdesc.fixer.2", new ItemStack(ModItems.cyberware("memory_boost").get()));
-                default -> new ShopEntry(FixerDialogMenu.OPTION_BUY_IMMUNOBLOCKERS, "screen.cyberneticenhancements.npc.shop.fixer.immuno", "screen.cyberneticenhancements.npc.shopdesc.fixer.3", new ItemStack(ModItems.consumable("immunoblockers").get()));
-            };
-            case RIPPERDOC -> switch (slot) {
-                case 0 -> new ShopEntry(FixerDialogMenu.OPTION_BUY_MAXDOC_MK2, "screen.cyberneticenhancements.npc.shop.ripperdoc.maxdoc", "screen.cyberneticenhancements.npc.shopdesc.ripperdoc.0", new ItemStack(ModItems.consumable("maxdoc_mk2").get(), 2));
-                case 1 -> new ShopEntry(FixerDialogMenu.OPTION_BUY_RAM_JOLT, "screen.cyberneticenhancements.npc.shop.ripperdoc.bounce_back", "screen.cyberneticenhancements.npc.shopdesc.ripperdoc.1", new ItemStack(ModItems.consumable("bounce_back_mk2").get()));
-                case 2 -> new ShopEntry(FixerDialogMenu.OPTION_BUY_CHROME_SUPPRESSANT, "screen.cyberneticenhancements.npc.shop.ripperdoc.kiroshi", "screen.cyberneticenhancements.npc.shopdesc.ripperdoc.2", new ItemStack(ModItems.cyberware("basic_kiroshi_optics").get()));
-                default -> new ShopEntry(FixerDialogMenu.OPTION_BUY_IMMUNOBLOCKERS, "screen.cyberneticenhancements.npc.shop.ripperdoc.bionic_joints", "screen.cyberneticenhancements.npc.shopdesc.ripperdoc.3", new ItemStack(ModItems.cyberware("bionic_joints").get()));
-            };
-            case TECHIE -> switch (slot) {
-                case 0 -> new ShopEntry(FixerDialogMenu.OPTION_BUY_MAXDOC_MK2, "screen.cyberneticenhancements.npc.shop.techie.components", "screen.cyberneticenhancements.npc.shopdesc.techie.0", new ItemStack(ModItems.COMMON_ITEM_COMPONENTS.get(), 2));
-                case 1 -> new ShopEntry(FixerDialogMenu.OPTION_BUY_RAM_JOLT, "screen.cyberneticenhancements.npc.shop.techie.precision_miner", "screen.cyberneticenhancements.npc.shopdesc.techie.1", new ItemStack(ModItems.cyberware("precision_miner").get()));
-                case 2 -> new ShopEntry(FixerDialogMenu.OPTION_BUY_CHROME_SUPPRESSANT, "screen.cyberneticenhancements.npc.shop.techie.masons_grip", "screen.cyberneticenhancements.npc.shopdesc.techie.2", new ItemStack(ModItems.cyberware("masons_grip").get()));
-                default -> new ShopEntry(FixerDialogMenu.OPTION_BUY_IMMUNOBLOCKERS, "screen.cyberneticenhancements.npc.shop.techie.cargo_spine", "screen.cyberneticenhancements.npc.shopdesc.techie.3", new ItemStack(ModItems.cyberware("cargo_spine").get()));
-            };
-            case NETRUNNER -> switch (slot) {
-                case 0 -> new ShopEntry(FixerDialogMenu.OPTION_BUY_MAXDOC_MK2, "screen.cyberneticenhancements.npc.shop.netrunner.ram_jolt", "screen.cyberneticenhancements.npc.shopdesc.netrunner.0", new ItemStack(ModItems.consumable("ram_jolt").get(), 2));
-                case 1 -> new ShopEntry(FixerDialogMenu.OPTION_BUY_RAM_JOLT, "screen.cyberneticenhancements.npc.shop.netrunner.memory_boost", "screen.cyberneticenhancements.npc.shopdesc.netrunner.1", new ItemStack(ModItems.cyberware("memory_boost").get()));
-                case 2 -> new ShopEntry(FixerDialogMenu.OPTION_BUY_CHROME_SUPPRESSANT, "screen.cyberneticenhancements.npc.shop.netrunner.ram_upgrade", "screen.cyberneticenhancements.npc.shopdesc.netrunner.2", new ItemStack(ModItems.cyberware("ram_upgrade").get()));
-                default -> new ShopEntry(FixerDialogMenu.OPTION_BUY_IMMUNOBLOCKERS, "screen.cyberneticenhancements.npc.shop.netrunner.chipware_socket", "screen.cyberneticenhancements.npc.shopdesc.netrunner.3", new ItemStack(ModItems.cyberware("chipware_socket").get()));
-            };
-            case MERC -> switch (slot) {
-                case 0 -> new ShopEntry(FixerDialogMenu.OPTION_BUY_MAXDOC_MK2, "screen.cyberneticenhancements.npc.shop.merc.maxdoc", "screen.cyberneticenhancements.npc.shopdesc.merc.0", new ItemStack(ModItems.consumable("maxdoc_mk2").get()));
-                case 1 -> new ShopEntry(FixerDialogMenu.OPTION_BUY_RAM_JOLT, "screen.cyberneticenhancements.npc.shop.merc.handle_wrap", "screen.cyberneticenhancements.npc.shopdesc.merc.1", new ItemStack(ModItems.cyberware("handle_wrap").get()));
-                case 2 -> new ShopEntry(FixerDialogMenu.OPTION_BUY_CHROME_SUPPRESSANT, "screen.cyberneticenhancements.npc.shop.merc.fortified_ankles", "screen.cyberneticenhancements.npc.shopdesc.merc.2", new ItemStack(ModItems.cyberware("fortified_ankles").get()));
-                default -> new ShopEntry(FixerDialogMenu.OPTION_BUY_IMMUNOBLOCKERS, "screen.cyberneticenhancements.npc.shop.merc.subdermal_armor", "screen.cyberneticenhancements.npc.shopdesc.merc.3", new ItemStack(ModItems.cyberware("subdermal_armor").get()));
-            };
-        };
+    private NpcShopCatalog.Offer shopEntry(int slot) {
+        return menu.shopOffers().get(slot);
     }
 
     private String greetingKey() {
@@ -554,10 +560,6 @@ public final class FixerDialogScreen extends ResponsiveContainerScreen<FixerDial
 
     private String responseKey(String suffix) {
         return "screen.cyberneticenhancements.npc.response." + menu.npcTypeId() + "." + suffix;
-    }
-
-    private String choiceKey(String suffix) {
-        return "screen.cyberneticenhancements.npc.choice." + menu.npcTypeId() + "." + suffix;
     }
 
     private ChoiceSpec localChoice(ChoiceIcon icon, String labelKey, String playerLineKey, String npcLineKey, Runnable action) {
@@ -581,8 +583,7 @@ public final class FixerDialogScreen extends ResponsiveContainerScreen<FixerDial
         lastPlayerLineKey = playerLineKey;
         localNpcLineKey = npcLineKey;
         if (newMode == ConversationMode.SHOP) {
-            normalizeSelectedShopSlot();
-            alignShopScrollToSelection();
+            clampShopScroll();
         }
         refreshChoices();
     }
@@ -617,7 +618,6 @@ public final class FixerDialogScreen extends ResponsiveContainerScreen<FixerDial
         if (nicknameField != null) {
             nicknameField.setValue("");
         }
-        selectedNameColorId = "aqua";
         selectedAppearanceId = "";
         AbstractCityNpcEntity npc = currentNpcEntity();
         if (npc != null) {
@@ -629,7 +629,6 @@ public final class FixerDialogScreen extends ResponsiveContainerScreen<FixerDial
             );
         }
         PacketDistributor.sendToServer(new NpcIdentityNicknamePayload(""));
-        PacketDistributor.sendToServer(new NpcIdentityNameColorPayload("aqua"));
         PacketDistributor.sendToServer(new NpcIdentityAppearancePayload(""));
         TextFieldFocusHelper.clearFocus(this, List.of(nicknameField));
     }
@@ -640,7 +639,6 @@ public final class FixerDialogScreen extends ResponsiveContainerScreen<FixerDial
             nicknameField.setValue(npc.getName().getString());
         }
         selectedAppearanceId = currentAppearanceId();
-        selectedNameColorId = currentNameColorId();
         alignSkinScrollToSelection();
     }
 
@@ -660,7 +658,7 @@ public final class FixerDialogScreen extends ResponsiveContainerScreen<FixerDial
                 mode = ConversationMode.CONTRACTS;
                 localNpcLineKey = npcLineKey("contracts");
             }
-            case DIALOGUE, CLOSE -> mode = ConversationMode.DIALOGUE;
+            case DIALOGUE, CLOSE, CACHE_INTEL -> mode = ConversationMode.DIALOGUE;
         }
         PacketDistributor.sendToServer(new FixerDialogueChoicePayload(choice.id()));
         refreshChoices();
@@ -710,20 +708,14 @@ public final class FixerDialogScreen extends ResponsiveContainerScreen<FixerDial
     }
 
     private String currentNameColorId() {
-        if (mode == ConversationMode.IDENTITY && selectedNameColorId != null && !selectedNameColorId.isBlank()) {
-            return selectedNameColorId;
-        }
-        AbstractCityNpcEntity npc = currentNpcEntity();
-        if (npc == null || npc.nameColorId().isBlank()) {
-            return selectedNameColorId;
-        }
-        return npc.nameColorId();
+        var npc = currentNpcEntity();
+        return npc == null ? "aqua" : npc.nameColorId();
     }
 
     private int currentNameColorRgb() {
         return switch (currentNameColorId()) {
             case "blue" -> 0x5D86F1;
-            case "gold" -> 0xF0C04D;
+            case "yellow" -> 0xFFFF55;
             case "green" -> 0x57C26E;
             case "red" -> 0xD65D5D;
             case "white" -> 0xE8EDF2;
@@ -736,7 +728,7 @@ public final class FixerDialogScreen extends ResponsiveContainerScreen<FixerDial
     private net.minecraft.ChatFormatting resolveCurrentNameColor() {
         return switch (currentNameColorId()) {
             case "blue" -> net.minecraft.ChatFormatting.BLUE;
-            case "gold" -> net.minecraft.ChatFormatting.GOLD;
+            case "yellow" -> net.minecraft.ChatFormatting.YELLOW;
             case "green" -> net.minecraft.ChatFormatting.GREEN;
             case "red" -> net.minecraft.ChatFormatting.RED;
             case "white" -> net.minecraft.ChatFormatting.WHITE;
@@ -767,10 +759,6 @@ public final class FixerDialogScreen extends ResponsiveContainerScreen<FixerDial
     private void scrollSkinGallery(int delta) {
         int maxOffset = maxSkinScrollOffset();
         skinPage = Math.max(0, Math.min(maxOffset, skinPage + delta));
-    }
-
-    private boolean hasNextSkinScroll() {
-        return skinPage < maxSkinScrollOffset();
     }
 
     private int maxSkinScrollOffset() {
@@ -818,14 +806,14 @@ public final class FixerDialogScreen extends ResponsiveContainerScreen<FixerDial
         int x = headerX() + PANEL_TEXT_PADDING_X;
         int y = headerY() + PANEL_TEXT_PADDING_Y;
         guiGraphics.drawString(font, currentNpcDisplayName(), x, y, currentNameColorRgb(), false);
+        // A passing street doctor has nothing to track: no trust, discount or second title line repeating the name.
+        if (menu.temporary()) return;
         guiGraphics.drawString(font, menu.npcTypeLabel(), x, y + 12, ACCENT, false);
         Component trust = Component.translatable("screen.cyberneticenhancements.fixer.trust", trustLabel());
-        Component nextTrust = nextTrustLabel();
+        Component discount = Component.translatable("screen.cyberneticenhancements.fixer.summary.discount", discountLabel());
         int rightX = headerX() + headerWidth() - PANEL_TEXT_PADDING_X;
         guiGraphics.drawString(font, trust, rightX - font.width(trust), y, TEXT_SECONDARY, false);
-        if (!nextTrust.getString().isBlank()) {
-            guiGraphics.drawString(font, nextTrust, rightX - font.width(nextTrust), y + 12, TEXT_SECONDARY, false);
-        }
+        guiGraphics.drawString(font, discount, rightX - font.width(discount), y + 12, ACCENT, false);
         drawTrustBar(guiGraphics, x, headerY() + 32, headerWidth() - PANEL_TEXT_PADDING_X * 2, TRUST_BAR_HEIGHT);
     }
 
@@ -833,17 +821,6 @@ public final class FixerDialogScreen extends ResponsiveContainerScreen<FixerDial
         int x = statusX() + PANEL_TEXT_PADDING_X;
         int headerY = statusY() + PANEL_TEXT_PADDING_Y;
         int rowY = headerY + font.lineHeight + 8;
-        if (mode == ConversationMode.IDENTITY) {
-            int totalSkins = Math.max(1, availableSkins().size());
-            Component unlockState = menu.identityUnlocked()
-                    ? Component.translatable("screen.cyberneticenhancements.npc.identity.unlocked")
-                    : Component.translatable("screen.cyberneticenhancements.npc.identity.locked");
-            Component appearanceState = Component.translatable("screen.cyberneticenhancements.npc.identity.appearance_state", selectedAppearanceIndex() + 1, totalSkins);
-            guiGraphics.drawString(font, Component.translatable("screen.cyberneticenhancements.npc.section.identity_status"), x, headerY, TEXT_PRIMARY, false);
-            guiGraphics.drawString(font, trimStyled(unlockState, statusWidth() - PANEL_TEXT_PADDING_X * 2), x, rowY, menu.identityUnlocked() ? ACCENT : TEXT_SECONDARY, false);
-            guiGraphics.drawString(font, trimStyled(appearanceState, statusWidth() - PANEL_TEXT_PADDING_X * 2), x, rowY + 14, TEXT_SECONDARY, false);
-            return;
-        }
         if (mode == ConversationMode.CONTRACTS) {
             guiGraphics.drawString(font, Component.translatable("screen.cyberneticenhancements.npc.section.contract_status"), x, headerY, TEXT_PRIMARY, false);
             if (menu.hasActiveContract()) {
@@ -857,21 +834,20 @@ public final class FixerDialogScreen extends ResponsiveContainerScreen<FixerDial
                 int thirdColor = locationLine.getString().isBlank() ? ACCENT : StationScreenStyle.TEXT_PRIMARY;
                 guiGraphics.drawString(font, trimStyled(thirdLine, statusWidth() - PANEL_TEXT_PADDING_X * 2), x, rowY + 24, thirdColor, false);
             } else {
-                Component titleLine = menu.contractBoardTitle();
+                Component titleLine = menu.isDevTest() && devQuestDimension != null ? devQuestDimension.displayName() : menu.contractBoardTitle();
                 Component rewardLine = menu.contractBoardNote();
                 guiGraphics.drawString(font, titleLine, x, rowY, TEXT_SECONDARY, false);
                 guiGraphics.drawString(font, trimStyled(rewardLine, statusWidth() - PANEL_TEXT_PADDING_X * 2), x, rowY + 12, ACCENT, false);
             }
             return;
         }
-        guiGraphics.drawString(font, currentSummaryHeader(), x, headerY, TEXT_PRIMARY, false);
-        Component primary = currentSummaryPrimary();
-        Component secondary = currentSummarySecondary();
-        guiGraphics.drawString(font, trimStyled(primary, statusWidth() - PANEL_TEXT_PADDING_X * 2), x, rowY, TEXT_SECONDARY, false);
-        guiGraphics.drawString(font, trimStyled(secondary, statusWidth() - PANEL_TEXT_PADDING_X * 2), x, rowY + 14, ACCENT, false);
     }
 
     private void renderTranscript(GuiGraphics guiGraphics) {
+        if (mode == ConversationMode.SERVICES) {
+            renderServices(guiGraphics);
+            return;
+        }
         if (mode == ConversationMode.IDENTITY) {
             renderIdentityEditor(guiGraphics);
             return;
@@ -895,59 +871,149 @@ public final class FixerDialogScreen extends ResponsiveContainerScreen<FixerDial
         drawSpeakerBlock(guiGraphics, Component.literal(currentNpcDisplayName()), npcText(), x, secondBubbleY, bubbleWidth, bubbleHeight, 0xFF162E2A, currentNameColorRgb());
     }
 
-    private void renderShopCatalog(GuiGraphics guiGraphics) {
-        normalizeSelectedShopSlot();
+    private int serviceCardX(int slot) {
+        return transcriptX() + PANEL_TEXT_PADDING_X + slot * (serviceCardWidth() + SHOP_TILE_GAP);
+    }
+
+    private int serviceCardWidth() {
+        return (transcriptWidth() - PANEL_TEXT_PADDING_X * 2 - SHOP_TILE_GAP) / 2;
+    }
+
+    private int serviceCardY() {
+        return transcriptY() + 48;
+    }
+
+    private int serviceCardHeight() {
+        return actionButtonsStartY() - 32 - serviceCardY();
+    }
+
+    private void updateServiceBuyButtons() {
+        List<NpcService> services = NpcService.forNpc(menu.npcType());
+        for (int slot = 0; slot < serviceBuyButtons.size(); slot++) {
+            UiButton button = serviceBuyButtons.get(slot);
+            NpcService service = services.get(slot);
+            boolean visible = mode == ConversationMode.SERVICES;
+            button.visible = visible;
+            button.active = visible && menu.isOptionAvailable(service.optionId())
+                    && (!service.daily() || menu.purgeReadyClient()) && menu.balance() >= menu.priceForOption(service.optionId());
+            if (!visible && getFocused() == button) setFocused(null);
+            if (!visible) button.setFocused(false);
+            if (!visible) continue;
+            button.setX(serviceCardX(slot) + 10);
+            button.setY(serviceCardY() + serviceCardHeight() - CHOICE_BUTTON_HEIGHT - 10);
+            button.setWidth(serviceCardWidth() - 20);
+            button.setMessage(Component.translatable("screen.cyberneticenhancements.npc.service.purchase", menu.priceForOption(service.optionId())));
+            button.setTooltip(null);
+        }
+    }
+
+    private void renderServices(GuiGraphics graphics) {
+        updateServiceBuyButtons();
         int x = transcriptX() + PANEL_TEXT_PADDING_X;
         int y = transcriptY() + PANEL_TEXT_PADDING_Y;
-        int width = transcriptWidth() - PANEL_TEXT_PADDING_X * 2 - (shopItemCount() > visibleShopRowCount() ? shopScrollbarWidth() + 6 : 0);
+        graphics.drawString(font, modeLabel(), x, y, TEXT_PRIMARY, false);
+        drawWrappedText(graphics, Component.translatable("screen.cyberneticenhancements.npc.service.subtitle"),
+                x, y + 14, transcriptWidth() - PANEL_TEXT_PADDING_X * 2, TEXT_SECONDARY, 2);
+        List<NpcService> services = NpcService.forNpc(menu.npcType());
+        for (int slot = 0; slot < services.size(); slot++) {
+            NpcService service = services.get(slot);
+            int cx = serviceCardX(slot), cy = serviceCardY(), width = serviceCardWidth(), height = serviceCardHeight();
+            UiRenderer.control(graphics, cx, cy, width, height, true, false, false, 0xFFFFFFFF);
+            var icon = switch (service) {
+                case STRAIN_BUFFER -> Items.HONEY_BOTTLE;
+                case NEURAL_RESET -> Items.REDSTONE_TORCH;
+                case TRAUMA_COVERAGE -> Items.TOTEM_OF_UNDYING; case MEDICAL_STIMS, CLINIC_CARE -> Items.GOLDEN_APPLE;
+                case DETOX -> Items.MILK_BUCKET;
+                case FIELD_TRIAGE -> Items.ENCHANTED_GOLDEN_APPLE;
+                case NEURAL_FLUSH -> Items.DRAGON_BREATH;
+                case MINING_CALIBRATION -> Items.IRON_PICKAXE;
+                case HAZARD_PREPARATION -> Items.SHIELD;
+                case RECON_SUPPORT -> Items.SPYGLASS;
+                case STEALTH_PROTOCOL -> Items.ENDER_PEARL;
+                case FIELD_RECOVERY -> Items.GLISTERING_MELON_SLICE;
+                case COMBAT_PREPARATION -> Items.IRON_SWORD;
+            };
+            graphics.pose().pushPose();
+            graphics.pose().translate(cx + (width - 32) / 2, cy + 10, 0);
+            graphics.pose().scale(2, 2, 1);
+            SchematicIconRenderer.drawWithShadow(graphics, new ItemStack(icon), 0, 0, true);
+            graphics.pose().popPose();
+            Component name = Component.translatable(service.nameKey());
+            graphics.drawString(font, name, cx + (width - font.width(name)) / 2, cy + 51, TEXT_PRIMARY, false);
+            drawWrappedText(graphics, Component.translatable(service.descriptionKey()), cx + 10, cy + 68, width - 20, TEXT_SECONDARY, 3);
+            int lineY = cy + 110;
+            for (Component detail : service.details()) {
+                for (var line : font.split(detail, width - 20)) {
+                    graphics.drawString(font, line, cx + 10, lineY, TEXT_PRIMARY, false);
+                    lineY += 12;
+                }
+            }
+            drawWrappedText(graphics, Component.translatable(service.daily()
+                            ? "screen.cyberneticenhancements.npc.service.daily" : "screen.cyberneticenhancements.npc.service.refresh"),
+                    cx + 10, cy + height - 78, width - 20, TEXT_SECONDARY, 2);
+            Component state;
+            boolean ready = false;
+            if (!menu.isOptionAvailable(service.optionId())) state = lockedTrustTooltip(service.optionId());
+            else if (service.daily() && !menu.purgeReadyClient()) state = Component.translatable("screen.cyberneticenhancements.npc.service.used_today");
+            else if (menu.balance() < menu.priceForOption(service.optionId())) state = Component.translatable("screen.cyberneticenhancements.npc.service.need_funds");
+            else {
+                state = Component.translatable("screen.cyberneticenhancements.npc.service.ready");
+                ready = true;
+            }
+            drawWrappedText(graphics, state, cx + 10, cy + height - 50, width - 20, ready ? ACCENT : TEXT_SECONDARY, 2);
+        }
+        if (menu.responseId() != FixerDialogMenu.RESPONSE_GREETING) {
+            graphics.drawString(font, trimStyled(npcText(), transcriptWidth() - PANEL_TEXT_PADDING_X * 2),
+                    x, actionButtonsStartY() - 20, ACCENT, false);
+        }
+    }
+
+    private void renderShopCatalog(GuiGraphics guiGraphics) {
+        clampShopScroll();
+        updateShopBuyButtons();
+        int x = transcriptX() + PANEL_TEXT_PADDING_X;
+        int y = transcriptY() + PANEL_TEXT_PADDING_Y;
+        int width = shopGridWidth();
         guiGraphics.drawString(font, Component.translatable("screen.cyberneticenhancements.npc.section.shop_catalog"), x, y, TEXT_PRIMARY, false);
         drawWrappedText(guiGraphics, Component.translatable("screen.cyberneticenhancements.npc.section.shop_catalog.subtitle"), x, y + 12, width, TEXT_SECONDARY, 1);
 
-        int visibleRows = visibleShopRowCount();
-        int rowHeight = shopRowHeight();
         guiGraphics.enableScissor(x, shopRowsTop(), x + width, shopRowsBottom());
-        for (int visibleSlot = 0; visibleSlot < visibleRows; visibleSlot++) {
-            int slot = shopScrollOffset + visibleSlot;
-            if (slot >= shopItemCount()) {
-                break;
-            }
-            int rowY = shopRowY(visibleSlot);
-            renderShopRow(guiGraphics, x, rowY, width, rowHeight, slot, selectedShopSlot == slot);
+        ShopGridLayout layout = shopLayout();
+        int firstSlot = layout.firstSlot(shopScrollOffset);
+        int lastSlot = layout.lastSlot(shopScrollOffset);
+        for (int slot = firstSlot; slot < lastSlot; slot++) {
+            renderShopTile(guiGraphics, shopTileX(slot), shopTileY(slot), shopTileWidth(), slot);
         }
         guiGraphics.disableScissor();
         renderShopScrollbar(guiGraphics);
     }
 
-    private void renderShopRow(GuiGraphics guiGraphics, int x, int y, int width, int height, int slot, boolean selected) {
-        ShopEntry entry = shopEntry(slot);
-        boolean hovered = hoveredShopSlot(lastMouseX, lastMouseY) == slot;
-        UiRenderer.control(guiGraphics, x, y, width, height, true, selected, hovered, 0xFFFFFFFF);
-
-        int iconBoxX = x + 8;
-        int iconBoxY = y + 4;
-        guiGraphics.renderItem(entry.stack(), iconBoxX, iconBoxY);
-        guiGraphics.renderItemDecorations(font, entry.stack(), iconBoxX, iconBoxY);
-
-        int textX = iconBoxX + SHOP_ICON_BOX_SIZE + 8;
-        Component priceLine = Component.translatable("screen.cyberneticenhancements.npc.shop.price", menu.priceForOption(entry.optionId()));
-        Component stateLine = menu.isOptionAvailable(entry.optionId())
-                ? Component.translatable("screen.cyberneticenhancements.npc.shop.state.available")
-                : Component.translatable("screen.cyberneticenhancements.npc.shop.state.locked", menu.trustGateLabelForOption(entry.optionId()));
-        int priceWidth = font.width(priceLine);
-        int stateWidth = font.width(stateLine);
-        int rightX = x + width - 8;
-        int rightBlockWidth = Math.max(priceWidth, stateWidth);
-        int rightBlockX = rightX - rightBlockWidth;
-        int leftGap = 8;
-        int textWidth = Math.max(32, rightBlockX - leftGap - textX);
-
-        guiGraphics.drawString(font, trimStyled(entry.label(), textWidth), textX, y + 4, TEXT_PRIMARY, false);
-        if (textWidth > 32) {
-            guiGraphics.drawString(font, trimStyled(entry.description(), textWidth), textX, y + 14, TEXT_SECONDARY, false);
+    private void renderShopTile(GuiGraphics guiGraphics, int x, int y, int width, int slot) {
+        NpcShopCatalog.Offer entry = shopEntry(slot);
+        boolean available = menu.shopOfferAvailable(slot);
+        UiRenderer.control(guiGraphics, x, y, width, SHOP_TILE_HEIGHT, available, false, false, 0xFFFFFFFF);
+        guiGraphics.pose().pushPose();
+        guiGraphics.pose().translate(x + (width - 32) / 2, y + 10, 0);
+        guiGraphics.pose().scale(2, 2, 1);
+        SchematicIconRenderer.drawWithShadow(guiGraphics, entry.stack(), 0, 0, true);
+        guiGraphics.renderItemDecorations(font, entry.stack(), 0, 0);
+        guiGraphics.pose().popPose();
+        var lines = font.split(entry.label(), width - 14);
+        for (int line = 0; line < Math.min(2, lines.size()); line++) {
+            var text = lines.get(line);
+            guiGraphics.drawString(font, text, x + (width - font.width(text)) / 2, y + 51 + line * 11, TEXT_PRIMARY, false);
         }
-
-        guiGraphics.drawString(font, priceLine, rightX - priceWidth, y + 4, ACCENT, false);
-        guiGraphics.drawString(font, stateLine, rightX - stateWidth, y + 14, menu.isOptionAvailable(entry.optionId()) ? TEXT_SECONDARY : 0xFFD08A8A, false);
+        var descriptionLines = font.split(entry.description(), width - 16);
+        for (int line = 0; line < Math.min(3, descriptionLines.size()); line++) {
+            var text = descriptionLines.get(line);
+            guiGraphics.drawString(font, text, x + (width - font.width(text)) / 2, y + 77 + line * 11, TEXT_SECONDARY, false);
+        }
+        if (!available) {
+            Component priceLine = Component.translatable("screen.cyberneticenhancements.npc.shop.price", menu.shopPrice(slot));
+            guiGraphics.drawString(font, priceLine, x + (width - font.width(priceLine)) / 2, y + 116, ACCENT, false);
+            var locked = trimStyled(Component.translatable("screen.cyberneticenhancements.npc.shop.state.locked", menu.shopTrustLabel(slot)), width - 14);
+            guiGraphics.drawString(font, locked, x + (width - font.width(locked)) / 2, y + 136, 0xFFD08A8A, false);
+        }
     }
 
     private UiScrollbar.Track shopTrack() {
@@ -1031,7 +1097,7 @@ public final class FixerDialogScreen extends ResponsiveContainerScreen<FixerDial
             previewNpc = createPreviewNpc();
         }
         NpcCategory category = categoryForTexture(texture);
-        previewNpc.applyClientPreviewIdentity(texture.toString(), category, currentNpcDisplayName(), selectedNameColorId);
+        previewNpc.applyClientPreviewIdentity(texture.toString(), category, currentNpcDisplayName(), currentNameColorId());
         previewNpc.setYRot(0.0F);
         previewNpc.setYBodyRot(0.0F);
         previewNpc.yBodyRotO = 0.0F;
@@ -1048,7 +1114,7 @@ public final class FixerDialogScreen extends ResponsiveContainerScreen<FixerDial
             case "ripperdoc" -> new RipperdocEntity(ModEntityTypes.RIPPERDOC.get(), minecraft.level);
             case "techie" -> new TechieEntity(ModEntityTypes.TECHIE.get(), minecraft.level);
             case "netrunner" -> new NetrunnerEntity(ModEntityTypes.NETRUNNER.get(), minecraft.level);
-            case "merc" -> new MercEntity(ModEntityTypes.MERC.get(), minecraft.level);
+            case "med_tech" -> ModEntityTypes.MED_TECH.get().create(minecraft.level); case "merc" -> new MercEntity(ModEntityTypes.MERC.get(), minecraft.level);
             default -> new FixerEntity(ModEntityTypes.FIXER.get(), minecraft.level);
         };
     }
@@ -1105,6 +1171,7 @@ public final class FixerDialogScreen extends ResponsiveContainerScreen<FixerDial
             case FixerDialogMenu.RESPONSE_IMMUNOBLOCKERS_OK -> Component.translatable(responseKey("stock_4_ok"));
             case FixerDialogMenu.RESPONSE_COOL_OFF -> Component.translatable(responseKey("cool_off"));
             case FixerDialogMenu.RESPONSE_BUSY_STATE -> Component.translatable(responseKey("busy_state"));
+            case FixerDialogMenu.RESPONSE_DEV_QUEST_UNAVAILABLE -> Component.translatable("screen.cyberneticenhancements.dev_test.quest_unavailable");
             case FixerDialogMenu.RESPONSE_CONTRACTS -> Component.translatable(responseKey("contracts"));
             case FixerDialogMenu.RESPONSE_CONTRACT_ACCEPTED -> Component.translatable(responseKey("contract_accepted"));
             case FixerDialogMenu.RESPONSE_CONTRACT_TURNED_IN -> Component.translatable(responseKey("contract_turned_in"));
@@ -1150,31 +1217,15 @@ public final class FixerDialogScreen extends ResponsiveContainerScreen<FixerDial
             if (!button.visible || button.spec == null || !button.isHovered()) {
                 continue;
             }
-            if (button.spec.tooltip() != null) {
-                guiGraphics.renderTooltip(font, button.spec.tooltip(), mouseX, mouseY);
-                return;
-            }
-        }
-    }
-
-    private void renderShopTooltip(GuiGraphics guiGraphics, int mouseX, int mouseY) {
-        if (mode != ConversationMode.SHOP) {
+            List<Component> lines = new ArrayList<>();
+            lines.add(button.spec.categoryLabel().copy().withStyle(net.minecraft.ChatFormatting.AQUA));
+            lines.add(button.spec.message());
+            lines.add(Component.translatable("screen.cyberneticenhancements.npc.choice_hint." + button.spec.category())
+                    .withStyle(net.minecraft.ChatFormatting.GRAY));
+            if (button.spec.tooltip() != null) lines.add(button.spec.tooltip());
+            guiGraphics.renderComponentTooltip(font, lines, mouseX, mouseY);
             return;
         }
-        int slot = hoveredShopSlot(mouseX, mouseY);
-        if (slot < 0) {
-            return;
-        }
-        ShopEntry entry = shopEntry(slot);
-        List<Component> tooltip = new ArrayList<>();
-        tooltip.add(entry.label());
-        tooltip.add(Component.translatable("screen.cyberneticenhancements.npc.shop.price", menu.priceForOption(entry.optionId())));
-        if (menu.isOptionAvailable(entry.optionId())) {
-            tooltip.add(Component.translatable("screen.cyberneticenhancements.npc.shop.state.available"));
-        } else {
-            tooltip.add(Component.translatable("screen.cyberneticenhancements.npc.shop.state.locked", menu.trustGateLabelForOption(entry.optionId())));
-        }
-        guiGraphics.renderComponentTooltip(font, tooltip, mouseX, mouseY);
     }
 
     private void drawPanel(GuiGraphics guiGraphics, int x, int y, int width, int height, int fill) {
@@ -1203,16 +1254,6 @@ public final class FixerDialogScreen extends ResponsiveContainerScreen<FixerDial
         }
     }
 
-    private Component nextTrustLabel() {
-        return switch (menu.trustLevel()) {
-            case 0 -> Component.translatable("screen.cyberneticenhancements.fixer.trust.next", Component.translatable("screen.cyberneticenhancements.fixer.trust.1"), 20);
-            case 1 -> Component.translatable("screen.cyberneticenhancements.fixer.trust.next", Component.translatable("screen.cyberneticenhancements.fixer.trust.2"), 45);
-            case 2 -> Component.translatable("screen.cyberneticenhancements.fixer.trust.next", Component.translatable("screen.cyberneticenhancements.fixer.trust.3"), 70);
-            case 3 -> Component.translatable("screen.cyberneticenhancements.fixer.trust.next", Component.translatable("screen.cyberneticenhancements.fixer.trust.4"), 90);
-            default -> Component.empty();
-        };
-    }
-
     private Component discountLabel() {
         int discount = menu.trustDiscountPercent();
         return discount <= 0
@@ -1234,39 +1275,6 @@ public final class FixerDialogScreen extends ResponsiveContainerScreen<FixerDial
         };
     }
 
-    private Component currentSummaryHeader() {
-        String type = menu.npcTypeId();
-        return switch (mode) {
-            case SERVICES -> Component.translatable("screen.cyberneticenhancements.npc.summary." + type + ".services.header");
-            case SHOP -> Component.translatable("screen.cyberneticenhancements.npc.summary." + type + ".shop.header");
-            default -> Component.translatable("screen.cyberneticenhancements.npc.summary." + type + ".dialogue.header");
-        };
-    }
-
-    private Component currentSummaryPrimary() {
-        return switch (mode) {
-            case SERVICES -> Component.translatable("screen.cyberneticenhancements.npc.summary." + menu.npcTypeId() + ".services.primary");
-            case SHOP -> Component.translatable("screen.cyberneticenhancements.npc.summary.wallet", menu.balance());
-            default -> Component.translatable("screen.cyberneticenhancements.npc.summary.wallet", menu.balance());
-        };
-    }
-
-    private Component currentSummarySecondary() {
-        if (mode == ConversationMode.SERVICES) {
-            if (!menu.isOptionAvailable(FixerDialogMenu.OPTION_PURGE)) {
-                return Component.translatable("screen.cyberneticenhancements.npc.summary." + menu.npcTypeId() + ".services.secondary.locked", menu.trustGateLabelForOption(FixerDialogMenu.OPTION_PURGE));
-            }
-            if ((menu.npcType() == NpcType.FIXER || menu.npcType() == NpcType.RIPPERDOC) && !menu.purgeReadyClient()) {
-                return Component.translatable("screen.cyberneticenhancements.npc.summary." + menu.npcTypeId() + ".services.secondary.cooldown");
-            }
-            return Component.translatable("screen.cyberneticenhancements.npc.summary." + menu.npcTypeId() + ".services.secondary.live");
-        }
-        if (mode == ConversationMode.SHOP) {
-            return Component.translatable("screen.cyberneticenhancements.npc.summary." + menu.npcTypeId() + ".shop.secondary", discountLabel());
-        }
-        return Component.translatable("screen.cyberneticenhancements.npc.summary." + menu.npcTypeId() + ".dialogue.secondary", discountLabel());
-    }
-
     private int headerX() {
         return leftPos + CONTENT_PADDING;
     }
@@ -1279,8 +1287,13 @@ public final class FixerDialogScreen extends ResponsiveContainerScreen<FixerDial
         return imageWidth - CONTENT_PADDING * 2;
     }
 
+    /** A temporary NPC has no header panel (its name is already the window title), so no gap below it either. */
+    private int headerGap() {
+        return menu.temporary() ? 0 : PANEL_GAP;
+    }
+
     private int headerHeight() {
-        return HEADER_HEIGHT;
+        return menu.temporary() ? 0 : HEADER_HEIGHT;
     }
 
     private int statusX() {
@@ -1288,7 +1301,7 @@ public final class FixerDialogScreen extends ResponsiveContainerScreen<FixerDial
     }
 
     private int statusY() {
-        return headerY() + headerHeight() + PANEL_GAP;
+        return headerY() + headerHeight() + headerGap();
     }
 
     private int statusWidth() {
@@ -1304,9 +1317,7 @@ public final class FixerDialogScreen extends ResponsiveContainerScreen<FixerDial
     }
 
     private int transcriptY() {
-        return mode == ConversationMode.IDENTITY
-                ? statusY()
-                : statusY() + statusHeight() + PANEL_GAP;
+        return mode == ConversationMode.CONTRACTS ? statusY() + statusHeight() + PANEL_GAP : statusY();
     }
 
     private int transcriptWidth() {
@@ -1314,11 +1325,12 @@ public final class FixerDialogScreen extends ResponsiveContainerScreen<FixerDial
     }
 
     private int transcriptHeight() {
-        int baseHeight = imageHeight - CONTENT_PADDING * 2 - HEADER_HEIGHT - STATUS_HEIGHT - CHOICES_HEIGHT - PANEL_GAP * 3;
+        int baseHeight = imageHeight - CONTENT_PADDING * 2 - headerHeight() - headerGap();
+        if (mode == ConversationMode.CONTRACTS) baseHeight -= STATUS_HEIGHT + PANEL_GAP;
         return switch (mode) {
-            case IDENTITY -> baseHeight + STATUS_HEIGHT + CHOICES_HEIGHT + PANEL_GAP * 2;
-            case SHOP -> baseHeight + CHOICES_HEIGHT + PANEL_GAP;
-            default -> baseHeight;
+            case IDENTITY -> baseHeight;
+            case SHOP, SERVICES -> baseHeight;
+            default -> baseHeight - choicesHeight() - PANEL_GAP;
         };
     }
 
@@ -1330,16 +1342,8 @@ public final class FixerDialogScreen extends ResponsiveContainerScreen<FixerDial
         return transcriptY() + PANEL_TEXT_PADDING_Y + IDENTITY_FIELD_Y_OFFSET;
     }
 
-    private int identityColorButtonsX() {
-        return identityGalleryRight() - identityColorButtonsWidth();
-    }
-
-    private int identityColorButtonsWidth() {
-        return NAME_COLOR_PRESETS.length * IDENTITY_COLOR_BUTTON_SIZE + (NAME_COLOR_PRESETS.length - 1) * IDENTITY_COLOR_BUTTON_GAP;
-    }
-
     private int identityFieldWidth() {
-        return Math.max(120, identityColorButtonsX() - 8 - identityFieldX());
+        return Math.max(120, identityGalleryRight() - identityFieldX());
     }
 
     private int identityGalleryX() {
@@ -1394,7 +1398,7 @@ public final class FixerDialogScreen extends ResponsiveContainerScreen<FixerDial
     }
 
     private int choicesHeight() {
-        return CHOICES_HEIGHT;
+        return PANEL_TEXT_PADDING_Y * 2 + font.lineHeight + PANEL_GAP + actionButtonsHeight();
     }
 
     private int shopRowsTop() {
@@ -1405,47 +1409,45 @@ public final class FixerDialogScreen extends ResponsiveContainerScreen<FixerDial
         return actionButtonsStartY() - SHOP_DETAIL_GAP;
     }
 
-    private int shopRowHeight() {
-        return SHOP_ROW_MIN_HEIGHT;
+    private ShopGridLayout shopLayout() {
+        return new ShopGridLayout(shopItemCount(), transcriptWidth() - PANEL_TEXT_PADDING_X * 2,
+                shopRowsBottom() - shopRowsTop(), SHOP_TILE_WIDTH, SHOP_TILE_HEIGHT, SHOP_TILE_GAP, shopScrollbarWidth());
     }
 
-    private int shopRowY(int visibleSlot) {
-        return shopRowsTop() + visibleSlot * (shopRowHeight() + SHOP_ROW_GAP);
+    private int shopGridWidth() {
+        return shopLayout().contentWidth();
+    }
+
+    private int shopColumns() {
+        return shopLayout().columns();
+    }
+
+    private int shopTileWidth() {
+        return shopLayout().tileWidth();
+    }
+
+    private int shopTileX(int slot) {
+        return transcriptX() + PANEL_TEXT_PADDING_X + shopLayout().tileX(slot);
+    }
+
+    private int shopTileY(int slot) {
+        return shopRowsTop() + shopLayout().tileY(slot, shopScrollOffset);
     }
 
     private int shopItemCount() {
-        return 4;
+        return menu.shopOffers().size();
     }
 
     private int visibleShopRowCount() {
-        int availableHeight = shopRowsBottom() - shopRowsTop();
-        int rows = Math.max(1, (availableHeight + SHOP_ROW_GAP) / (SHOP_ROW_MIN_HEIGHT + SHOP_ROW_GAP));
-        return Math.max(1, Math.min(shopItemCount(), Math.min(rows, SHOP_MAX_VISIBLE_ROWS)));
+        return shopLayout().visibleRows();
     }
 
     private int maxShopScrollOffset() {
-        return Math.max(0, shopItemCount() - visibleShopRowCount());
+        return shopLayout().maxScroll();
     }
 
     private void scrollShop(int delta) {
         shopScrollOffset = Math.max(0, Math.min(maxShopScrollOffset(), shopScrollOffset + delta));
-        if (selectedShopSlot < shopScrollOffset) {
-            selectedShopSlot = shopScrollOffset;
-        }
-        int lastVisible = shopScrollOffset + visibleShopRowCount() - 1;
-        if (selectedShopSlot > lastVisible) {
-            selectedShopSlot = lastVisible;
-        }
-    }
-
-    private void alignShopScrollToSelection() {
-        if (selectedShopSlot < shopScrollOffset) {
-            shopScrollOffset = selectedShopSlot;
-        }
-        int lastVisible = shopScrollOffset + visibleShopRowCount() - 1;
-        if (selectedShopSlot > lastVisible) {
-            shopScrollOffset = Math.max(0, selectedShopSlot - visibleShopRowCount() + 1);
-        }
     }
 
     private int shopScrollbarX() {
@@ -1464,70 +1466,40 @@ public final class FixerDialogScreen extends ResponsiveContainerScreen<FixerDial
         return Math.max(18, shopRowsBottom() - shopRowsTop());
     }
 
-    private int hoveredShopSlot(double mouseX, double mouseY) {
-        if (mode != ConversationMode.SHOP) {
-            return -1;
-        }
-        int x = transcriptX() + PANEL_TEXT_PADDING_X;
-        int width = transcriptWidth() - PANEL_TEXT_PADDING_X * 2 - (shopItemCount() > visibleShopRowCount() ? shopScrollbarWidth() + 6 : 0);
-        int height = shopRowHeight();
-        for (int visibleSlot = 0; visibleSlot < visibleShopRowCount(); visibleSlot++) {
-            int slot = shopScrollOffset + visibleSlot;
-            if (slot >= shopItemCount()) {
-                break;
-            }
-            int rowY = shopRowY(visibleSlot);
-            if (mouseX >= x && mouseX < x + width && mouseY >= rowY && mouseY < rowY + height) {
-                return slot;
-            }
-        }
-        return -1;
-    }
-
-    private int clickedShopSlot(double mouseX, double mouseY) {
-        return hoveredShopSlot(mouseX, mouseY);
-    }
-
     private boolean clickedShopScrollbar(double mouseX,double mouseY) {
         var track=shopTrack();if(!shopScrollbar.begin(track,mouseX,mouseY))return false;
         shopScrollOffset=(int)Math.round(shopScrollbar.value(track,mouseX,mouseY));return true;
     }
     private int actionButtonsX() {
-        return (mode == ConversationMode.IDENTITY || mode == ConversationMode.SHOP)
+        return (mode == ConversationMode.IDENTITY || mode == ConversationMode.SHOP || mode == ConversationMode.SERVICES)
                 ? transcriptX() + PANEL_TEXT_PADDING_X
                 : choicesX() + PANEL_TEXT_PADDING_X;
     }
 
     private int actionButtonsWidth() {
-        return (mode == ConversationMode.IDENTITY || mode == ConversationMode.SHOP)
+        return (mode == ConversationMode.IDENTITY || mode == ConversationMode.SHOP || mode == ConversationMode.SERVICES)
                 ? transcriptWidth() - PANEL_TEXT_PADDING_X * 2
                 : choicesWidth() - PANEL_TEXT_PADDING_X * 2;
     }
 
     private int actionButtonsStartY() {
-        int buttonCount = visibleActionButtonCount();
-        int totalHeight = buttonCount * CHOICE_BUTTON_HEIGHT + Math.max(0, buttonCount - 1) * CHOICE_BUTTON_GAP;
-        if (mode == ConversationMode.IDENTITY || mode == ConversationMode.SHOP) {
+        int totalHeight = actionButtonsHeight();
+        if (mode == ConversationMode.IDENTITY || mode == ConversationMode.SHOP || mode == ConversationMode.SERVICES) {
             return transcriptY() + transcriptHeight() - PANEL_TEXT_PADDING_Y - totalHeight;
         }
         return choicesY() + choicesHeight() - PANEL_TEXT_PADDING_Y - totalHeight;
     }
 
+    private int actionButtonsHeight() {
+        int buttonCount = visibleActionButtonCount();
+        return buttonCount * CHOICE_BUTTON_HEIGHT + Math.max(0, buttonCount - 1) * CHOICE_BUTTON_GAP;
+    }
+
     private int visibleActionButtonCount() {
-        if (mode == ConversationMode.SHOP) {
+        if (mode == ConversationMode.SHOP || mode == ConversationMode.SERVICES) {
             return SHOP_VISIBLE_ACTIONS;
         }
         return Math.max(1, currentChoices().size());
-    }
-
-    private record ShopEntry(int optionId, String labelKey, String descriptionKey, ItemStack stack) {
-        private Component label() {
-            return Component.translatable(labelKey);
-        }
-
-        private Component description() {
-            return Component.translatable(descriptionKey);
-        }
     }
 
     private enum ConversationMode {
@@ -1546,14 +1518,13 @@ public final class FixerDialogScreen extends ResponsiveContainerScreen<FixerDial
 
     private enum ChoiceIcon {
         TALK(Icons.DIALOGUE),
+        INTEL(Icons.INFO),
         QUEST(Icons.QUEST),
         SHOP(Icons.SHOP),
         TRADE(Icons.TRADE),
         SERVICE(Icons.CRAFTING),
         IDENTITY(Icons.SETTINGS),
         RESET(Icons.RESET),
-        PREV(Icons.BACK),
-        NEXT(Icons.NEXT),
         BACK(Icons.BACK);
 
         private final Icons icon;
@@ -1564,11 +1535,25 @@ public final class FixerDialogScreen extends ResponsiveContainerScreen<FixerDial
     }
 
     private record ChoiceSpec(ChoiceIcon icon, Component message, boolean enabled, Component tooltip, Runnable action) {
-    }
+        private String category() {
+            return switch (icon) {
+                case TALK -> "talk";
+                case INTEL -> "intel";
+                case QUEST -> "quests";
+                case SHOP -> "shop";
+                case TRADE -> "buy";
+                case SERVICE -> "services";
+                case IDENTITY, RESET -> "customize";
+                case BACK -> "navigate";
+            };
+        }
 
-    private record NameColorPreset(String colorId, int rgb) {
-        private boolean hidden() {
-            return "hidden".equals(colorId);
+        private boolean interactive() {
+            return icon != ChoiceIcon.TALK && icon != ChoiceIcon.BACK;
+        }
+
+        private Component categoryLabel() {
+            return Component.translatable("screen.cyberneticenhancements.npc.choice_type." + category());
         }
     }
 
@@ -1585,17 +1570,25 @@ public final class FixerDialogScreen extends ResponsiveContainerScreen<FixerDial
         }
 
         @Override
+        protected net.minecraft.network.chat.MutableComponent createNarrationMessage() {
+            if (spec == null) return super.createNarrationMessage();
+            return Component.translatable("gui.narrate.button", spec.categoryLabel().copy().append(": ").append(getMessage()));
+        }
+        @Override
         public void renderWidget(GuiGraphics guiGraphics, int mouseX, int mouseY, float partialTick) {
-            boolean hovered = isHovered();
-            UiRenderer.action(guiGraphics, getX(), getY(), width, height, active, highlight.update(active && (hovered || isFocused())));
+            UiRenderer.action(guiGraphics, getX(), getY(), width, height, active, highlight.update(active && UiRenderer.highlighted(this)));
             int contentInset = Math.max(3, (height - font.lineHeight) / 2);
             int textY = getY() + contentInset;
             int iconY = getY() + Math.max(0, (height - font.lineHeight) / 2) + CHOICE_ICON_Y_OFFSET;
             int textX = getX() + contentInset;
             int availableWidth = width - contentInset * 2;
+            if (spec != null) {
+                textX += 2;
+                availableWidth -= 2;
+            }
             if (spec != null && spec.icon() != null) {
                 Component iconComponent = spec.icon().icon.component();
-                guiGraphics.drawString(font, iconComponent, textX, iconY, active ? ACCENT : TEXT_SECONDARY, false);
+                guiGraphics.drawString(font, iconComponent, textX, iconY, active && spec.interactive() ? ACCENT : TEXT_SECONDARY, false);
                 int iconWidth = font.width(iconComponent);
                 textX += iconWidth + contentInset;
                 availableWidth -= iconWidth + contentInset;
@@ -1610,30 +1603,4 @@ public final class FixerDialogScreen extends ResponsiveContainerScreen<FixerDial
 
     }
 
-    private final class ColorPresetButton extends Button {
-        private final NameColorPreset preset;
-        private boolean selected;
-
-        private ColorPresetButton(int x, int y, int width, int height, NameColorPreset preset) {
-            super(x, y, width, height, Component.empty(), button -> {
-                selectedNameColorId = ((ColorPresetButton) button).preset.colorId();
-                AbstractCityNpcEntity npc = currentNpcEntity();
-                if (npc != null) {
-                    npc.setCustomName(Component.literal(currentNpcDisplayName()).withStyle(resolveCurrentNameColor()));
-                    npc.setCustomNameVisible(!((ColorPresetButton) button).preset.hidden());
-                }
-                PacketDistributor.sendToServer(new NpcIdentityNameColorPayload(((ColorPresetButton) button).preset.colorId()));
-            }, DEFAULT_NARRATION);
-            this.preset = preset;
-        }
-
-        @Override
-        public void renderWidget(GuiGraphics guiGraphics, int mouseX, int mouseY, float partialTick) {
-            UiRenderer.control(guiGraphics,getX(),getY(),width,height,active,selected,isHoveredOrFocused(),0xFFFFFFFF);
-            int fill=!active?UiRenderer.ROW_DISABLED:preset.hidden()?UiRenderer.FIELD:preset.rgb();
-            guiGraphics.fill(getX()+3,getY()+3,getX()+width-3,getY()+height-3,fill);            if (preset.hidden()) {
-                guiGraphics.renderItem(new ItemStack(Items.BARRIER), getX() + (width - 16) / 2, getY() + (height - 16) / 2);
-            }
-        }
-    }
 }

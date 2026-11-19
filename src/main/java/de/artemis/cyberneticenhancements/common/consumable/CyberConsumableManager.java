@@ -26,6 +26,7 @@ public final class CyberConsumableManager {
     }
 
     public static void onConsumed(Player player, CyberConsumableDefinition definition) {
+        de.artemis.cyberneticenhancements.common.journal.PlayerJournal.record(player, "cyberware", "consumed", definition.displayName());
         long gameTime = player.level().getGameTime();
         applyCategoryCooldown(player, definition.category(), definition.cooldownTicks());
         addOverdosePoints(player, definition.overdosePoints(), gameTime);
@@ -180,6 +181,10 @@ public final class CyberConsumableManager {
     }
 
     private static void notifyUse(Player player, CyberConsumableDefinition definition) {
+        // These profiles already confirm activation (or psychosis recovery) themselves.
+        if (definition.profile() == CyberConsumableProfile.RAM_JOLT
+                || definition.profile() == CyberConsumableProfile.IMMUNOBLOCKERS
+                || definition.profile() == CyberConsumableProfile.CHROME_SUPPRESSANT) return;
         player.displayClientMessage(
                 Component.translatable(
                         "message.cyberneticenhancements.consumable.used",

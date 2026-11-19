@@ -1,9 +1,12 @@
 package de.artemis.cyberneticenhancements.common.fabrication;
 
+import de.artemis.cyberneticenhancements.common.economy.PlayerEurodollarManager;
+import de.artemis.cyberneticenhancements.common.feedback.PlayerActionFeedback;
 import net.minecraft.core.BlockPos;
 import net.minecraft.nbt.*;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.item.ItemStack;
 import net.minecraft.network.chat.Component;
 import net.neoforged.neoforge.event.entity.player.PlayerEvent;
 import net.neoforged.neoforge.event.OnDatapackSyncEvent;
@@ -12,6 +15,7 @@ import net.neoforged.neoforge.network.PacketDistributor;
 import java.util.*;
 
 public final class SchematicKnowledge {
+    public static final int EXTRACTION_COST = 25;
     private static final String KEY = "cyberneticenhancements.schematics";
     private static final String DETAILS = "cyberneticenhancements.schematic_history";
     private static volatile Map<String, Unlock> client = Map.of();
@@ -93,19 +97,60 @@ public final class SchematicKnowledge {
         if (knows(player, id) || !FabricationContent.SCHEMATICS.containsKey(id)) return false;
         Set<String> ids = new HashSet<>(known(player));
         ids.add(id);
-        ListTag list = new ListTag();
-        ids.stream().sorted().forEach(value -> list.add(StringTag.valueOf(value)));
-        Unlock unlock = new Unlock(id, System.currentTimeMillis(), player.level().getDayTime(), player.level().dimension().location().toString(), location.immutable(), source);
+        saveKnown(player, ids);
         CompoundTag records = player.getPersistentData().getCompound(DETAILS);
-        records.put(id, unlock.save());
-        player.getPersistentData().put(KEY, list);
-        player.getPersistentData().put(DETAILS, records);
+        if (!records.contains(id, Tag.TAG_COMPOUND)) {
+            Unlock unlock = new Unlock(id, System.currentTimeMillis(), player.level().getDayTime(),
+                    player.level().dimension().location().toString(), location.immutable(), source);
+            records.put(id, unlock.save());
+            player.getPersistentData().put(DETAILS, records);
+            player.giveExperiencePoints(de.artemis.cyberneticenhancements.common.progression.ExperienceRewards.SCHEMATIC);
+            de.artemis.cyberneticenhancements.common.journal.PlayerJournal.recordAt(player, location, "workshop", "schematic", FabricationContent.schematicName(id));
+        }
         sync(player);
         player.displayClientMessage(Component.literal("Schematic learned: ").append(FabricationContent.schematicName(id)), true);
         player.playNotifySound(net.minecraft.sounds.SoundEvents.ENCHANTMENT_TABLE_USE, net.minecraft.sounds.SoundSource.PLAYERS, 0.6F, 1.2F);
         player.serverLevel().sendParticles(player, net.minecraft.core.particles.ParticleTypes.ENCHANT, false,
                 player.getX(), player.getY() + 1.0, player.getZ(), 12, 0.35, 0.3, 0.35, 0.1);
         return true;
+    }
+
+    public static void extract(ServerPlayer player, String id) {
+        var item = FabricationContent.SCHEMATICS.get(id);
+        var ids = new HashSet<>(known(player));
+        if (item == null || !ids.remove(id) || !player.isAlive() || player.isSpectator()) return;
+        int slot = player.getInventory().getFreeSlot();
+        if (slot < 0) {
+            player.displayClientMessage(Component.translatable("message.cyberneticenhancements.schematic_extract.inventory_full"), true);
+            PlayerActionFeedback.DENIED.play(player);
+            return;
+        }
+        if (!PlayerEurodollarManager.tryWithdraw(player, EXTRACTION_COST, "expense", "Schematic extraction", null, "")) {
+            player.displayClientMessage(Component.translatable("message.cyberneticenhancements.schematic_extract.insufficient", EXTRACTION_COST), true);
+            PlayerActionFeedback.DENIED.play(player);
+            return;
+        }
+
+        // A legacy unlock has no discovery record, but still counts as previously learned.
+        CompoundTag records = player.getPersistentData().getCompound(DETAILS);
+        if (!records.contains(id, Tag.TAG_COMPOUND)) {
+            records.put(id, Unlock.legacy(id).save());
+            player.getPersistentData().put(DETAILS, records);
+        }
+        saveKnown(player, ids);
+        player.getInventory().setItem(slot, new ItemStack(item.get()));
+        player.inventoryMenu.broadcastChanges();
+        if (player.containerMenu != player.inventoryMenu) player.containerMenu.broadcastChanges();
+        sync(player);
+        player.displayClientMessage(Component.translatable("message.cyberneticenhancements.schematic_extract.success",
+                FabricationContent.schematicName(id), EXTRACTION_COST), true);
+        PlayerActionFeedback.SERVICE.play(player);
+    }
+
+    private static void saveKnown(ServerPlayer player, Set<String> ids) {
+        ListTag list = new ListTag();
+        ids.stream().sorted().forEach(id -> list.add(StringTag.valueOf(id)));
+        player.getPersistentData().put(KEY, list);
     }
 
     public static void sync(ServerPlayer player) {

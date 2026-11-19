@@ -6,7 +6,8 @@ public enum QuestStatus {
     READY("ready"),
     COMPLETED("completed"),
     FAILED("failed"),
-    ABANDONED("abandoned");
+    ABANDONED("abandoned"),
+    CANCELLED("cancelled");
 
     private final String id;
 

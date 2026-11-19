@@ -1,4 +1,5 @@
 package de.artemis.cyberneticenhancements.client;
+import de.artemis.cyberneticenhancements.common.cyberware.CyberwareBalance;
 
 import com.mojang.blaze3d.systems.RenderSystem;
 import de.artemis.cyberneticenhancements.client.ui.UiViewport;
@@ -6,7 +7,7 @@ import de.artemis.cyberneticenhancements.client.ui.HudLayout;
 import de.artemis.cyberneticenhancements.client.ui.UiGraphics;
 import de.artemis.cyberneticenhancements.client.ui.ResponsiveUi;
 import de.artemis.cyberneticenhancements.client.ui.UiRenderer;
-import de.artemis.cyberneticenhancements.client.screen.StationScreenStyle;
+import de.artemis.cyberneticenhancements.client.ui.GameplayHudStyle;
 import de.artemis.cyberneticenhancements.client.tooltip.ModTooltipStyle;
 import de.artemis.cyberneticenhancements.common.cyberware.CombatStatusManager;
 import de.artemis.cyberneticenhancements.common.cyberware.CyberwareEffect;
@@ -24,25 +25,25 @@ import java.util.List;
 import java.util.Locale;
 import java.util.stream.Collectors;
 
-final class CyberwareHudOverlay {
+public final class CyberwareHudOverlay {
     private static final int TOP_MARGIN = 6;
     private static final int CARD_GAP = 4;
-    private static final int CARD_PADDING = 4;
-    private static final int CARD_HEADER_HEIGHT = 15;
+    private static final int CARD_PADDING = 7;
+    private static final int CARD_HEADER_HEIGHT = 17;
     private static final int ROW_HEIGHT = 13;
     private static final int ROW_GAP = 2;
-    private static final int BAR_HEIGHT = 3;
+    private static final int BAR_HEIGHT = 2;
     private static final int BAR_TEXT_GAP = 1;
 
     private static final int TOP_CARD_MIN_WIDTH = 180;
 
-    private static final int TEXT_PRIMARY = StationScreenStyle.TEXT_PRIMARY;
-    private static final int TEXT_SECONDARY = StationScreenStyle.TEXT_SECONDARY;
+    private static final int TEXT_PRIMARY = UiRenderer.TEXT;
+    private static final int TEXT_SECONDARY = UiRenderer.TEXT_SECONDARY;
 
-    private static final int BAR_BACKGROUND = StationScreenStyle.PANEL_DEEP;
-    private static final int BAR_IDLE = StationScreenStyle.SECTION_HIGHLIGHT;
+    private static final int BAR_BACKGROUND = GameplayHudStyle.TRACK;
+    private static final int BAR_IDLE = GameplayHudStyle.TRACK;
     private static final int BAR_CHROME = 0xFF1EE2B5;
-    private static final int BAR_CHROME_IDLE = StationScreenStyle.SECTION_SHADOW;
+    private static final int BAR_CHROME_IDLE = GameplayHudStyle.TRACK;
     private static final int BAR_STRAIN_LOW = 0xFF4E9FFF;
     private static final int BAR_STRAIN_MEDIUM = 0xFFFFAE42;
     private static final int BAR_STRAIN_HIGH = 0xFFFF5C5C;
@@ -71,8 +72,17 @@ final class CyberwareHudOverlay {
     private static final RowTransition TOP_ROW_TRANSITION = new RowTransition();
     private static final RowTransition LEFT_ROW_TRANSITION = new RowTransition();
     private static final RowTransition RIGHT_ROW_TRANSITION = new RowTransition();
+    private static int chatOffset;
 
     private CyberwareHudOverlay() {
+    }
+
+    static void clearChatOffset() { chatOffset = 0; }
+
+    public static int chatOffset() { return chatOffset; }
+
+    static int topStatusBottom() {
+        return (int)Math.ceil(PsychosisTimerOverlay.bottom()/ResponsiveUi.referenceViewport().renderScale());
     }
 
     static void render(GuiGraphics guiGraphics) {
@@ -88,7 +98,7 @@ final class CyberwareHudOverlay {
 
     private static void renderContent(GuiGraphics guiGraphics) {
         Minecraft minecraft = Minecraft.getInstance();
-        if (minecraft.player == null || minecraft.options.hideGui || minecraft.screen instanceof ResponsiveUi) {
+        if (minecraft.player == null || minecraft.options.hideGui) {
             return;
         }
 
@@ -96,21 +106,6 @@ final class CyberwareHudOverlay {
         int width = guiGraphics.guiWidth();
         int height = guiGraphics.guiHeight();
         List<HoverRegion> hoverRegions = new ArrayList<>();
-        PsychosisOverlayPayload psychosisSnapshot = PsychosisOverlayClientState.get();
-        if (!psychosisSnapshot.entries().isEmpty()) {
-            renderAnimatedTopRow(
-                    guiGraphics,
-                    font,
-                    hoverRegions,
-                    TOP_ROW_TRANSITION,
-                    buildPsychosisCards(psychosisSnapshot, width),
-                    width / 2,
-                    TOP_MARGIN
-            );
-        } else {
-            renderAnimatedTopRow(guiGraphics, font, hoverRegions, TOP_ROW_TRANSITION, List.of(), width / 2, TOP_MARGIN);
-        }
-
         CyberwareHudPayload snapshot = CyberwareHudClientState.get();
         if (snapshot == null) {
             return;
@@ -143,6 +138,16 @@ final class CyberwareHudOverlay {
             rightCards = buildBottomAnchoredRightCards(snapshot, rowCardWidth);
         }
         renderHudBand(guiGraphics, font, hoverRegions, RIGHT_ROW_TRANSITION, rightCards, layout.right(), true);
+
+        UiViewport viewport = ResponsiveUi.referenceViewport();
+        var chat = minecraft.gui.getChat();
+        int top = layout.left().bottom() - bandHeight(leftCards, layout.left().columns() == 1);
+        if (!rightCards.isEmpty() && chat.getWidth() + 4 > viewport.toScreenFloor(layout.right().x())) {
+            top = Math.min(top, layout.right().bottom() - bandHeight(rightCards, layout.right().columns() == 1));
+        }
+        int chatBaseline = minecraft.getWindow().getGuiScaledHeight() - 40;
+        int gap = Math.max(6, (int) Math.ceil(chat.getScale() * 9) + 2);
+        chatOffset = Math.max(0, chatBaseline - Math.max(12, viewport.toScreenFloor(top) - gap));
 
         for (HoverRegion hoverRegion : hoverRegions) {
             if (hoverRegion.contains(mouseX, mouseY)) {
@@ -234,7 +239,7 @@ final class CyberwareHudOverlay {
                 Math.min(1.0F, snapshot.effectiveCyberstrain() / 50.0F),
                 strainColor(snapshot.effectiveCyberstrain()),
                 BAR_BACKGROUND,
-                snapshot.psychosisSeconds() > 0 || snapshot.effectiveCyberstrain() >= 35,
+                snapshot.psychosisSeconds() > 0 || snapshot.effectiveCyberstrain() >= CyberwareBalance.intValue("cyberstrain.threshold.psychosis"),
                 strainTooltip
         ));
 
@@ -653,7 +658,7 @@ final class CyberwareHudOverlay {
     ) {
         drawCardFrame(guiGraphics, x, y, card.width(), card.height());
         Component title = trimComponent(font, card.title(), card.width() - CARD_PADDING * 2);
-        guiGraphics.drawString(font, title, x + CARD_PADDING, y + 5, TEXT_PRIMARY, true);
+        guiGraphics.drawString(font, title, x + CARD_PADDING, y + 5, UiRenderer.ACCENT, false);
 
         int rowY = y + CARD_HEADER_HEIGHT + CARD_PADDING;
         for (RowData row : card.rows()) {
@@ -670,17 +675,20 @@ final class CyberwareHudOverlay {
         int valueWidth = font.width(value);
         int labelMaxWidth = Math.max(1, width - valueWidth - 8);
         Component label = trimComponent(font, row.label(), labelMaxWidth);
-        guiGraphics.drawString(font, label, x, y, TEXT_SECONDARY, true);
-        guiGraphics.drawString(font, value, x + width - valueWidth, y, TEXT_PRIMARY, true);
+        guiGraphics.drawString(font, label, x, y, TEXT_SECONDARY, false);
+        guiGraphics.drawString(font, value, x + width - valueWidth, y, TEXT_PRIMARY, false);
 
         int barY = y + font.lineHeight + BAR_TEXT_GAP;
         drawHorizontalBar(guiGraphics, x, barY, width, BAR_HEIGHT, row.ratio(), row.idleColor(), row.fillColor(), row.warning());
     }
 
-    private static void drawCardFrame(GuiGraphics guiGraphics, int x, int y, int width, int height) {
-        UiRenderer.panel(guiGraphics, x, y, width, height, 0xB0181F28, 0xA02C4B63);
-        guiGraphics.fill(x + 1, y + 1, x + width - 1, y + CARD_HEADER_HEIGHT, 0x60232C36);
-        guiGraphics.fill(x + 6, y + CARD_HEADER_HEIGHT, x + width - 6, y + CARD_HEADER_HEIGHT + 1, 0x808BDAF8);
+    static void drawCardFrame(GuiGraphics guiGraphics, int x, int y, int width, int height) {
+        drawCardFrame(guiGraphics, x, y, width, height, UiRenderer.ACCENT);
+    }
+
+    static void drawCardFrame(GuiGraphics guiGraphics, int x, int y, int width, int height, int accent) {
+        GameplayHudStyle.panel(guiGraphics, x, y, width, height, accent, 1);
+        GameplayHudStyle.separator(guiGraphics, x + CARD_PADDING, y + CARD_HEADER_HEIGHT, width - CARD_PADDING * 2);
     }
 
     private static void drawHorizontalBar(
@@ -694,15 +702,7 @@ final class CyberwareHudOverlay {
             int fillColor,
             boolean warning
     ) {
-        guiGraphics.fill(x, y, x + width, y + height, StationScreenStyle.PANEL_EDGE);
-        guiGraphics.fill(x + 1, y + 1, x + width - 1, y + height - 1, backgroundColor);
-
-        int innerWidth = Math.max(0, width - 2);
-        int fillWidth = Math.max(0, Math.min(innerWidth, Math.round(innerWidth * ratio)));
-        if (fillWidth > 0) {
-            guiGraphics.fill(x + 1, y + 1, x + 1 + fillWidth, y + height - 1, fillColor);
-            guiGraphics.fill(x + 1, y + 1, x + 1 + fillWidth, y + 2, 0x55FFFFFF);
-        }
+        GameplayHudStyle.meter(guiGraphics, x, y, width, height, ratio, backgroundColor, fillColor, warning);
     }
 
     private static void renderHoverTooltip(

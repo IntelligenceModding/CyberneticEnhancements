@@ -17,7 +17,11 @@ public final class ModBlockTagProvider extends BlockTagsProvider {
 
     @Override
     protected void addTags(HolderLookup.@NotNull Provider provider) {
+        tag(BlockTags.MINEABLE_WITH_PICKAXE).add(ModBlocks.CHROMIUM_ORE.get(), ModBlocks.DEEPSLATE_CHROMIUM_ORE.get());
+        tag(BlockTags.NEEDS_IRON_TOOL).add(ModBlocks.CHROMIUM_ORE.get(), ModBlocks.DEEPSLATE_CHROMIUM_ORE.get());
+        tag(BlockTags.MINEABLE_WITH_AXE).add(ModBlocks.DROPOFF_POINT.get());
         tag(BlockTags.MINEABLE_WITH_PICKAXE)
+                .add(ModBlocks.IRON_QUEST_CRATE.get())
                 .add(ModBlocks.CYBERWARE_FABRICATOR.get())
                 .add(ModBlocks.RELIC_CACHE.get())
                 .add(ModBlocks.RIPPER_STATION.get())
@@ -26,6 +30,7 @@ public final class ModBlockTagProvider extends BlockTagsProvider {
                 .add(ModBlocks.RECYCLER_STATION.get());
 
         tag(BlockTags.NEEDS_STONE_TOOL)
+                .add(ModBlocks.IRON_QUEST_CRATE.get())
                 .add(ModBlocks.CYBERWARE_FABRICATOR.get())
                 .add(ModBlocks.RELIC_CACHE.get())
                 .add(ModBlocks.RIPPER_STATION.get())

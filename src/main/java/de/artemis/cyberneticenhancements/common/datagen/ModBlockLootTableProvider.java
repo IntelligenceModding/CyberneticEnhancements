@@ -12,6 +12,8 @@ import java.util.Set;
 
 public final class ModBlockLootTableProvider extends BlockLootSubProvider {
     private static final Set<Block> DIRECT_BLOCKS = Set.of(
+            ModBlocks.IRON_QUEST_CRATE.get(),
+            ModBlocks.DROPOFF_POINT.get(),
             ModBlocks.CYBERWARE_FABRICATOR.get(),
             ModBlocks.RELIC_CACHE.get(),
             ModBlocks.UNCOMMON_RELIC_CACHE.get(),
@@ -30,11 +32,19 @@ public final class ModBlockLootTableProvider extends BlockLootSubProvider {
 
     @Override
     protected void generate() {
-        DIRECT_BLOCKS.forEach(this::dropSelf);
+        add(ModBlocks.CHROMIUM_ORE.get(), createOreDrop(ModBlocks.CHROMIUM_ORE.get(), de.artemis.cyberneticenhancements.common.registry.ModItems.RAW_CHROMIUM.get()));
+        add(ModBlocks.DEEPSLATE_CHROMIUM_ORE.get(), createOreDrop(ModBlocks.DEEPSLATE_CHROMIUM_ORE.get(), de.artemis.cyberneticenhancements.common.registry.ModItems.RAW_CHROMIUM.get()));
+        DIRECT_BLOCKS.forEach(block -> {
+            if (block instanceof de.artemis.cyberneticenhancements.common.block.RelicCacheBlock)
+                add(block, net.minecraft.world.level.storage.loot.LootTable.lootTable());
+            else dropSelf(block);
+        });
     }
 
     @Override
     protected @NotNull Iterable<Block> getKnownBlocks() {
-        return List.copyOf(DIRECT_BLOCKS);
+        var blocks = new java.util.ArrayList<>(DIRECT_BLOCKS);
+        blocks.addAll(List.of(ModBlocks.CHROMIUM_ORE.get(), ModBlocks.DEEPSLATE_CHROMIUM_ORE.get()));
+        return blocks;
     }
 }

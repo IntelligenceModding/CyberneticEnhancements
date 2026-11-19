@@ -3,7 +3,7 @@
   "parts": [
     {
       "ingredient": {
-        "item": "minecraft:iron_ingot"
+        "item": "cyberneticenhancements:chromium_alloy_ingot"
       },
       "slot": 6
     },
@@ -21,7 +21,7 @@
     },
     {
       "ingredient": {
-        "item": "minecraft:iron_ingot"
+        "item": "cyberneticenhancements:chromium_alloy_ingot"
       },
       "slot": 12
     }

@@ -40,7 +40,7 @@ public final class CyberwareEffects {
 
     public static void onPlayerTick(PlayerTickEvent.Post event) {
         Player player = event.getEntity();
-        if (player.level().isClientSide()) {
+        if (player.level().isClientSide() || !player.isAlive()) {
             return;
         }
 
@@ -106,7 +106,7 @@ public final class CyberwareEffects {
         double targetBonus = Math.max(0.0D, maxHealthBonus);
         double previousBonus = persistentData.getDouble(LAST_MAX_HEALTH_BONUS_KEY);
         double gainedBonus = targetBonus - previousBonus;
-        if (gainedBonus > 0.0001D) {
+        if (gainedBonus > 0.0001D && player.isAlive()) {
             player.heal((float) gainedBonus);
         }
 
@@ -154,13 +154,13 @@ public final class CyberwareEffects {
                 continue;
             }
 
-            double integrityScale = CyberwareConditionHelper.getIntegrityRatio(stack, cyberwareItem.getDefinition());
+            double integrityScale = CyberwareConditionHelper.getPerformanceRatio(stack, cyberwareItem.getDefinition());
             mergeEffects(totals, cyberwareItem.getEffects(stack), integrityScale);
         }
-        for (CyberwareModuleItem moduleItem : inventory.getInstalledModuleItems()) {
+        for (CyberwareModuleItem moduleItem : inventory.getOperationalModuleItems()) {
             mergeEffects(totals, moduleItem.getDefinition().effects());
         }
-        for (ChipwareItem chipwareItem : inventory.getInstalledChipwareItems()) {
+        for (ChipwareItem chipwareItem : inventory.getOperationalChipwareItems()) {
             mergeEffects(totals, chipwareItem.getDefinition().effects());
         }
 

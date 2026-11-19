@@ -139,7 +139,7 @@ public final class CyberwareUpgradeHelper {
         for (int slot = 0; slot < inventory.getSlots(); slot++) {
             ItemStack stack = inventory.getStackInSlot(slot);
             if (stack.getItem() instanceof CyberwareItem item && item.getDefinition().id().equals(id)
-                    && CyberwareConditionHelper.getIntegrity(stack, item.getDefinition()) > 0)
+                    && CyberwareConditionHelper.getPerformanceRatio(stack, item.getDefinition()) > 0)
                 multiplier = Math.max(multiplier, CyberwareUpgradeRegistry.get(id).at(getUpgradeLevel(stack)).functionMultiplier());
         }
         return multiplier;

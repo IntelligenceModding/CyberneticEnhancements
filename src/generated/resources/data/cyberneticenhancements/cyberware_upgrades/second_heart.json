@@ -68,8 +68,8 @@
   ],
   "repair_materials": [
     {
-      "count": 2,
-      "item": "cyberneticenhancements:legendary_item_components"
+      "count": 1,
+      "item": "cyberneticenhancements:rare_item_components"
     },
     {
       "count": 2,

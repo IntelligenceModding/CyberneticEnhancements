@@ -15,6 +15,13 @@ import net.minecraft.world.level.Level;
 import java.util.Arrays;
 
 public final class RelicCacheHackMenu extends AbstractBaseMenu implements NamedBlockMenu {
+    @Override
+    public void removed(Player player) {
+        super.removed(player);
+        if (player instanceof net.minecraft.server.level.ServerPlayer serverPlayer && blockEntity != null)
+            blockEntity.onHackMenuClosed(serverPlayer);
+    }
+
     private static final int STATUS_INDEX = 0;
     private static final int DIFFICULTY_INDEX = 1;
     private static final int GRID_SIZE_INDEX = 2;
@@ -23,6 +30,7 @@ public final class RelicCacheHackMenu extends AbstractBaseMenu implements NamedB
     private static final int SELECTED_COUNT_INDEX = 5;
     private static final int TARGET_COUNT_INDEX = 6;
     private static final int COMPLETED_MASK_INDEX = 7;
+    private static final int QUEST_CONTRACT_INDEX = 8;
     private static final int GRID_START_INDEX = 16;
     private static final int GRID_DATA_COUNT = RelicCacheHackPuzzle.MAX_GRID_CELLS;
     private static final int TARGET_LENGTH_START_INDEX = GRID_START_INDEX + GRID_DATA_COUNT;
@@ -80,6 +88,7 @@ public final class RelicCacheHackMenu extends AbstractBaseMenu implements NamedB
     }
 
     private int serverValue(int dataIndex) {
+        if (dataIndex == QUEST_CONTRACT_INDEX) return blockEntity != null && blockEntity.isQuestCache() ? 1 : 0;
         if (blockEntity == null) {
             return -1;
         }
@@ -159,6 +168,8 @@ public final class RelicCacheHackMenu extends AbstractBaseMenu implements NamedB
     public int completedMask() {
         return Math.max(0, syncedData[COMPLETED_MASK_INDEX]);
     }
+
+    public boolean isQuestCache() { return syncedData[QUEST_CONTRACT_INDEX] == 1; }
 
     public int tokenAtCell(int cellIndex) {
         if (cellIndex < 0 || cellIndex >= GRID_DATA_COUNT) {

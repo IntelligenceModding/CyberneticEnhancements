@@ -5,5 +5,6 @@ public enum NpcDialogueView {
     SERVICES,
     SHOP,
     CONTRACTS,
+    CACHE_INTEL,
     CLOSE
 }

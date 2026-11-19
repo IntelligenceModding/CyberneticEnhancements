@@ -13,7 +13,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
-public record FaceHazardHighlightPayload(List<BlockPos> positions, List<UUID> entityIds, int ttlTicks) implements CustomPacketPayload {
+public record FaceHazardHighlightPayload(List<BlockPos> positions, List<UUID> entityIds, int ttlTicks, boolean npcLocator) implements CustomPacketPayload {
     public static final Type<FaceHazardHighlightPayload> TYPE =
             new Type<>(ResourceLocation.fromNamespaceAndPath(CyberneticEnhancements.MOD_ID, "face_hazard_highlight"));
     public static final StreamCodec<RegistryFriendlyByteBuf, FaceHazardHighlightPayload> STREAM_CODEC = StreamCodec.composite(
@@ -23,8 +23,14 @@ public record FaceHazardHighlightPayload(List<BlockPos> positions, List<UUID> en
             FaceHazardHighlightPayload::entityIds,
             ByteBufCodecs.INT,
             FaceHazardHighlightPayload::ttlTicks,
+            ByteBufCodecs.BOOL,
+            FaceHazardHighlightPayload::npcLocator,
             FaceHazardHighlightPayload::new
     );
+
+    public FaceHazardHighlightPayload(List<BlockPos> positions, List<UUID> entityIds, int ttlTicks) {
+        this(positions, entityIds, ttlTicks, false);
+    }
 
     @Override
     public Type<FaceHazardHighlightPayload> type() {

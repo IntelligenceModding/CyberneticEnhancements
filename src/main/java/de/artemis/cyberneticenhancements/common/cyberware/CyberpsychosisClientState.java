@@ -12,6 +12,7 @@ public final class CyberpsychosisClientState {
     private static volatile float strafe;
     private static volatile boolean jump;
     private static volatile boolean sprint;
+    private static long lastSmoothingNanos;
 
     private CyberpsychosisClientState() {
     }
@@ -36,6 +37,11 @@ public final class CyberpsychosisClientState {
         return targetPitch;
     }
 
+    public static void alignView(float yaw, float pitch) {
+        appliedYaw = yaw;
+        appliedPitch = Mth.clamp(pitch, -90, 90);
+    }
+
     public static float forward() {
         return forward;
     }
@@ -58,13 +64,14 @@ public final class CyberpsychosisClientState {
         targetYaw = newYaw;
         targetPitch = newPitch;
         if (!wasLocked || !locked) {
+            lastSmoothingNanos = 0;
             appliedYaw = newYaw;
             appliedPitch = newPitch;
         }
-        forward = newForward;
-        strafe = newStrafe;
-        jump = newJump;
-        sprint = newSprint;
+        forward = locked ? newForward : 0;
+        strafe = locked ? newStrafe : 0;
+        jump = locked && newJump;
+        sprint = locked && newSprint;
     }
 
     public static void tickSmoothing() {
@@ -72,10 +79,14 @@ public final class CyberpsychosisClientState {
             return;
         }
 
+        long now = System.nanoTime();
+        float seconds = lastSmoothingNanos == 0 ? 1F / 60 : Math.clamp((now - lastSmoothingNanos) / 1_000_000_000F, 0, .1F);
+        lastSmoothingNanos = now;
+        float blend = 1 - (float) Math.exp(-seconds / .085F);
         float yawDelta = Mth.wrapDegrees(targetYaw - appliedYaw);
         float pitchDelta = targetPitch - appliedPitch;
-        appliedYaw += Mth.clamp(yawDelta * 0.18F, -5.5F, 5.5F);
-        appliedPitch += Mth.clamp(pitchDelta * 0.20F, -4.0F, 4.0F);
+        appliedYaw += Mth.clamp(yawDelta * blend, -360 * seconds, 360 * seconds);
+        appliedPitch += Mth.clamp(pitchDelta * blend, -240 * seconds, 240 * seconds);
         appliedPitch = Mth.clamp(appliedPitch, -90.0F, 90.0F);
     }
 

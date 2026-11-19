@@ -1,0 +1,6 @@
+{
+  "parent": "cyberneticenhancements:block/chromium_outline",
+  "textures": {
+    "all": "minecraft:block/deepslate_iron_ore"
+  }
+}

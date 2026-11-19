@@ -33,7 +33,11 @@ public final class NpcSkinModels {
     }
 
     public static void registerReloadListeners(RegisterClientReloadListenersEvent event) {
-        event.registerReloadListener((ResourceManagerReloadListener) manager -> SLIM_MODELS.clear());
+        event.registerReloadListener((ResourceManagerReloadListener) manager -> {
+            SLIM_MODELS.clear();
+            FixerEntityRenderer.clearTextureCache();
+            NpcSkinLayers.clear();
+        });
     }
 
     public static boolean isSlim(ResourceLocation texture) {

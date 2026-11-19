@@ -16,7 +16,7 @@
     },
     {
       "ingredient": {
-        "item": "cyberneticenhancements:basic_circuit_plate"
+        "item": "cyberneticenhancements:rare_item_components"
       },
       "slot": 12
     },
@@ -37,5 +37,6 @@
     "count": 1,
     "id": "cyberneticenhancements:trader_skillchip"
   },
+  "ticks": 180,
   "tier": 3
 }

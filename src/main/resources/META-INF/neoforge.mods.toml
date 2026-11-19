@@ -21,6 +21,47 @@ versionRange="[${neo_version},)"
 ordering="NONE"
 side="BOTH"
 
+# Warn about overlapping screen customizations without blocking modpacks.
+# Overlapping client UI settings default off; saved pack choices are preserved.
+[[dependencies.${mod_id}]]
+modId="fancymenu"
+type="discouraged"
+reason="FancyMenu can overlap Cybernetic Enhancements screen customizations. All five custom screen options default off for new or missing client settings. Saved choices are preserved, and modpack authors can re-enable individual options."
+versionRange="*"
+ordering="NONE"
+side="CLIENT"
+
+[[dependencies.${mod_id}]]
+modId="drippyloadingscreen"
+type="discouraged"
+reason="Drippy Loading Screen can overlap Cybernetic Enhancements loading visuals. customLoadingScreen defaults off for new or missing client settings. Saved choices are preserved, and modpack authors can re-enable it."
+versionRange="*"
+ordering="NONE"
+side="CLIENT"
+
+[[dependencies.${mod_id}]]
+modId="packmenu"
+type="discouraged"
+reason="PackMenu can overlap Cybernetic Enhancements title visuals. customTitleScreen, customTitleBackground and showLaunchIntro default off for new or missing client settings. Saved choices are preserved, and modpack authors can re-enable them."
+versionRange="*"
+ordering="NONE"
+side="CLIENT"
+
+[[dependencies.${mod_id}]]
+modId="custommainmenu"
+type="discouraged"
+reason="Custom Main Menu can overlap Cybernetic Enhancements title visuals. customTitleScreen, customTitleBackground and showLaunchIntro default off for new or missing client settings. Saved choices are preserved, and modpack authors can re-enable them."
+versionRange="*"
+ordering="NONE"
+side="CLIENT"
+
+[[dependencies.${mod_id}]]
+modId="voicechat_api"
+type="optional"
+versionRange="[2.6.27,3)"
+ordering="AFTER"
+side="BOTH"
+
 [[dependencies.${mod_id}]]
 modId="minecraft"
 type="required"

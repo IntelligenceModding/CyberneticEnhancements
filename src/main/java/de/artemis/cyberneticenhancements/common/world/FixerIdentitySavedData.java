@@ -38,12 +38,13 @@ public final class FixerIdentitySavedData extends SavedData {
     private static final Factory<FixerIdentitySavedData> FACTORY =
             new Factory<>(FixerIdentitySavedData::new, FixerIdentitySavedData::load, null);
     private final Map<UUID, IdentityAssignment> assignedIdentities = new LinkedHashMap<>();
+    private final java.util.Set<UUID> deceased = new java.util.HashSet<>();
 
     public static FixerIdentitySavedData get(ServerLevel level) {
         return level.getServer().overworld().getDataStorage().computeIfAbsent(FACTORY, DATA_NAME);
     }
 
-    private static FixerIdentitySavedData load(CompoundTag tag, HolderLookup.Provider registries) {
+    static FixerIdentitySavedData load(CompoundTag tag, HolderLookup.Provider registries) {
         FixerIdentitySavedData data = new FixerIdentitySavedData();
         ListTag assignments = tag.getList(ASSIGNMENTS_TAG, Tag.TAG_COMPOUND);
         for (Tag entry : assignments) {
@@ -64,7 +65,17 @@ public final class FixerIdentitySavedData extends SavedData {
                     : null;
             data.assignedIdentities.put(compound.getUUID(UUID_TAG), new IdentityAssignment(name, nickname, nameColor, appearance, category, typeId, dimensionId, homePos));
         }
+        for (var entry : tag.getList("Deceased", Tag.TAG_COMPOUND)) {
+            var npc = (CompoundTag) entry;
+            if (npc.hasUUID(UUID_TAG)) data.deceased.add(npc.getUUID(UUID_TAG));
+        }
         return data;
+    }
+
+    public boolean isDeceased(UUID npcId) { return deceased.contains(npcId); }
+
+    public void markDeceased(UUID npcId) {
+        if (deceased.add(npcId)) setDirty();
     }
 
     public IdentityAssignment getOrAssignIdentity(UUID fixerId, String npcTypeId, RandomSource random) {
@@ -191,6 +202,13 @@ public final class FixerIdentitySavedData extends SavedData {
             assignments.add(compound);
         }
         tag.put(ASSIGNMENTS_TAG, assignments);
+        var deaths = new ListTag();
+        for (var npcId : deceased) {
+            var entry = new CompoundTag();
+            entry.putUUID(UUID_TAG, npcId);
+            deaths.add(entry);
+        }
+        tag.put("Deceased", deaths);
         return tag;
     }
 
@@ -199,6 +217,10 @@ public final class FixerIdentitySavedData extends SavedData {
     }
 
     public record IdentityAssignment(String name, String nickname, String nameColorId, String appearance, NpcCategory category, String npcTypeId, String dimensionId, BlockPos homePos) {
+        public IdentityAssignment {
+            nameColorId = "light_purple".equals(nameColorId) ? "light_purple" : "aqua";
+            if (NpcAppearanceRules.reserved(appearance)) appearance = "";
+        }
         public String displayName() {
             return nickname == null || nickname.isBlank() ? name : nickname;
         }

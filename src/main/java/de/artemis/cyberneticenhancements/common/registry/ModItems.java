@@ -31,6 +31,10 @@ import java.util.function.UnaryOperator;
 
 public final class ModItems {
     public static final DeferredRegister.Items ITEMS = DeferredRegister.createItems(CyberneticEnhancements.MOD_ID);
+    public static final DeferredItem<Item> RAW_CHROMIUM = register("raw_chromium", Item::new, UnaryOperator.identity());
+    public static final DeferredItem<Item> CHROMIUM_SCRAP = register("chromium_scrap", Item::new, UnaryOperator.identity());
+    public static final DeferredItem<Item> CHROMIUM_ALLOY = register("chromium_alloy_ingot", Item::new, UnaryOperator.identity());
+    public static final DeferredItem<Item> CHROMIUM_SURVEY = register("chromium_survey", de.artemis.cyberneticenhancements.common.item.ChromiumSurveyItem::new, p -> p.stacksTo(1));
 
     public static final DeferredItem<Item> COPPER_WIRING = register("copper_wiring", Item::new, UnaryOperator.identity());
     public static final DeferredItem<Item> CONDUCTIVE_PASTE = register("conductive_paste", Item::new, UnaryOperator.identity());
@@ -49,6 +53,9 @@ public final class ModItems {
             Item::new,
             properties -> properties.stacksTo(1).rarity(Rarity.UNCOMMON)
     );
+    /** Quest items of the missing-patient quest; both are bound to one contract and fail it if lost. */
+    public static final DeferredItem<Item> REVIVE_INJECTOR = register("revive_injector", Item::new, properties -> properties.stacksTo(1).rarity(Rarity.RARE));
+    public static final DeferredItem<Item> SIGNAL_BEACON = register("signal_beacon", de.artemis.cyberneticenhancements.common.item.SignalBeaconItem::new, properties -> properties.stacksTo(1).rarity(Rarity.UNCOMMON));
     public static final DeferredItem<Item> FIXER_SPAWN_EGG = register(
             "fixer_spawn_egg",
             properties -> new SpawnEggItem(ModEntityTypes.FIXER.get(), 0x24323E, 0x1EE2B5, properties),
@@ -75,9 +82,20 @@ public final class ModItems {
             UnaryOperator.identity()
     );
 
+    public static final DeferredItem<Item> MED_TECH_SPAWN_EGG = register("med_tech_spawn_egg", properties -> new SpawnEggItem(ModEntityTypes.MED_TECH.get(), 0xDDEEDD, 0x22AA77, properties), UnaryOperator.identity());
+    public static final DeferredItem<Item> MAXTEC_SPAWN_EGG = register(
+            "maxtec_spawn_egg",
+            properties -> new SpawnEggItem(ModEntityTypes.MAXTEC_GUARD.get(), 0x202C3B, 0x8BDAF8, properties),
+            UnaryOperator.identity());
+    public static final DeferredItem<Item> DEV_TEST_SPAWN_EGG = register(
+            "dev_test_spawn_egg",
+            properties -> new SpawnEggItem(ModEntityTypes.DEV_TEST.get(), 0x202020, 0xFF00FF, properties),
+            properties -> properties.rarity(Rarity.EPIC));
+
     private static final Map<String, DeferredItem<CyberwareItem>> CYBERWARE_BY_ID = createCyberwareRegistry();
 
     public static final List<DeferredItem<Item>> MATERIALS = List.of(
+            RAW_CHROMIUM, CHROMIUM_SCRAP, CHROMIUM_ALLOY, CHROMIUM_SURVEY,
             COPPER_WIRING,
             CONDUCTIVE_PASTE,
             SERVO_SCREWS,
@@ -90,12 +108,12 @@ public final class ModItems {
             RARE_ITEM_COMPONENTS,
             EPIC_ITEM_COMPONENTS,
             LEGENDARY_ITEM_COMPONENTS,
-            COURIER_PACKAGE,
+            COURIER_PACKAGE, REVIVE_INJECTOR, SIGNAL_BEACON,
             FIXER_SPAWN_EGG,
             RIPPERDOC_SPAWN_EGG,
             TECHIE_SPAWN_EGG,
             NETRUNNER_SPAWN_EGG,
-            MERC_SPAWN_EGG
+            MED_TECH_SPAWN_EGG, MERC_SPAWN_EGG, MAXTEC_SPAWN_EGG
     );
 
     private static final List<DeferredItem<CyberwareItem>> CYBERWARE_ITEMS = List.copyOf(CYBERWARE_BY_ID.values());

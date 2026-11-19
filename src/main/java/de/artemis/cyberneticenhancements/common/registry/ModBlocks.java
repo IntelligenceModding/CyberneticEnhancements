@@ -24,6 +24,19 @@ import java.util.function.UnaryOperator;
 
 public final class ModBlocks {
     public static final DeferredRegister.Blocks BLOCKS = DeferredRegister.createBlocks(CyberneticEnhancements.MOD_ID);
+    public static final DeferredBlock<Block> CHROMIUM_ORE = register("chromium_ore", de.artemis.cyberneticenhancements.common.block.ChromiumOreBlock::new,
+            p -> BlockBehaviour.Properties.ofFullCopy(Blocks.IRON_ORE).requiresCorrectToolForDrops());
+    public static final DeferredBlock<Block> DEEPSLATE_CHROMIUM_ORE = register("deepslate_chromium_ore", de.artemis.cyberneticenhancements.common.block.ChromiumOreBlock::new,
+            p -> BlockBehaviour.Properties.ofFullCopy(Blocks.DEEPSLATE_IRON_ORE).requiresCorrectToolForDrops());
+    public static final DeferredBlock<de.artemis.cyberneticenhancements.common.block.DropoffPointBlock> DROPOFF_POINT = register(
+            "dropoff_point", de.artemis.cyberneticenhancements.common.block.DropoffPointBlock::new,
+            properties -> BlockBehaviour.Properties.ofFullCopy(Blocks.BARREL));
+    public static final DeferredBlock<de.artemis.cyberneticenhancements.common.block.HoloBarrierBlock> HOLO_BARRIER = register(
+            "holo_barrier", de.artemis.cyberneticenhancements.common.block.HoloBarrierBlock::new,
+            properties -> properties.noCollission().noOcclusion().strength(-1F, 3600000F).noLootTable());
+    public static final DeferredBlock<de.artemis.cyberneticenhancements.common.block.IronQuestCrateBlock> IRON_QUEST_CRATE = register(
+            "iron_quest_crate", de.artemis.cyberneticenhancements.common.block.IronQuestCrateBlock::new,
+            properties -> BlockBehaviour.Properties.ofFullCopy(Blocks.IRON_BLOCK).strength(3.5F).sound(SoundType.METAL));
     public static final DeferredBlock<de.artemis.cyberneticenhancements.common.fabrication.FabricatorBlock> CYBERWARE_FABRICATOR = register(
             "cyberware_fabricator", de.artemis.cyberneticenhancements.common.fabrication.FabricatorBlock::new,
             properties -> properties.strength(3.5F).sound(SoundType.METAL));

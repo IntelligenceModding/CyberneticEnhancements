@@ -4,9 +4,21 @@
   "parts": [
     {
       "ingredient": {
+        "item": "cyberneticenhancements:rare_item_components"
+      },
+      "slot": 1
+    },
+    {
+      "ingredient": {
         "item": "cyberneticenhancements:sensor_lens"
       },
       "slot": 2
+    },
+    {
+      "ingredient": {
+        "item": "cyberneticenhancements:rare_item_components"
+      },
+      "slot": 3
     },
     {
       "ingredient": {

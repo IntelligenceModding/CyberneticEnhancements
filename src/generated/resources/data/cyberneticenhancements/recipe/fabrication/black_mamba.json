@@ -4,6 +4,12 @@
   "parts": [
     {
       "ingredient": {
+        "item": "cyberneticenhancements:rare_item_components"
+      },
+      "slot": 0
+    },
+    {
+      "ingredient": {
         "item": "cyberneticenhancements:biocompatible_mesh"
       },
       "slot": 1
@@ -19,6 +25,12 @@
         "item": "cyberneticenhancements:biocompatible_mesh"
       },
       "slot": 3
+    },
+    {
+      "ingredient": {
+        "item": "cyberneticenhancements:rare_item_components"
+      },
+      "slot": 4
     },
     {
       "ingredient": {

@@ -73,7 +73,7 @@ public final class SandevistanManager {
         } else if (player.containerMenu instanceof RipperStationMenu) {
             problem = "maintenance_open";
         } else if (!(stack.getItem() instanceof CyberwareItem item) || !id.equals(item.getDefinition().id())
-                || CyberwareConditionHelper.getIntegrityRatio(stack, item.getDefinition()) <= 0) {
+                || CyberwareConditionHelper.getPerformanceRatio(stack, item.getDefinition()) <= 0) {
             problem = "repair_required";
         } else if (recoveryRemaining(player) > 0) {
             player.displayClientMessage(Component.translatable("message.cyberneticenhancements.ability.cooldown",
@@ -86,7 +86,7 @@ public final class SandevistanManager {
 
     public static long adjustedDuration(Player player, long duration) {
         ItemStack stack = new PlayerCyberwareInventory(player).getStackInSlot(CyberwareSlot.OPERATING_SYSTEM_1.ordinal());
-        double condition = stack.getItem() instanceof CyberwareItem item ? CyberwareConditionHelper.getIntegrityRatio(stack, item.getDefinition()) : 0;
+        double condition = stack.getItem() instanceof CyberwareItem item ? CyberwareConditionHelper.getPerformanceRatio(stack, item.getDefinition()) : 0;
         long upgraded = SandevistanUpgrades.duration(duration, stack);
         return Math.clamp(Math.round(upgraded * (0.55 + 0.45 * condition)), 20, 1200);
     }
@@ -103,7 +103,7 @@ public final class SandevistanManager {
         SandevistanProfile profile = SandevistanUpgrades.profile(SandevistanProfile.configured(id),
                 de.artemis.cyberneticenhancements.common.cyberware.CyberwareUpgradeHelper.getUpgradeLevel(stack));
         SandevistanSession session = new SandevistanSession(profile, tick, durationTicks,
-                cooldownTicks, CyberwareConditionHelper.getIntegrityRatio(stack, item.getDefinition()), uses);
+                cooldownTicks, CyberwareConditionHelper.getPerformanceRatio(stack, item.getDefinition()), uses);
         stored.putInt("uses", uses);
         stored.putLong("last_use", tick);
         stored.putLong("recovery_until", tick + durationTicks + cooldownTicks);
@@ -114,7 +114,7 @@ public final class SandevistanManager {
         state.ends.remove(player.getUUID());
         state.dirty.add(player.level().dimension());
         CyberstrainManager.addInstability(player, session.activationLoad());
-        CyberwareConditionHelper.damage(stack, item.getDefinition(), session.profile.wear() + Math.max(0, uses - 1));
+        CyberwareConditionHelper.wear(stack, item.getDefinition(), session.profile.wear() + Math.max(0, uses - 1));
         inventory.save();
         CyberwareAbilities.enforceAbilityCooldown(player, player.level().getGameTime() + durationTicks + cooldownTicks, cooldownTicks);
         if (uses >= 3 || session.condition < 0.25) {
@@ -167,7 +167,7 @@ public final class SandevistanManager {
             PlayerCyberwareInventory inventory = new PlayerCyberwareInventory(player);
             ItemStack stack = inventory.getStackInSlot(CyberwareSlot.OPERATING_SYSTEM_1.ordinal());
             if (stack.getItem() instanceof CyberwareItem item && item.getDefinition().id().equals(session.profile.id())) {
-                CyberwareConditionHelper.damage(stack, item.getDefinition(), session.profile.wear() * 4 + 5);
+                CyberwareConditionHelper.wear(stack, item.getDefinition(), session.profile.wear() * 4 + 5);
                 inventory.save();
             }
             player.hurt(player.damageSources().magic(), 3);
@@ -190,7 +190,7 @@ public final class SandevistanManager {
                     && !player.isPassenger() && !player.isFallFlying() && !player.isSleeping()
                     && !(player.containerMenu instanceof RipperStationMenu)
                     && stack.getItem() instanceof CyberwareItem item && item.getDefinition().id().equals(session.profile.id())
-                    && CyberwareConditionHelper.getIntegrityRatio(stack, item.getDefinition()) > 0;
+                    && CyberwareConditionHelper.getPerformanceRatio(stack, item.getDefinition()) > 0;
             if (!valid || tick >= session.until()) {
                 CyberwareAbilities.stopActiveOperatingSystem(player);
                 continue;
@@ -264,11 +264,15 @@ public final class SandevistanManager {
     }
 
     private static boolean eligible(Entity entity, ServerPlayer owner) {
-        if (!entity.isAlive() || entity instanceof Player || entity.isPassenger() || entity.isVehicle()
-                || entity.getType().is(IMMUNE) || entity.isAlliedTo(owner)) return false;
-        if (entity instanceof Mob mob) return mob instanceof Enemy || mob.getTarget() == owner;
+        boolean redNpc = entity instanceof de.artemis.cyberneticenhancements.common.entity.CyberpsychoEntity
+                || entity instanceof de.artemis.cyberneticenhancements.common.entity.AbstractCityNpcEntity npc && npc.isDefendingAgainst(owner);
+        if (!entity.isAlive() || entity instanceof Player) return false;
+        if (!redNpc && (entity.isPassenger() || entity.isVehicle() || entity.getType().is(IMMUNE) || entity.isAlliedTo(owner))) return false;
+        if (entity instanceof Mob mob) return mob instanceof de.artemis.cyberneticenhancements.common.entity.CyberpsychoEntity
+                || mob instanceof Enemy || mob.getTarget() == owner;
         if (entity instanceof Projectile projectile && SandevistanTimeDilation.supportsProjectile(entity)) {
             Entity shooter = projectile.getOwner();
+            if (shooter instanceof de.artemis.cyberneticenhancements.common.entity.CyberpsychoEntity) return true;
             return shooter != owner && (shooter == null || !shooter.isAlliedTo(owner))
                     && !(shooter instanceof Player player && session(player) != null);
         }

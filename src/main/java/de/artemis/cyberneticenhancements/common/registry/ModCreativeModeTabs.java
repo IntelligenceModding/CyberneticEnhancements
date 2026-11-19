@@ -21,6 +21,7 @@ public final class ModCreativeModeTabs {
                     .title(Component.translatable("itemGroup.cyberneticenhancements"))
                     .displayItems((parameters, output) -> {
                         ModItems.MATERIALS.forEach(item -> output.accept(item.get()));
+                        output.accept(ModBlocks.CHROMIUM_ORE.get()); output.accept(ModBlocks.DEEPSLATE_CHROMIUM_ORE.get());
                         output.accept(ModBlocks.CYBERWARE_FABRICATOR.get());
                         de.artemis.cyberneticenhancements.common.fabrication.FabricationContent.PARTS.values().forEach(item -> output.accept(item.get()));
                         de.artemis.cyberneticenhancements.common.fabrication.FabricationContent.SCHEMATICS.values().forEach(item -> output.accept(item.get()));
@@ -33,7 +34,10 @@ public final class ModCreativeModeTabs {
                         output.accept(ModBlocks.TECH_STATION.get());
                         output.accept(ModBlocks.UPGRADE_STATION.get());
                         output.accept(ModBlocks.RECYCLER_STATION.get());
+                        output.accept(ModBlocks.IRON_QUEST_CRATE.get());
+                        output.accept(ModBlocks.DROPOFF_POINT.get());
                         output.accept(ModItems.FIXER_SPAWN_EGG.get());
+                        output.accept(ModItems.DEV_TEST_SPAWN_EGG.get());
                     })
                     .build()
     );

@@ -47,11 +47,20 @@ public final class SandevistanGameTests {
         var villager = helper.spawn(EntityType.VILLAGER, new BlockPos(6, 1, 5));
         villager.setNoAi(true);
         villager.setNoGravity(true);
+        var psycho = helper.spawn(de.artemis.cyberneticenhancements.common.registry.ModEntityTypes.CYBERPSYCHO.get(), new BlockPos(3, 1, 5));
+        psycho.setNoAi(true);
+        psycho.setNoGravity(true);
+        var maxTac = helper.spawn(de.artemis.cyberneticenhancements.common.registry.ModEntityTypes.MAX_TAC.get(), new BlockPos(5, 1, 5));
+        maxTac.setNoAi(true);
+        maxTac.setNoGravity(true);
+        maxTac.setTarget(other);
         int mobAge = zombie.tickCount;
         int playerAge = other.tickCount;
         CyberwareAbilities.activate(owner);
         helper.runAtTickTime(20, () -> {
             helper.assertTrue(SandevistanTimeDilation.scale(zombie) < 0.2, "Hostile mob was not dilated");
+            helper.assertTrue(SandevistanTimeDilation.scale(psycho) < 0.2 && SandevistanTimeDilation.scale(maxTac) < 0.2,
+                    "Idle cyberpsycho or MaxTac targeting another player was immune to Sandevistan");
             helper.assertTrue(zombie.tickCount - mobAge <= 4, "Hostile AI advanced at normal speed");
             helper.assertTrue(other.tickCount - playerAge >= 18, "An ordinary player's simulation was slowed");
             helper.assertTrue(SandevistanTimeDilation.scale(other) == 1, "Player entered the dilation target set");

@@ -50,7 +50,7 @@ public final class PsychosisBossBarManager {
             if (excludedPlayerId != null && onlinePlayer.getUUID().equals(excludedPlayerId)) {
                 continue;
             }
-            if (!CyberstrainManager.isPsychosisActive(onlinePlayer)) {
+            if (!CyberstrainManager.isPsychosisActive(onlinePlayer) || PsychosisIntro.active(onlinePlayer)) {
                 continue;
             }
 

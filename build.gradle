@@ -18,6 +18,11 @@ version = "${mod_version}-neoforge-mc${minecraft_version}"
 group = mod_group_id
 
 repositories {
+    maven { url = 'https://maven.maxhenkel.de/repository/public' }
+    maven {
+        url = 'https://api.modrinth.com/maven'
+        content { includeGroup 'maven.modrinth' }
+    }
     maven {
         name = "Jared's maven"
         url = "https://maven.blamejared.com/"
@@ -46,9 +51,12 @@ neoForge {
         client {
             client()
             systemProperty 'neoforge.enabledGameTestNamespaces', project.mod_id
+            // Dev testing only: offer the tutorial on every launch.
+            systemProperty 'cyberneticenhancements.resetTutorial', 'true'
         }
 
         server {
+            gameDirectory = file("run/server")
             server()
             programArgument '--nogui'
             systemProperty 'neoforge.enabledGameTestNamespaces', project.mod_id
@@ -95,6 +103,18 @@ configurations {
 }
 
 dependencies {
+    compileOnly('org.appliedenergistics:appliedenergistics2:19.2.17:api')
+    if (project.hasProperty('withAe2')) {
+        runtimeOnly('org.appliedenergistics:appliedenergistics2:19.2.17')
+    }
+    compileOnly('de.maxhenkel.voicechat:voicechat-api:2.6.27')
+    testImplementation('de.maxhenkel.voicechat:voicechat-api:2.6.27')
+    if (!project.hasProperty('withoutVoiceChat')) {
+        runtimeOnly('maven.modrinth:simple-voice-chat:neoforge-1.21.1-2.6.27')
+    }
+    runtimeOnly('maven.modrinth:worldedit:7.3.8')
+    compileOnly('maven.modrinth:jade:15.10.6+neoforge')
+    runtimeOnly('maven.modrinth:jade:15.10.6+neoforge')
     testImplementation("junit:junit:4.13.2")
     compileOnly("mezz.jei:jei-${minecraft_version}-neoforge-api:${jei_version}")
     runtimeOnly("mezz.jei:jei-${minecraft_version}-neoforge:${jei_version}")

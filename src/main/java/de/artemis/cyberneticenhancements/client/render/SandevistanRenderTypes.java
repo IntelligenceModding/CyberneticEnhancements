@@ -10,6 +10,6 @@ public final class SandevistanRenderTypes {
 
     public static RenderType echo() {
 
-        return RenderType.entityTranslucent(PROJECTION, false);
+        return EmissiveProjectionRenderTypes.translucent(PROJECTION);
     }
 }

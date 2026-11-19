@@ -18,7 +18,7 @@ import java.util.List;
 
 public final class PlayerCyberwareInventory extends ItemStackHandler {
     public static final int SLOT_COUNT = CyberwareSlot.values().length;
-    public static final int BASE_CHROME_CAPACITY = 50;
+    public static final int BASE_CHROME_CAPACITY = 100;
     private static final String PERSISTENT_DATA_KEY = "cyberneticenhancements.cyberware_inventory";
     private static final String ENTRIES_KEY = "Entries";
     private static final String SLOT_KEY = "Slot";
@@ -98,6 +98,7 @@ public final class PlayerCyberwareInventory extends ItemStackHandler {
         }
 
         CompoundTag serialized = saveStoredInventory(serverLevel.registryAccess());
+        de.artemis.cyberneticenhancements.common.journal.JournalEvents.loadoutChanged(player, getStoredInventoryTag(player), serialized);
         CompoundTag persistentData = player.getPersistentData();
         if (serialized.isEmpty()) {
             persistentData.remove(PERSISTENT_DATA_KEY);
@@ -310,7 +311,7 @@ public final class PlayerCyberwareInventory extends ItemStackHandler {
     }
 
     public boolean hasRequiredUpgradeComponent(ItemStack required) {
-        return !required.isEmpty() && (hasCreativeUpgradeBypass() || countMatchingInventoryItems(required) > 0);
+        return !required.isEmpty() && (hasCreativeUpgradeBypass() || countMatchingInventoryItems(required) >= required.getCount());
     }
 
     public boolean consumeRequiredUpgradeComponent(ItemStack required) {
@@ -319,7 +320,7 @@ public final class PlayerCyberwareInventory extends ItemStackHandler {
 
     public static ItemStack getRequiredUpgradeComponentStack(CyberwareTier currentTier) {
         var component = getRequiredUpgradeComponent(currentTier);
-        return component != null ? component.get().getDefaultInstance() : ItemStack.EMPTY;
+        return component != null ? component.get().getDefaultInstance().copyWithCount(4) : ItemStack.EMPTY;
     }
 
     private int countMatchingInventoryItems(ItemStack required) {
@@ -334,20 +335,18 @@ public final class PlayerCyberwareInventory extends ItemStackHandler {
     }
 
     private boolean consumeMatchingInventoryItem(ItemStack required) {
-        for (int inventorySlot = 0; inventorySlot < player.getInventory().getContainerSize(); inventorySlot++) {
+        int missing = required.getCount();
+        if (countMatchingInventoryItems(required) < missing) return false;
+        for (int inventorySlot = 0; inventorySlot < player.getInventory().getContainerSize() && missing > 0; inventorySlot++) {
             ItemStack stack = player.getInventory().getItem(inventorySlot);
-            if (!ItemStack.isSameItemSameComponents(stack, required)) {
-                continue;
-            }
-
-            stack.shrink(1);
-            if (stack.isEmpty()) {
-                player.getInventory().setItem(inventorySlot, ItemStack.EMPTY);
-            }
-            player.getInventory().setChanged();
-            return true;
+            if (!ItemStack.isSameItemSameComponents(stack, required)) continue;
+            int used = Math.min(missing, stack.getCount());
+            stack.shrink(used);
+            missing -= used;
+            if (stack.isEmpty()) player.getInventory().setItem(inventorySlot, ItemStack.EMPTY);
         }
-        return false;
+        player.getInventory().setChanged();
+        return true;
     }
 
     private boolean hasCreativeUpgradeBypass() {
@@ -401,11 +400,13 @@ public final class PlayerCyberwareInventory extends ItemStackHandler {
         return installed;
     }
 
-    public List<CyberwareModuleItem> getInstalledModuleItems() {
+    public List<CyberwareModuleItem> getInstalledModuleItems() { return moduleItems(false); }
+    public List<CyberwareModuleItem> getOperationalModuleItems() { return moduleItems(true); }
+    private List<CyberwareModuleItem> moduleItems(boolean operationalOnly) {
         List<CyberwareModuleItem> installed = new ArrayList<>();
         for (int slot = 0; slot < getSlots(); slot++) {
             CyberwareDefinition definition = getInstalledDefinition(slot);
-            if (definition == null || !definition.supportsModules()) {
+            if (definition == null || operationalOnly && CyberwareConditionHelper.hasNeuralFault(getStackInSlot(slot)) || !definition.supportsModules()) {
                 continue;
             }
 
@@ -420,11 +421,13 @@ public final class PlayerCyberwareInventory extends ItemStackHandler {
         return installed;
     }
 
-    public List<ChipwareItem> getInstalledChipwareItems() {
+    public List<ChipwareItem> getInstalledChipwareItems() { return chipwareItems(false); }
+    public List<ChipwareItem> getOperationalChipwareItems() { return chipwareItems(true); }
+    private List<ChipwareItem> chipwareItems(boolean operationalOnly) {
         List<ChipwareItem> installed = new ArrayList<>();
         for (int slot = 0; slot < getSlots(); slot++) {
             CyberwareDefinition definition = getInstalledDefinition(slot);
-            if (definition == null || !definition.supportsChipware()) {
+            if (definition == null || operationalOnly && CyberwareConditionHelper.hasNeuralFault(getStackInSlot(slot)) || !definition.supportsChipware()) {
                 continue;
             }
 
@@ -441,7 +444,7 @@ public final class PlayerCyberwareInventory extends ItemStackHandler {
 
     public CyberwareItem getInstalledCyberwareBySlotType(CyberwareSlotType slotType) {
         for (int slot = 0; slot < getSlots(); slot++) {
-            if (getStackInSlot(slot).getItem() instanceof CyberwareItem cyberwareItem && cyberwareItem.getSlotType() == slotType) {
+            if (getStackInSlot(slot).getItem() instanceof CyberwareItem cyberwareItem && cyberwareItem.getSlotType() == slotType && !CyberwareConditionHelper.hasNeuralFault(getStackInSlot(slot))) {
                 return cyberwareItem;
             }
         }
@@ -456,7 +459,7 @@ public final class PlayerCyberwareInventory extends ItemStackHandler {
         int count = 0;
         for (int slot = 0; slot < getSlots(); slot++) {
             if (getStackInSlot(slot).getItem() instanceof CyberwareItem cyberwareItem
-                    && cyberwareItem.getDefinition().id().equals(definitionId)) {
+                    && cyberwareItem.getDefinition().id().equals(definitionId) && !CyberwareConditionHelper.hasNeuralFault(getStackInSlot(slot))) {
                 count++;
             }
         }
@@ -464,7 +467,7 @@ public final class PlayerCyberwareInventory extends ItemStackHandler {
     }
 
     public int getChromeCapacity() {
-        int capacity = BASE_CHROME_CAPACITY;
+        int capacity = BASE_CHROME_CAPACITY + de.artemis.cyberneticenhancements.common.tarot.TarotRewards.chromeHeadroom(player);
         for (int slot = 0; slot < getSlots(); slot++) {
             ItemStack stack = getStackInSlot(slot);
             if (stack.getItem() instanceof CyberwareItem cyberwareItem) {
@@ -535,13 +538,13 @@ public final class PlayerCyberwareInventory extends ItemStackHandler {
                 continue;
             }
 
-            double integrityScale = CyberwareConditionHelper.getIntegrityRatio(stack, cyberwareItem.getDefinition());
+            double integrityScale = CyberwareConditionHelper.getPerformanceRatio(stack, cyberwareItem.getDefinition());
             capacityBonus += getEffectAmount(cyberwareItem.getEffects(stack), CyberwareEffectType.CHROME_CAPACITY) * integrityScale;
         }
-        for (CyberwareModuleItem moduleItem : getInstalledModuleItems()) {
+        for (CyberwareModuleItem moduleItem : getOperationalModuleItems()) {
             capacityBonus += getEffectAmount(moduleItem.getDefinition().effects(), CyberwareEffectType.CHROME_CAPACITY);
         }
-        for (ChipwareItem chipwareItem : getInstalledChipwareItems()) {
+        for (ChipwareItem chipwareItem : getOperationalChipwareItems()) {
             capacityBonus += getEffectAmount(chipwareItem.getDefinition().effects(), CyberwareEffectType.CHROME_CAPACITY);
         }
 

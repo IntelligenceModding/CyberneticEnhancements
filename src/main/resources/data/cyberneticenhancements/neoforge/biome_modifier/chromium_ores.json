@@ -1,0 +1,9 @@
+{
+  "type": "neoforge:add_features",
+  "biomes": "#minecraft:is_overworld",
+  "features": [
+    "cyberneticenhancements:chromium_vein",
+    "cyberneticenhancements:chromium_deposit"
+  ],
+  "step": "underground_ores"
+}

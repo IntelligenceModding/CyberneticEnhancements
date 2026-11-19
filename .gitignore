@@ -122,3 +122,10 @@ repo/
 /.tmp*/
 /logs/
 /docs/
+
+# Local Claude Code / MCP config
+.mcp.json
+.claude/settings.local.json
+
+# AI scratch space (notes, temp files for coding assistants)
+/ai/

@@ -10,6 +10,7 @@ import com.mojang.blaze3d.vertex.VertexFormat;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.renderer.GameRenderer;
+import org.lwjgl.opengl.GL30;
 
 public final class UiFadeLayer implements AutoCloseable {
     private TextureTarget target;
@@ -24,7 +25,34 @@ public final class UiFadeLayer implements AutoCloseable {
         }
     }
 
+    public void capture() {
+        RenderSystem.assertOnRenderThread();
+        prepare();
+        var main = Minecraft.getInstance().getMainRenderTarget();
+        try {
+            GL30.glBindFramebuffer(GL30.GL_READ_FRAMEBUFFER, main.frameBufferId);
+            GL30.glBindFramebuffer(GL30.GL_DRAW_FRAMEBUFFER, target.frameBufferId);
+            GL30.glBlitFramebuffer(0, 0, main.width, main.height, 0, 0, target.width, target.height,
+                    GL30.GL_COLOR_BUFFER_BIT, GL30.GL_NEAREST);
+            RenderSystem.colorMask(false, false, false, true);
+            GL30.glClearBufferfv(GL30.GL_COLOR, 0, new float[]{0, 0, 0, 1});
+        } finally {
+            RenderSystem.colorMask(true, true, true, true);
+            main.bindWrite(true);
+        }
+    }
+
+    public void drawCaptured(GuiGraphics graphics, float opacity) {
+        if (target == null) return;
+        graphics.flush();
+        composite(graphics, opacity, 1, 0, graphics.guiWidth() / 2.0F, graphics.guiHeight() / 2.0F);
+    }
+
     public void render(GuiGraphics graphics, float opacity, float scale, float offsetY, Runnable content) {
+        render(graphics, opacity, scale, offsetY, graphics.guiWidth() / 2.0F, graphics.guiHeight() / 2.0F, content);
+    }
+
+    public void render(GuiGraphics graphics, float opacity, float scale, float offsetY, float centerX, float centerY, Runnable content) {
         var main = Minecraft.getInstance().getMainRenderTarget();
         graphics.flush();
         prepare();
@@ -37,6 +65,10 @@ public final class UiFadeLayer implements AutoCloseable {
             main.bindWrite(true);
         }
 
+        composite(graphics, opacity, scale, offsetY, centerX, centerY);
+    }
+
+    private void composite(GuiGraphics graphics, float opacity, float scale, float offsetY, float centerX, float centerY) {
         RenderSystem.disableDepthTest();
         RenderSystem.enableBlend();
         RenderSystem.blendFuncSeparate(GlStateManager.SourceFactor.ONE, GlStateManager.DestFactor.ONE_MINUS_SRC_ALPHA,
@@ -44,8 +76,6 @@ public final class UiFadeLayer implements AutoCloseable {
         RenderSystem.setShader(GameRenderer::getPositionTexColorShader);
         RenderSystem.setShaderTexture(0, target.getColorTextureId());
         graphics.pose().pushPose();
-        float centerX = graphics.guiWidth() / 2.0F;
-        float centerY = graphics.guiHeight() / 2.0F;
         graphics.pose().translate(centerX, centerY + offsetY, 0);
         graphics.pose().scale(scale, scale, 1);
         graphics.pose().translate(-centerX, -centerY, 0);

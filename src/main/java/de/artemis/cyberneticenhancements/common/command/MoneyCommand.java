@@ -60,7 +60,7 @@ public final class MoneyCommand {
     }
 
     private static int balanceTarget(CommandSourceStack source, ServerPlayer target) {
-        source.sendSuccess(() -> Component.translatable(
+        de.artemis.cyberneticenhancements.common.feedback.GameplayMessages.success(source, () -> Component.translatable(
                 "command.cyberneticenhancements.money.balance",
                 target.getDisplayName(),
                 PlayerEurodollarManager.balance(target)
@@ -103,7 +103,7 @@ public final class MoneyCommand {
     private static void sendOperationFeedback(CommandSourceStack source, String keyBase, Collection<ServerPlayer> targets, int amount) {
         if (targets.size() == 1) {
             ServerPlayer target = targets.iterator().next();
-            source.sendSuccess(() -> Component.translatable(
+            de.artemis.cyberneticenhancements.common.feedback.GameplayMessages.success(source, () -> Component.translatable(
                     keyBase + ".single",
                     amount,
                     target.getDisplayName(),
@@ -111,7 +111,7 @@ public final class MoneyCommand {
             ), true);
             return;
         }
-        source.sendSuccess(() -> Component.translatable(
+        de.artemis.cyberneticenhancements.common.feedback.GameplayMessages.success(source, () -> Component.translatable(
                 keyBase + ".multi",
                 amount,
                 targets.size()

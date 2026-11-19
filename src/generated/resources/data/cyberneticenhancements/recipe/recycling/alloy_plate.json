@@ -3,7 +3,7 @@
   "damaged_outputs": [
     {
       "count": 1,
-      "id": "minecraft:iron_nugget"
+      "id": "cyberneticenhancements:chromium_scrap"
     }
   ],
   "group": "fabrication",
@@ -13,13 +13,13 @@
   "outputs": [
     {
       "count": 1,
-      "id": "minecraft:iron_nugget"
+      "id": "cyberneticenhancements:chromium_scrap"
     }
   ],
   "worn_outputs": [
     {
       "count": 1,
-      "id": "minecraft:iron_nugget"
+      "id": "cyberneticenhancements:chromium_scrap"
     }
   ]
 }

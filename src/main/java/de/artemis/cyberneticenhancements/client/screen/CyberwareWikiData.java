@@ -70,6 +70,7 @@ final class CyberwareWikiData {
                         buildWikiTopics()
                 ),
                 buildSchematicsTab(),
+                new ArchiveTab("journal", Component.translatable("screen.cyberneticenhancements.archive.tab.journal"), Component.empty(), Component.empty(), List.of()),
                 new ArchiveTab(
                         "banking",
                         Component.translatable("screen.cyberneticenhancements.archive.tab.banking"),
@@ -85,31 +86,32 @@ final class CyberwareWikiData {
                         List.of()
                 ),
                 new ArchiveTab(
+                        "compass",
+                        Component.translatable("screen.cyberneticenhancements.archive.tab.compass"),
+                        Component.translatable("screen.cyberneticenhancements.archive.mode.compass.subtitle"),
+                        Component.translatable("screen.cyberneticenhancements.archive.navigation.compass"),
+                        List.of()
+                ),
+                new ArchiveTab(
                         "lore",
                         Component.translatable("screen.cyberneticenhancements.archive.tab.lore"),
                         Component.translatable("screen.cyberneticenhancements.archive.mode.lore.subtitle"),
                         Component.translatable("screen.cyberneticenhancements.archive.navigation.lore"),
-                        buildLoreTopics()
-                ),
-                new ArchiveTab(
-                        "skill_tree",
-                        Component.translatable("screen.cyberneticenhancements.archive.tab.skill_tree"),
-                        Component.translatable("screen.cyberneticenhancements.archive.mode.skill_tree.subtitle"),
-                        Component.translatable("screen.cyberneticenhancements.archive.navigation.skill_tree"),
-                        buildSkillTreeTopics()
+                        List.of()
                 ),
                 new ArchiveTab(
                         "quests",
                         Component.translatable("screen.cyberneticenhancements.archive.tab.quests"),
                         Component.translatable("screen.cyberneticenhancements.archive.mode.quests.subtitle"),
                         Component.translatable("screen.cyberneticenhancements.archive.navigation.quests"),
-                        buildQuestTopics()
-                )
+                        List.of()
+                ),
+                new ArchiveTab("hud", Component.translatable("screen.cyberneticenhancements.archive.tab.hud"), Component.empty(), Component.empty(), List.of())
         );
     }
 
     static ArchiveTab buildSchematicsTab() {
-        return new ArchiveTab("schematics", Component.literal("Schematics"), Component.literal("Collected and undiscovered fabrication designs"), Component.literal("Schematic collection"), List.of());
+        return new ArchiveTab("schematics", Component.translatable("screen.cyberneticenhancements.archive.tab.schematics"), Component.literal("Collected and undiscovered fabrication designs"), Component.literal("Schematic collection"), List.of());
     }
 
     private static SectionVisual fabricationVisual(String id) {
@@ -151,50 +153,16 @@ final class CyberwareWikiData {
                 new WikiTopic("chipware", Component.translatable("wiki.cyberneticenhancements.topic.chipware"), List.of(), new WikiSection("chipware", Component.translatable("wiki.cyberneticenhancements.topic.chipware"), buildChipwareEntries())),
                 new WikiTopic("consumables", Component.translatable("wiki.cyberneticenhancements.topic.consumables"), buildConsumableTopics(), null),
                 new WikiTopic("npcs", Component.translatable("wiki.cyberneticenhancements.topic.npcs"), buildNpcTopics(), null),
+                new WikiTopic("encounters", wiki("topic.encounters"), buildEncounterTopics(), null),
+                new WikiTopic("world_encounters", wiki("topic.world_encounters"), buildWorldEncounterTopics(), null),
                 new WikiTopic("stations", Component.translatable("wiki.cyberneticenhancements.topic.stations"), buildStationTopics(), null),
+                new WikiTopic("quests", wiki("topic.quests"), List.of(), new WikiSection("quest_guide", wiki("topic.quests"), QuestWikiEntries.build())),
                 new WikiTopic("systems", Component.translatable("wiki.cyberneticenhancements.topic.systems"), buildSystemTopics(), null)
         );
     }
 
-    private static List<WikiTopic> buildLoreTopics() {
-        return List.of(
-                new WikiTopic(
-                        "lore_world_notes",
-                        Component.translatable("wiki.cyberneticenhancements.lore.world_notes"),
-                        List.of(),
-                        new WikiSection("lore_world_notes", Component.translatable("wiki.cyberneticenhancements.lore.world_notes"), buildLoreEntries())
-                )
-        );
-    }
 
-    private static List<WikiTopic> buildSkillTreeTopics() {
-        Component title = wiki("skill_tree.title");
-        WikiEntry preview = new WikiEntry(
-                "skill_tree_preview",
-                title,
-                new ItemStack(Items.EXPERIENCE_BOTTLE),
-                wiki("skill_tree.coming_soon").copy().withStyle(ChatFormatting.AQUA),
-                wiki("skill_tree.subtitle"),
-                List.of(),
-                Arrays.asList(
-                        sectionKey("overview", wiki("skill_tree.planned")),
-                        sectionKey("current_state", wiki("skill_tree.unavailable"), wiki("skill_tree.subject_to_change"))
-                )
-        );
-        return List.of(new WikiTopic("skill_tree_preview", title, List.of(),
-                new WikiSection("skill_tree_preview", title, List.of(preview))));
-    }
 
-    private static List<WikiTopic> buildQuestTopics() {
-        return List.of(
-                new WikiTopic(
-                        "quest_contract_board",
-                        Component.translatable("wiki.cyberneticenhancements.quests.contract_board"),
-                        List.of(),
-                        new WikiSection("quest_contract_board", Component.translatable("wiki.cyberneticenhancements.quests.contract_board"), buildQuestEntries())
-                )
-        );
-    }
 
     private static List<WikiTopic> buildCyberwareTopics() {
         List<WikiTopic> topics = new ArrayList<>();
@@ -257,8 +225,16 @@ final class CyberwareWikiData {
                 new WikiTopic("station_tech", Component.translatable("block.cyberneticenhancements.tech_station"), List.of(), new WikiSection("station_tech", Component.translatable("block.cyberneticenhancements.tech_station"), List.of(buildTechStationEntry()))),
                 new WikiTopic("station_upgrade", Component.translatable("block.cyberneticenhancements.upgrade_station"), List.of(), new WikiSection("station_upgrade", Component.translatable("block.cyberneticenhancements.upgrade_station"), List.of(buildUpgradeStationEntry()))),
                 new WikiTopic("station_recycler", Component.translatable("block.cyberneticenhancements.recycler_station"), List.of(), new WikiSection("station_recycler", Component.translatable("block.cyberneticenhancements.recycler_station"), List.of(buildRecyclerStationEntry()))),
+                new WikiTopic("station_dropoff", Component.translatable("block.cyberneticenhancements.dropoff_point"), List.of(), new WikiSection("station_dropoff", Component.translatable("block.cyberneticenhancements.dropoff_point"), List.of(buildDropoffPointEntry()))),
                 new WikiTopic("station_relic_cache", wiki("station.relic_cache.title"), List.of(), new WikiSection("station_relic_cache", wiki("station.relic_cache.title"), List.of(buildRelicCacheEntry())))
         );
+    }
+
+    private static WikiEntry buildDropoffPointEntry() {
+        return buildStationEntry("station_dropoff", Component.translatable("block.cyberneticenhancements.dropoff_point"), new ItemStack(ModBlocks.DROPOFF_POINT.get()), wiki("station.dropoff.subtitle"),
+                filterSections(Arrays.asList(sectionKey("overview", wiki("station.dropoff.operation")),
+                        sectionKey("functions", wiki("station.dropoff.rewards"), wiki("station.dropoff.storage")),
+                        section(wiki("section.crafting_recipe"), List.of(), recipeVisual(new ItemStack(ModBlocks.DROPOFF_POINT.get()))))));
     }
 
     private static WikiEntry buildFabricatorEntry() {
@@ -270,18 +246,14 @@ final class CyberwareWikiData {
                         sectionKey("schematics", wiki("station.fabricator.schematics"), wiki("station.fabricator.collection")),
                         section(wiki("section.crafting_recipe"), List.of(), recipeVisual(new ItemStack(ModBlocks.CYBERWARE_FABRICATOR.get()))))));
     }
-    private static final int[] SHOP_OPTIONS = {
-            de.artemis.cyberneticenhancements.common.menu.FixerDialogMenu.OPTION_BUY_MAXDOC_MK2,
-            de.artemis.cyberneticenhancements.common.menu.FixerDialogMenu.OPTION_BUY_RAM_JOLT,
-            de.artemis.cyberneticenhancements.common.menu.FixerDialogMenu.OPTION_BUY_CHROME_SUPPRESSANT,
-            de.artemis.cyberneticenhancements.common.menu.FixerDialogMenu.OPTION_BUY_IMMUNOBLOCKERS
-    };
 
     private static List<WikiTopic> buildNpcTopics() {
         var topics = new ArrayList<WikiTopic>();
         topics.add(new WikiTopic("npc_general", wiki("npc.general"), List.of(),
                 new WikiSection("npc_general", wiki("npc.general"), List.of(buildNpcGeneralEntry()))));
         for (var type : de.artemis.cyberneticenhancements.common.entity.NpcType.values()) {
+            if (type == de.artemis.cyberneticenhancements.common.entity.NpcType.STREET_RIPPERDOC
+                    || type == de.artemis.cyberneticenhancements.common.entity.NpcType.WORLD_MED_TECH) continue; // Covered under Encounters, and it shares the ripperdoc id.
             String id = "npc_" + type.id();
             topics.add(new WikiTopic(id, type.displayName(), List.of(),
                     new WikiSection(id, type.displayName(), List.of(buildNpcTypeEntry(type)))));
@@ -289,25 +261,121 @@ final class CyberwareWikiData {
         return topics;
     }
 
+    private static List<WikiTopic> buildEncounterTopics() {
+        return List.of(
+                new WikiTopic("encounter_street_ripperdoc", wiki("encounter.street_ripperdoc.title"), List.of(),
+                        new WikiSection("encounter_street_ripperdoc", wiki("encounter.street_ripperdoc.title"), List.of(buildStreetRipperdocEntry()))),
+                new WikiTopic("encounter_shakedown", wiki("encounter.shakedown.title"), List.of(),
+                        new WikiSection("encounter_shakedown", wiki("encounter.shakedown.title"), List.of(buildShakedownEntry()))));
+    }
+
+    private static List<WikiTopic> buildWorldEncounterTopics() {
+        return List.of(new WikiTopic("world_encounter_med_tec_av", wiki("world_encounter.med_tec_av.title"), List.of(),
+                new WikiSection("world_encounter_med_tec_av", wiki("world_encounter.med_tec_av.title"), List.of(buildMedTecAvEntry()))));
+    }
+
+    private static WikiEntry buildMedTecAvEntry() {
+        return new WikiEntry("world_encounter_med_tec_av", wiki("world_encounter.med_tec_av.title"), new ItemStack(ModItems.MED_TECH_SPAWN_EGG.get()),
+                wiki("badge.world_encounter"), wiki("world_encounter.med_tec_av.subtitle"), List.of(), List.of(
+                        sectionKey("overview", wiki("world_encounter.med_tec_av.overview.1"), wiki("world_encounter.med_tec_av.overview.2")),
+                        new ArticleSection(wiki("section.the_site"), List.of(), new StructureViewVisual("med_tec_av")),
+                        sectionKey("where_to_find", wiki("world_encounter.med_tec_av.where.1"), wiki("world_encounter.med_tec_av.where.2")),
+                        new ArticleSection(wiki("section.biomes"), List.of(wiki("world_encounter.med_tec_av.biomes.note")), new ReferenceTableVisual(List.of(
+                                new ReferenceGroup(wiki("world_encounter.med_tec_av.biomes.heading"), List.of(
+                                        biomeRow("forest", "forest", "flower_forest", "birch_forest", "old_growth_birch_forest", "dark_forest", "grove"),
+                                        biomeRow("taiga", "taiga", "snowy_taiga", "old_growth_pine_taiga", "old_growth_spruce_taiga"),
+                                        biomeRow("savanna", "savanna", "savanna_plateau", "windswept_savanna"),
+                                        biomeRow("badlands", "badlands", "eroded_badlands", "wooded_badlands"),
+                                        biomeRow("open", "plains", "sunflower_plains", "snowy_plains", "meadow", "desert")),
+                                        List.of(wiki("world_encounter.med_tec_av.biomes.modded"))),
+                                new ReferenceGroup(wiki("world_encounter.med_tec_av.rules.heading"), List.of(
+                                        new de.artemis.cyberneticenhancements.client.ui.WikiArticleLayout.Block(wiki("world_encounter.med_tec_av.rules.dimension"), wiki("world_encounter.med_tec_av.rules.dimension.value")),
+                                        new de.artemis.cyberneticenhancements.client.ui.WikiArticleLayout.Block(wiki("world_encounter.med_tec_av.rules.spacing"), wiki("world_encounter.med_tec_av.rules.spacing.value")),
+                                        new de.artemis.cyberneticenhancements.client.ui.WikiArticleLayout.Block(wiki("world_encounter.med_tec_av.rules.ground"), wiki("world_encounter.med_tec_av.rules.ground.value"))),
+                                        List.of())))),
+                        sectionKey("the_people", wiki("world_encounter.med_tec_av.people.1"), wiki("world_encounter.med_tec_av.people.2")),
+                        sectionKey("the_barrier", wiki("world_encounter.med_tec_av.barrier.1"), wiki("world_encounter.med_tec_av.barrier.2"),
+                                wiki("world_encounter.med_tec_av.barrier.3"),
+                                wiki("world_encounter.med_tec_av.barrier.4")),
+                        sectionKey("the_quest", wiki("world_encounter.med_tec_av.quest.1"), wiki("world_encounter.med_tec_av.quest.2"),
+                                wiki("world_encounter.med_tec_av.quest.3")),
+                        sectionKey("good_to_know", wiki("world_encounter.med_tec_av.note.1"), wiki("world_encounter.med_tec_av.note.2"))));
+    }
+
+    private static de.artemis.cyberneticenhancements.client.ui.WikiArticleLayout.Block biomeRow(String family, String... biomes) {
+        net.minecraft.network.chat.MutableComponent names = Component.empty();
+        for (int i = 0; i < biomes.length; i++) {
+            if (i > 0) names.append(", ");
+            names.append(Component.translatable("biome.minecraft." + biomes[i]));
+        }
+        return new de.artemis.cyberneticenhancements.client.ui.WikiArticleLayout.Block(wiki("world_encounter.med_tec_av.biomes." + family), names);
+    }
+
+    private static WikiEntry buildEncounterEntry(String id, Component title, ItemStack icon, Component subtitle, List<ArticleSection> sections) {
+        return new WikiEntry(id, title, icon, wiki("badge.encounter"), subtitle, List.of(), sections);
+    }
+
+    private static WikiEntry buildStreetRipperdocEntry() {
+        var type = de.artemis.cyberneticenhancements.common.entity.NpcType.STREET_RIPPERDOC;
+        List<Component> stock = new ArrayList<>();
+        for (var offer : de.artemis.cyberneticenhancements.common.dialogue.NpcShopCatalog.offers(type)) {
+            var stack = offer.stack();
+            if (!stack.isEmpty()) stock.add(wiki("encounter.stock_entry", stack.getCount(), stack.getHoverName()));
+        }
+        List<Component> services = new ArrayList<>();
+        for (var service : de.artemis.cyberneticenhancements.common.dialogue.NpcService.forNpc(type)) {
+            services.add(Component.translatable(service.nameKey()));
+            services.add(Component.translatable(service.descriptionKey()));
+            services.addAll(service.details());
+            services.add(wiki("encounter.service_price", service.basePrice()));
+        }
+        var sections = new ArrayList<ArticleSection>();
+        sections.add(sectionKey("overview", wiki("encounter.street_ripperdoc.overview.1"), wiki("encounter.street_ripperdoc.overview.2")));
+        sections.add(sectionKey("how_it_works", wiki("encounter.street_ripperdoc.how.1"), wiki("encounter.street_ripperdoc.how.2"),
+                wiki("encounter.street_ripperdoc.how.3"), wiki("encounter.street_ripperdoc.how.4")));
+        addSection(sections, wiki("section.services"), services);
+        addSection(sections, wiki("section.stock"), stock);
+        sections.add(sectionKey("good_to_know", wiki("encounter.street_ripperdoc.note.1"), wiki("encounter.street_ripperdoc.note.2")));
+        return buildEncounterEntry("encounter_street_ripperdoc", wiki("encounter.street_ripperdoc.title"), new ItemStack(ModItems.RIPPERDOC_SPAWN_EGG.get()),
+                wiki("encounter.street_ripperdoc.subtitle"), sections);
+    }
+
+    private static WikiEntry buildShakedownEntry() {
+        return buildEncounterEntry("encounter_shakedown", wiki("encounter.shakedown.title"), new ItemStack(Items.IRON_SWORD),
+                wiki("encounter.shakedown.subtitle"), List.of(
+                        sectionKey("overview", wiki("encounter.shakedown.overview.1"), wiki("encounter.shakedown.overview.2")),
+                        sectionKey("how_it_works", wiki("encounter.shakedown.how.1"), wiki("encounter.shakedown.how.2"), wiki("encounter.shakedown.how.3")),
+                        sectionKey("your_options", wiki("encounter.shakedown.options.1"), wiki("encounter.shakedown.options.2"), wiki("encounter.shakedown.options.3")),
+                        sectionKey("good_to_know", wiki("encounter.shakedown.note.1"), wiki("encounter.shakedown.note.2"))));
+    }
+
     private static WikiEntry buildNpcTypeEntry(de.artemis.cyberneticenhancements.common.entity.NpcType type) {
         var egg = switch (type) {
             case FIXER -> ModItems.FIXER_SPAWN_EGG.get();
-            case RIPPERDOC -> ModItems.RIPPERDOC_SPAWN_EGG.get();
+            case RIPPERDOC, STREET_RIPPERDOC -> ModItems.RIPPERDOC_SPAWN_EGG.get();
             case TECHIE -> ModItems.TECHIE_SPAWN_EGG.get();
             case NETRUNNER -> ModItems.NETRUNNER_SPAWN_EGG.get();
-            case MERC -> ModItems.MERC_SPAWN_EGG.get();
+            case MAXTEC -> ModItems.MAXTEC_SPAWN_EGG.get();
+            case MERC -> ModItems.MERC_SPAWN_EGG.get(); case MED_TECH, WORLD_MED_TECH -> ModItems.MED_TECH_SPAWN_EGG.get();
         };
         List<Component> stock = new ArrayList<>();
-        if (type.supportsShop()) for (int option : SHOP_OPTIONS) {
-            var stack = de.artemis.cyberneticenhancements.common.menu.FixerDialogMenu.shopItem(type, option);
+        if (type.supportsShop()) for (var offer : de.artemis.cyberneticenhancements.common.dialogue.NpcShopCatalog.offers(type)) {
+            var stack = offer.stack();
             if (!stack.isEmpty()) stock.add(wiki("npc.stock_entry", stack.getCount(), stack.getHoverName(),
-                    de.artemis.cyberneticenhancements.common.menu.FixerDialogMenu.requiredTrust(type, option)));
+                    offer.requiredTrust()));
         }
         var sections = new ArrayList<ArticleSection>();
-        sections.add(sectionKey("overview", wiki("npc.role." + type.id()), wiki("npc.shared_relationship")));
-        sections.add(sectionKey("services", wiki("npc.services." + type.id()),
-                wiki("npc.secondary_service", de.artemis.cyberneticenhancements.common.menu.FixerDialogMenu.requiredTrust(type,
-                        de.artemis.cyberneticenhancements.common.menu.FixerDialogMenu.OPTION_PURGE))));
+        sections.add(sectionKey("overview", wiki("npc.shared_relationship")));
+        List<Component> services = new ArrayList<>();
+        for (var service : de.artemis.cyberneticenhancements.common.dialogue.NpcService.forNpc(type)) {
+            services.add(Component.translatable(service.nameKey()));
+            services.add(Component.translatable(service.descriptionKey()));
+            services.addAll(service.details());
+            services.add(wiki("npc.service_terms", service.basePrice(), service.requiredTrust()));
+            services.add(Component.translatable(service.daily()
+                    ? "screen.cyberneticenhancements.npc.service.daily" : "screen.cyberneticenhancements.npc.service.refresh"));
+        }
+        addSection(sections, wiki("section.services"), services);
         sections.add(sectionKey("account_and_stock", wiki("npc.currency"), wiki(type.supportsTrustDiscount() ? "npc.discounts" : "npc.fixed_prices")));
         addSection(sections, wiki("section.stock"), stock);
         sections.add(sectionKey("functions", wiki(type.supportsContracts() ? "npc.contracts_available" : "npc.no_contracts"),
@@ -341,7 +409,7 @@ final class CyberwareWikiData {
                 de.artemis.cyberneticenhancements.client.ModKeyMappings.OPEN_ARCHIVE,
                 de.artemis.cyberneticenhancements.client.ModKeyMappings.TOGGLE_HUD))
             bindings.add(wiki("controls.binding", Component.translatable(mapping.getName()), mapping.getTranslatedKeyMessage()));
-        return buildSystemEntry("system_controls", wiki("controls.title"), new ItemStack(Items.COMPASS), wiki("controls.subtitle"),
+        return buildSystemEntry("system_controls", wiki("controls.title"), new ItemStack(Items.COMPASS), Component.empty(),
                 List.of(section(wiki("section.functions"), bindings), sectionKey("overview", wiki("controls.archive"))));
     }
 
@@ -352,7 +420,7 @@ final class CyberwareWikiData {
 
     private static WikiEntry buildSandevistanEntry() {
         return new WikiEntry("system_sandevistan", wiki("sandevistan.title"), new ItemStack(Items.CLOCK),
-                wiki("sandevistan.badge"), wiki("sandevistan.subtitle"), List.of(), Arrays.asList(
+                wiki("sandevistan.badge"), Component.empty(), List.of(), Arrays.asList(
                 sectionKey("overview", wiki("sandevistan.controls"), wiki("sandevistan.dilation")),
                 sectionKey("special_behavior", wiki("sandevistan.models"), wiki("sandevistan.experimental")),
                 sectionKey("maintenance", wiki("sandevistan.maintenance"), wiki("sandevistan.overload"), wiki("sandevistan.recovery")),
@@ -367,40 +435,7 @@ final class CyberwareWikiData {
         return entries;
     }
 
-    private static List<WikiEntry> buildLoreEntries() {
-        return List.of(
-                buildLoreEntry(
-                        "lore_world_notes",
-                        Component.translatable("wiki.cyberneticenhancements.lore.world_notes"),
-                        new ItemStack(Items.WRITABLE_BOOK),
-                        wiki("lore.reserved"),
-                        Arrays.asList(
-                                sectionKey("current_state",
-                                        wiki("lore.current_state.branch_ready"),
-                                        wiki("lore.current_state.gameplay_authority"))
-                        )
-                )
-        );
-    }
 
-    private static List<WikiEntry> buildQuestEntries() {
-        return List.of(
-                buildQuestEntry(
-                        "quest_contract_board",
-                        Component.translatable("wiki.cyberneticenhancements.quests.contract_board"),
-                        new ItemStack(Items.MAP),
-                        wiki("quests.reserved"),
-                        Arrays.asList(
-                                sectionKey("current_state",
-                                        wiki("quests.current_state.placeholder"),
-                                        wiki("quests.current_state.progression")),
-                                sectionKey("planned_surface",
-                                        wiki("quests.planned_surface.contracts"),
-                                        wiki("quests.planned_surface.archive"))
-                        )
-                )
-        );
-    }
 
     private static WikiEntry buildCyberwareEntry(CyberwareDefinition definition) {
         ItemStack stack = new ItemStack(ModItems.cyberware(definition.id()).get());
@@ -412,13 +447,6 @@ final class CyberwareWikiData {
         chips.add(wiki("chip.integrity", CyberwareConditionHelper.getMaxIntegrity(definition)));
 
         List<ArticleSection> sections = new ArrayList<>();
-        sections.add(sectionKey("overview",
-                Component.translatable(definition.descriptionKey()),
-                wiki("overview.slot", Component.translatable(definition.slotType().translationKey())),
-                wiki("overview.tier", Component.translatable(definition.tier().translationKey())),
-                wiki("overview.acquisition", acquisitionRoute(definition.id())),
-                wiki("overview.chrome_cost", definition.chromeCost()),
-                wiki("overview.integrity", CyberwareConditionHelper.getMaxIntegrity(definition))));
         addSection(sections, wiki("section.passive_effects"), buildCyberwarePassiveLines(definition));
         addSection(sections, wiki("section.special_behavior"), buildCyberwareBehaviorLines(definition));
         if (de.artemis.cyberneticenhancements.common.cyberware.sandevistan.SandevistanProfile.supports(definition.id())) {
@@ -426,7 +454,7 @@ final class CyberwareWikiData {
                     wiki("sandevistan.dilation"), wiki("sandevistan.maintenance"), wiki("sandevistan.recovery"), wiki("sandevistan.multiplayer"))));
         }
         addSection(sections, wiki("section.acquisition"), buildAcquisitionLines(definition));
-        addSection(sections, wiki("section.crafting"), buildCyberwareCraftingLines(definition), buildCyberwareCraftingVisual(definition));
+        addSection(sections, wiki("section.crafting"), List.of(), buildCyberwareCraftingVisual(definition));
         addSection(sections, wiki("section.repair_upgrade"), buildCyberwareServiceLines(definition), buildCyberwareServiceVisual(definition));
         addSection(sections, wiki("section.recycling"), buildCyberwareRecycleLines(definition), buildCyberwareRecycleVisual(definition));
 
@@ -455,15 +483,10 @@ final class CyberwareWikiData {
                         wiki("chip.chrome", definition.chromeCost())
                 ),
                 filterSections(Arrays.asList(
-                        sectionKey("overview",
-                                Component.translatable(definition.descriptionKey()),
-                                wiki("overview.category", Component.translatable(definition.category().translationKey())),
-                                wiki("overview.tier", Component.translatable(definition.tier().translationKey())),
-                                wiki("overview.chrome_cost", definition.chromeCost())),
                         section(wiki("section.passive_effects"), describeEffects(definition.effects())),
                         section(wiki("section.installation"), buildModuleIntegrationLines(definition)),
                         section(wiki("section.acquisition"), buildCraftedItemAcquisitionLines(definition.id())),
-                        section(wiki("section.crafting"), buildModuleCraftingLines(definition), buildModuleCraftingVisual(definition)),
+                        section(wiki("section.crafting"), List.of(), buildModuleCraftingVisual(definition)),
                         section(wiki("section.recycling"), buildModuleRecycleLines(definition), buildModuleRecycleVisual(definition))
                 ))
         );
@@ -482,17 +505,13 @@ final class CyberwareWikiData {
                         wiki("chip.chrome", definition.chromeCost())
                 ),
                 filterSections(Arrays.asList(
-                        sectionKey("overview",
-                                Component.translatable(definition.descriptionKey()),
-                                wiki("overview.tier", Component.translatable(definition.tier().translationKey())),
-                                wiki("overview.chrome_cost", definition.chromeCost())),
                         section(wiki("section.passive_effects"), describeEffects(definition.effects())),
                         section(wiki("section.installation"), List.of(
                                 wiki("chipware.installation.host_only"),
                                 wiki("chipware.installation.slot_count")
                         )),
                         section(wiki("section.acquisition"), buildCraftedItemAcquisitionLines(definition.id())),
-                        section(wiki("section.crafting"), buildChipwareCraftingLines(definition), buildChipwareCraftingVisual(definition)),
+                        section(wiki("section.crafting"), List.of(), buildChipwareCraftingVisual(definition)),
                         section(wiki("section.recycling"), buildChipwareRecycleLines(definition), buildChipwareRecycleVisual(definition))
                 ))
         );
@@ -509,13 +528,12 @@ final class CyberwareWikiData {
         return materials.entrySet().stream().map(entry -> {
             ItemStack stack = new ItemStack(entry.getValue());
             var sections = new ArrayList<ArticleSection>();
-            sections.add(sectionKey("overview", wiki("component.uses")));
             addSection(sections, wiki("section.acquisition"), buildAcquisitionLines(entry.getKey()));
             addSection(sections, wiki("section.crafting"), List.of(), recipeVisual(stack));
             if (!recovery(stack).isEmpty())
                 addSection(sections, wiki("section.recycling"), List.of(wiki("recycle.no_refund")), new CompactTransformVisual(stack, recovery(stack)));
             return new WikiEntry(entry.getKey(), stack.getHoverName(), stack, wiki("badge.component"),
-                    wiki("component.uses"), List.of(), sections);
+                    Component.empty(), List.of(), sections);
         }).toList();
     }
     private static List<WikiEntry> buildChipwareEntries() {
@@ -539,12 +557,6 @@ final class CyberwareWikiData {
                         wiki("chip.overdose_short", definition.overdosePoints())
                 ),
                 filterSections(Arrays.asList(
-                        sectionKey("overview",
-                                Component.translatable(definition.descriptionKey()),
-                                wiki("overview.category", Component.translatable(definition.category().translationKey())),
-                                wiki("overview.profile", wiki("profile." + definition.profile().name().toLowerCase(Locale.ROOT))),
-                                wiki("overview.cooldown_seconds", definition.cooldownTicks() / 20),
-                                wiki("overview.overdose", definition.overdosePoints())),
                         section(wiki("section.effects"), buildConsumableEffectLines(definition)),
                         section(wiki("section.acquisition"), buildCraftedItemAcquisitionLines(definition.id())),
                         section(wiki("section.crafting"), buildConsumableCraftingLines(definition), buildConsumableCraftingVisual(definition)),
@@ -561,7 +573,6 @@ final class CyberwareWikiData {
                 wiki("station.ripper.subtitle"),
                 Arrays.asList(
                         sectionKey("overview",
-                                wiki("station.ripper.overview.1"),
                                 wiki("station.ripper.overview.2")),
                         sectionKey("functions",
                                 wiki("station.ripper.functions.1"),
@@ -666,32 +677,31 @@ final class CyberwareWikiData {
                 "npc_general",
                 Component.translatable("wiki.cyberneticenhancements.npc.general"),
                 new ItemStack(ModItems.FIXER_SPAWN_EGG.get()),
-                wiki("npc.general.subtitle"),
+                Component.empty(),
                 Arrays.asList(
                         sectionKey("overview",
                                 wiki("npc.general.overview.1"),
-                                wiki("npc.general.overview.2"),
-                                wiki("npc.general.overview.3")),
+                                wiki("npc.general.city_navigation"),
+                                wiki("npc.general.overview.2")),
                         sectionKey("contacts_archive",
                                 wiki("npc.general.contacts_archive.1"),
                                 wiki("npc.general.contacts_archive.2"),
                                 wiki("npc.general.contacts_archive.3"),
-                                wiki("npc.general.contacts_archive.4")),
+                                wiki("npc.general.contacts_archive.4"),
+                                wiki("npc.general.contacts_archive.5"),
+                                wiki("npc.general.contacts_archive.6"),
+                                wiki("npc.general.contacts_archive.7")),
                         sectionKey("identity_config",
                                 wiki("npc.general.identity_config.1"),
                                 wiki("npc.general.identity_config.2"),
                                 wiki("npc.general.identity_config.3")),
-                        sectionKey("current_state",
-                                wiki("npc.general.current_state.1"),
+                        sectionKey("functions",
                                 wiki("npc.general.current_state.2"))
                 )
         );
     }
 
     private static WikiEntry buildCyberstrainEntry() {
-        int strained = CyberwareBalance.intValue("cyberstrain.threshold.strained");
-        int unstable = CyberwareBalance.intValue("cyberstrain.threshold.unstable");
-        int critical = CyberwareBalance.intValue("cyberstrain.threshold.critical");
         int psychosis = CyberwareBalance.intValue("cyberstrain.threshold.psychosis");
         return buildSystemEntry(
                 "cyberstrain",
@@ -700,9 +710,6 @@ final class CyberwareWikiData {
                 wiki("system.cyberstrain.subtitle"),
                 Arrays.asList(
                         sectionKey("thresholds",
-                                wiki("system.cyberstrain.threshold.strained", strained),
-                                wiki("system.cyberstrain.threshold.unstable", unstable),
-                                wiki("system.cyberstrain.threshold.critical", critical),
                                 wiki("system.cyberstrain.threshold.psychosis", psychosis)),
                         sectionKey("what_it_changes",
                                 wiki("system.cyberstrain.change.1"),
@@ -744,7 +751,7 @@ final class CyberwareWikiData {
                 "progression",
                 Component.translatable("wiki.cyberneticenhancements.system.progression"),
                 new ItemStack(Items.CHEST),
-                wiki("system.progression.subtitle"),
+                Component.empty(),
                 Arrays.asList(
                         sectionKey("craftable_starter_layer",
                                 wiki("system.progression.craftable.1"),
@@ -757,7 +764,7 @@ final class CyberwareWikiData {
                         sectionKey("quest_layer",
                                 wiki("system.progression.quest.1"),
                                 wiki("system.progression.quest.2")),
-                        sectionKey("current_state",
+                        sectionKey("notes",
                                 wiki("system.progression.state.1"),
                                 wiki("system.progression.state.2"))
                 )
@@ -771,9 +778,7 @@ final class CyberwareWikiData {
                 statusIcon(type),
                 Component.translatable(type.descriptionKey()),
                 Arrays.asList(
-                        sectionKey("overview",
-                                Component.translatable(type.descriptionKey()),
-                                wiki("overview.max_stacks", type.maxStacks())),
+                        sectionKey("overview", wiki("overview.max_stacks", type.maxStacks())),
                         new ArticleSection(wiki("section.mechanical_effects"), buildStatusMechanicLines(type)),
                         new ArticleSection(wiki("section.presentation"), buildStatusPresentationLines(type))
                 )
@@ -814,9 +819,6 @@ final class CyberwareWikiData {
         return buildAcquisitionLines(definition.id());
     }
 
-    private static List<Component> buildCyberwareCraftingLines(CyberwareDefinition definition) {
-        return List.of(Component.literal("Assemble at the Cyberware Fabricator. Inspect machine tier and schematic requirements in its recipe browser."));
-    }
 
     private static SectionVisual buildCyberwareCraftingVisual(CyberwareDefinition definition) {
         return fabricationVisual(definition.id());
@@ -864,9 +866,6 @@ final class CyberwareWikiData {
         );
     }
 
-    private static List<Component> buildModuleCraftingLines(CyberwareModuleDefinition definition) {
-        return List.of(Component.literal("Assemble at the Cyberware Fabricator. Inspect machine tier and schematic requirements in its recipe browser."));
-    }
 
     private static SectionVisual buildModuleCraftingVisual(CyberwareModuleDefinition definition) {
         return fabricationVisual(definition.id());
@@ -884,9 +883,6 @@ final class CyberwareWikiData {
         );
     }
 
-    private static List<Component> buildChipwareCraftingLines(ChipwareDefinition definition) {
-        return List.of(Component.literal("Assemble at the Cyberware Fabricator. Inspect machine tier and schematic requirements in its recipe browser."));
-    }
 
     private static SectionVisual buildChipwareCraftingVisual(ChipwareDefinition definition) {
         return fabricationVisual(definition.id());
@@ -987,19 +983,6 @@ final class CyberwareWikiData {
         return buildAcquisitionLines(itemId);
     }
 
-    private static Component acquisitionRoute(String itemId) {
-        var level = net.minecraft.client.Minecraft.getInstance().level;
-        if (level == null) return wiki("acquisition.server_recipes");
-        var item = net.minecraft.core.registries.BuiltInRegistries.ITEM.get(
-                net.minecraft.resources.ResourceLocation.fromNamespaceAndPath("cyberneticenhancements", itemId));
-        var designs = level.getRecipeManager().getAllRecipesFor(de.artemis.cyberneticenhancements.common.registry.ModRecipeTypes.FABRICATION.get()).stream()
-                .filter(holder -> holder.value().result().is(item)).toList();
-        if (!designs.isEmpty()) return wiki(designs.stream().anyMatch(holder -> holder.value().schematic().isEmpty())
-                ? "acquisition.route_public" : "acquisition.route_schematic");
-        return wiki(level.getRecipeManager().getAllRecipesFor(net.minecraft.world.item.crafting.RecipeType.CRAFTING).stream()
-                .anyMatch(holder -> holder.value().getResultItem(level.registryAccess()).is(item))
-                ? "acquisition.route_crafting" : "acquisition.route_exploration");
-    }
 
     private static List<Component> buildAcquisitionLines(
             String itemId
@@ -1026,13 +1009,12 @@ final class CyberwareWikiData {
                     ? "acquisition.quest" : "acquisition.discovery"));
         }
         for (var type : de.artemis.cyberneticenhancements.common.entity.NpcType.values())
-            for (int option : SHOP_OPTIONS) {
-                var stock = de.artemis.cyberneticenhancements.common.menu.FixerDialogMenu.shopItem(type, option);
+            for (var offer : de.artemis.cyberneticenhancements.common.dialogue.NpcShopCatalog.offers(type)) {
+                var stock = offer.stack();
                 if (stock.is(item))
                     lines.add(wiki("acquisition.shop", type.displayName(),
-                            de.artemis.cyberneticenhancements.common.menu.FixerDialogMenu.requiredTrust(type, option)));
+                            offer.requiredTrust()));
             }
-        lines.add(wiki("acquisition.loot_configured"));
         return lines;
     }
     private static SectionVisual buildConsumableRecycleVisual(CyberConsumableDefinition definition) {
@@ -1236,24 +1218,18 @@ final class CyberwareWikiData {
     }
 
     private static WikiEntry buildStationEntry(String id, Component title, ItemStack icon, Component subtitle, List<ArticleSection> sections) {
-        return new WikiEntry(id, title, icon, Component.translatable("wiki.cyberneticenhancements.badge.station"), subtitle, List.of(Component.translatable("wiki.cyberneticenhancements.chip.infrastructure")), filterSections(sections));
+        return new WikiEntry(id, title, icon, Component.translatable("wiki.cyberneticenhancements.badge.station"), subtitle, List.of(), filterSections(sections));
     }
 
     private static WikiEntry buildNpcEntry(String id, Component title, ItemStack icon, Component subtitle, List<ArticleSection> sections) {
-        return new WikiEntry(id, title, icon, Component.translatable("wiki.cyberneticenhancements.badge.npc"), subtitle, List.of(Component.translatable("wiki.cyberneticenhancements.chip.contact")), sections);
+        return new WikiEntry(id, title, icon, Component.translatable("wiki.cyberneticenhancements.badge.npc"), subtitle, List.of(), sections);
     }
 
     private static WikiEntry buildSystemEntry(String id, Component title, ItemStack icon, Component subtitle, List<ArticleSection> sections) {
-        return new WikiEntry(id, title, icon, Component.translatable("wiki.cyberneticenhancements.badge.system"), subtitle, List.of(Component.translatable("wiki.cyberneticenhancements.chip.reference")), sections);
+        return new WikiEntry(id, title, icon, Component.translatable("wiki.cyberneticenhancements.badge.system"), subtitle, List.of(), sections);
     }
 
-    private static WikiEntry buildLoreEntry(String id, Component title, ItemStack icon, Component subtitle, List<ArticleSection> sections) {
-        return new WikiEntry(id, title, icon, Component.translatable("wiki.cyberneticenhancements.badge.lore"), subtitle, List.of(Component.translatable("wiki.cyberneticenhancements.chip.reference")), sections);
-    }
 
-    private static WikiEntry buildQuestEntry(String id, Component title, ItemStack icon, Component subtitle, List<ArticleSection> sections) {
-        return new WikiEntry(id, title, icon, Component.translatable("wiki.cyberneticenhancements.badge.quest"), subtitle, List.of(Component.translatable("wiki.cyberneticenhancements.chip.infrastructure")), filterSections(sections));
-    }
 
     private static ItemStack statusIcon(CombatStatusType type) {
         return switch (type) {
@@ -1309,8 +1285,16 @@ final class CyberwareWikiData {
     ) {
     }
 
-    sealed interface SectionVisual permits CraftingGridVisual, CompactTransformVisual, ServiceOperationsVisual, RelicCacheExampleVisual {
+    sealed interface SectionVisual permits CraftingGridVisual, CompactTransformVisual, ServiceOperationsVisual, RelicCacheExampleVisual, ReferenceTableVisual, StructureViewVisual {
     }
+
+    record ReferenceGroup(Component title, List<de.artemis.cyberneticenhancements.client.ui.WikiArticleLayout.Block> rows,
+                          List<Component> notes) {}
+
+    /** A turnable 3D view of the structure template with this name. */
+    record StructureViewVisual(String template) implements SectionVisual {}
+
+    record ReferenceTableVisual(List<ReferenceGroup> groups) implements SectionVisual {}
 
     record CraftingGridVisual(List<ItemStack[]> grids, ItemStack output, String schematic,
                               net.minecraft.resources.ResourceLocation recipeId) implements SectionVisual {

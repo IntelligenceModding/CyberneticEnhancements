@@ -11,12 +11,11 @@ import net.minecraft.network.chat.Component;
         return Component.translatable("screen.cyberneticenhancements.workshop." + key, args);
     }
     static void frame(GuiGraphics g, int x, int y) {
-        UiRenderer.panel(g, x, y, 540, 416, StationScreenStyle.PANEL_DEEP);
+        UiRenderer.panel(g, x, y, 540, 322, StationScreenStyle.PANEL_DEEP);
         panel(g, x + 12, y + 12, 516, 32);
         panel(g, x + 12, y + 54, 196, 184);
         panel(g, x + 218, y + 54, 310, 184);
         panel(g, x + 12, y + 280, 516, 30);
-        panel(g, x + 12, y + 320, 516, 84);
     }
     private static void panel(GuiGraphics g, int x, int y, int w, int h) {
         UiRenderer.panel(g, x, y, w, h, UiRenderer.PANEL);

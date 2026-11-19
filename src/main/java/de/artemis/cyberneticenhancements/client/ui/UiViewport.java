@@ -12,6 +12,15 @@ public record UiViewport(int width, int height, double renderScale) {
         return coordinate / renderScale;
     }
 
+    /** Cover the entire native GUI, including its own rounded-up projection dimensions. */
+    public UiViewport coveringGui(int guiWidth, int guiHeight) {
+        // UiGraphics submits a float scale to the GPU. Account for that rounding
+        // too, and keep exact boundaries just outside the visible rectangle.
+        double actualScale = (float) renderScale;
+        return new UiViewport(Math.max(1, (int) Math.ceil(Math.nextUp(guiWidth / actualScale))),
+                Math.max(1, (int) Math.ceil(Math.nextUp(guiHeight / actualScale))), renderScale);
+    }
+
     public int toScreenFloor(int coordinate) {
         return (int) Math.floor(coordinate * renderScale);
     }

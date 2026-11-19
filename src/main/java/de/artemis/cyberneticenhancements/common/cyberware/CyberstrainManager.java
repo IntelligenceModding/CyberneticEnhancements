@@ -43,9 +43,6 @@ public final class CyberstrainManager {
     private static final String PSYCHOSIS_INSTABILITY_KEY = "cyberneticenhancements.psychosis_instability";
 
     private static final int PSYCHOSIS_THRESHOLD = CyberwareBalance.intValue("cyberstrain.threshold.psychosis");
-    private static final int CRITICAL_THRESHOLD = CyberwareBalance.intValue("cyberstrain.threshold.critical");
-    private static final int UNSTABLE_THRESHOLD = CyberwareBalance.intValue("cyberstrain.threshold.unstable");
-    private static final int STRAINED_THRESHOLD = CyberwareBalance.intValue("cyberstrain.threshold.strained");
 
     private static final double MAX_INSTABILITY = 100.0D;
     private static final double MINOR_TRIGGER_INSTABILITY = 55.0D;
@@ -57,12 +54,13 @@ public final class CyberstrainManager {
     }
 
     public static void onPlayerTick(Player player) {
-        if (player.level().isClientSide()) {
+        if (player.level().isClientSide() || !player.isAlive()) {
             return;
         }
 
         long gameTime = player.level().getGameTime();
         cleanupExpiredState(player, gameTime);
+        if (player instanceof ServerPlayer server && PsychosisRecovery.tick(server)) return;
 
         PlayerCyberwareInventory inventory = new PlayerCyberwareInventory(player);
         int effectiveCyberstrain = getEffectiveCyberstrain(player, inventory, gameTime);
@@ -72,7 +70,6 @@ public final class CyberstrainManager {
         } else {
             passivelyBuildInstability(player, effectiveCyberstrain);
             maybeStartPsychosisEpisode(player, effectiveCyberstrain, gameTime);
-            applyCriticalInstability(player, effectiveCyberstrain, gameTime);
         }
 
         decayInstability(player, effectiveCyberstrain, gameTime);
@@ -81,32 +78,12 @@ public final class CyberstrainManager {
         }
     }
 
+    public static boolean ignoresHunger(Player player) {
+        return player.isAlive() && (isPsychosisActive(player) || PsychosisRecovery.pending(player));
+    }
+
     public static void applyPenalties(Player player, PlayerCyberwareInventory inventory, EnumMap<CyberwareEffectType, Double> totals) {
         long gameTime = player.level().getGameTime();
-        int effectiveCyberstrain = getEffectiveCyberstrain(player, inventory, gameTime);
-        if (effectiveCyberstrain > 0) {
-            if (effectiveCyberstrain >= STRAINED_THRESHOLD) {
-                merge(totals, CyberwareEffectType.MOVEMENT_SPEED, -0.04D);
-                merge(totals, CyberwareEffectType.BLOCK_BREAK_SPEED, -0.08D);
-            }
-            if (effectiveCyberstrain >= UNSTABLE_THRESHOLD) {
-                merge(totals, CyberwareEffectType.ATTACK_SPEED, -0.08D);
-                merge(totals, CyberwareEffectType.MOVEMENT_SPEED, -0.04D);
-                player.addEffect(new MobEffectInstance(MobEffects.WEAKNESS, 80, 0, true, false, false));
-            }
-            if (effectiveCyberstrain >= CRITICAL_THRESHOLD) {
-                merge(totals, CyberwareEffectType.MAX_HEALTH, -4.0D);
-                merge(totals, CyberwareEffectType.BLOCK_BREAK_SPEED, -0.10D);
-                merge(totals, CyberwareEffectType.MOVEMENT_SPEED, -0.04D);
-                player.addEffect(new MobEffectInstance(MobEffects.CONFUSION, 80, 0, true, false, false));
-            }
-            if (effectiveCyberstrain >= PSYCHOSIS_THRESHOLD) {
-                merge(totals, CyberwareEffectType.ATTACK_SPEED, -0.12D);
-                merge(totals, CyberwareEffectType.BLOCK_BREAK_SPEED, -0.12D);
-                merge(totals, CyberwareEffectType.MAX_HEALTH, -4.0D);
-            }
-        }
-
         if (isAftershockActive(player, gameTime)) {
             merge(totals, CyberwareEffectType.MOVEMENT_SPEED, -0.05D);
             merge(totals, CyberwareEffectType.ATTACK_SPEED, -0.05D);
@@ -115,16 +92,20 @@ public final class CyberstrainManager {
 
         EpisodeTier tier = getEpisodeTier(player, gameTime);
         if (tier == EpisodeTier.MINOR) {
+            merge(totals, CyberwareEffectType.MAX_HEALTH, 10.0D);
+            merge(totals, CyberwareEffectType.ATTACK_SPEED, 0.20D);
             merge(totals, CyberwareEffectType.MOVEMENT_SPEED, 0.08D);
-            merge(totals, CyberwareEffectType.ATTACK_DAMAGE, 2.0D);
-            merge(totals, CyberwareEffectType.DAMAGE_REDUCTION, 0.05D);
-            merge(totals, CyberwareEffectType.KNOCKBACK_RESISTANCE, 0.10D);
+            merge(totals, CyberwareEffectType.ATTACK_DAMAGE, 5.0D);
+            merge(totals, CyberwareEffectType.DAMAGE_REDUCTION, 0.20D);
+            merge(totals, CyberwareEffectType.KNOCKBACK_RESISTANCE, 0.35D);
             merge(totals, CyberwareEffectType.STEP_HEIGHT, CyberwareBalance.doubleValue("cyberstrain.psychosis.minor.step_height_bonus"));
         } else if (tier == EpisodeTier.MAJOR) {
+            merge(totals, CyberwareEffectType.MAX_HEALTH, 20.0D);
+            merge(totals, CyberwareEffectType.ATTACK_SPEED, 0.40D);
             merge(totals, CyberwareEffectType.MOVEMENT_SPEED, 0.18D);
-            merge(totals, CyberwareEffectType.ATTACK_DAMAGE, 4.0D);
-            merge(totals, CyberwareEffectType.DAMAGE_REDUCTION, 0.12D);
-            merge(totals, CyberwareEffectType.KNOCKBACK_RESISTANCE, 0.20D);
+            merge(totals, CyberwareEffectType.ATTACK_DAMAGE, 9.0D);
+            merge(totals, CyberwareEffectType.DAMAGE_REDUCTION, 0.35D);
+            merge(totals, CyberwareEffectType.KNOCKBACK_RESISTANCE, 0.65D);
             merge(totals, CyberwareEffectType.STEP_HEIGHT, CyberwareBalance.doubleValue("cyberstrain.psychosis.major.step_height_bonus"));
             merge(totals, CyberwareEffectType.FIRE_RESISTANCE, 1.0D);
             merge(totals, CyberwareEffectType.WATER_BREATHING, 1.0D);
@@ -145,26 +126,11 @@ public final class CyberstrainManager {
             return 0.65D;
         }
 
-        PlayerCyberwareInventory inventory = new PlayerCyberwareInventory(player);
-        int effectiveCyberstrain = getEffectiveCyberstrain(player, inventory, gameTime);
-        if (effectiveCyberstrain >= PSYCHOSIS_THRESHOLD) {
-            return 0.30D;
-        }
-        if (effectiveCyberstrain >= CRITICAL_THRESHOLD) {
-            return 0.45D;
-        }
-        if (effectiveCyberstrain >= UNSTABLE_THRESHOLD) {
-            return 0.65D;
-        }
-        if (effectiveCyberstrain >= STRAINED_THRESHOLD) {
-            return 0.85D;
-        }
         return 1.0D;
     }
 
     public static double getAbilityCooldownMultiplier(Player player, PlayerCyberwareInventory inventory) {
         long gameTime = player.level().getGameTime();
-        int effectiveCyberstrain = getEffectiveCyberstrain(player, inventory, gameTime);
         EpisodeTier tier = getEpisodeTier(player, gameTime);
 
         double multiplier = 1.0D;
@@ -174,14 +140,6 @@ public final class CyberstrainManager {
             multiplier *= 1.85D;
         } else if (isAftershockActive(player, gameTime)) {
             multiplier *= 1.30D;
-        } else if (effectiveCyberstrain >= PSYCHOSIS_THRESHOLD) {
-            multiplier *= 1.90D;
-        } else if (effectiveCyberstrain >= CRITICAL_THRESHOLD) {
-            multiplier *= 1.55D;
-        } else if (effectiveCyberstrain >= UNSTABLE_THRESHOLD) {
-            multiplier *= 1.25D;
-        } else if (effectiveCyberstrain >= STRAINED_THRESHOLD) {
-            multiplier *= 1.10D;
         }
 
         CompoundTag persistentData = player.getPersistentData();
@@ -219,17 +177,19 @@ public final class CyberstrainManager {
         persistentData.putLong(SUPPRESSION_DURATION_KEY, Math.max(durationTicks, persistentData.getLong(SUPPRESSION_DURATION_KEY)));
 
         reduceInstability(player, hallucinationSideEffect ? 24.0D : 12.0D);
+        boolean hadEpisode = persistentData.contains(PSYCHOSIS_UNTIL_KEY);
         if (player instanceof ServerPlayer serverPlayer && isPsychosisActive(player)) {
             stabilizePsychosis(serverPlayer, hallucinationSideEffect ? MAJOR_STABILIZE_REDUCTION_TICKS : MINOR_STABILIZE_REDUCTION_TICKS, hallucinationSideEffect);
         }
+        boolean episodeEnded = hadEpisode && !persistentData.contains(PSYCHOSIS_UNTIL_KEY);
 
         if (hallucinationSideEffect) {
             player.addEffect(new MobEffectInstance(MobEffects.CONFUSION, 200, 0, true, false, false));
             player.addEffect(new MobEffectInstance(MobEffects.DARKNESS, 120, 0, true, false, false));
-            player.displayClientMessage(Component.translatable("message.cyberneticenhancements.consumable.immunoblockers"), true);
+            if (!episodeEnded) player.displayClientMessage(Component.translatable("message.cyberneticenhancements.consumable.immunoblockers"), true);
         } else {
             player.addEffect(new MobEffectInstance(MobEffects.MOVEMENT_SLOWDOWN, 80, 0, true, false, false));
-            player.displayClientMessage(Component.translatable("message.cyberneticenhancements.consumable.chrome_suppressant"), true);
+            if (!episodeEnded) player.displayClientMessage(Component.translatable("message.cyberneticenhancements.consumable.chrome_suppressant"), true);
         }
     }
 
@@ -267,10 +227,26 @@ public final class CyberstrainManager {
     }
 
     public static void clearPsychosis(ServerPlayer player) {
+        PsychosisRecovery.cancel(player);
+        PsychosisIntro.cancel(player);
+        clearEpisodeBlindness(player);
         clearPsychosisState(player.getPersistentData(), true);
         PsychosisPursuitController.clear(player);
         PsychosisBossBarManager.update(player);
         syncControlLock(player);
+        CyberwareEffects.refreshPlayerCyberware(player);
+    }
+
+    public static void onDeath(net.neoforged.neoforge.event.entity.living.LivingDeathEvent event) {
+        if (event.getEntity() instanceof ServerPlayer player) {
+            PsychosisRecovery.cancel(player);
+            PsychosisIntro.cancel(player);
+            clearEpisodeBlindness(player);
+            clearPsychosisState(player.getPersistentData(), true);
+            PsychosisPursuitController.clear(player);
+            PsychosisBossBarManager.update(player);
+            syncControlLock(player);
+        }
     }
 
     public static void clearTemporaryStatuses(ServerPlayer player) {
@@ -340,22 +316,13 @@ public final class CyberstrainManager {
         if (effectiveCyberstrain >= PSYCHOSIS_THRESHOLD) {
             return "EPISODE_RISK";
         }
-        if (effectiveCyberstrain >= CRITICAL_THRESHOLD) {
-            return "CRITICAL";
-        }
-        if (effectiveCyberstrain >= UNSTABLE_THRESHOLD) {
-            return "UNSTABLE";
-        }
-        if (effectiveCyberstrain >= STRAINED_THRESHOLD) {
-            return "STRAINED";
-        }
         return "STABLE";
     }
 
     public static void syncControlLock(ServerPlayer player) {
         EpisodeTier tier = getEpisodeTier(player, player.level().getGameTime());
-        PacketDistributor.sendToPlayer(player, tier.locksControl()
-                ? new CyberpsychosisControlPayload(true, player.getYRot(), player.getXRot(), 0.0F, 0.0F, false, true)
+        PacketDistributor.sendToPlayer(player, (tier.locksControl() || PsychosisIntro.active(player) || PsychosisRecovery.active(player))
+                ? new CyberpsychosisControlPayload(true, player.getYRot(), player.getXRot(), 0.0F, 0.0F, false, !PsychosisIntro.active(player))
                 : new CyberpsychosisControlPayload(false, 0.0F, 0.0F, 0.0F, 0.0F, false, false));
     }
 
@@ -386,6 +353,8 @@ public final class CyberstrainManager {
         copyLong(fromData, toData, PSYCHOSIS_LAST_ATTACK_KEY);
         copyFloat(fromData, toData, PSYCHOSIS_WANDER_YAW_KEY);
         copyString(fromData, toData, PSYCHOSIS_TIER_KEY);
+        copyLong(fromData,toData,PsychosisRecovery.START);copyFloat(fromData,toData,PsychosisRecovery.YAW);copyFloat(fromData,toData,PsychosisRecovery.PITCH);
+        copyLong(fromData,toData,PsychosisIntro.READY);copyLong(fromData,toData,PsychosisIntro.START);copyFloat(fromData,toData,PsychosisIntro.YAW);copyFloat(fromData,toData,PsychosisIntro.PITCH);
         copyLong(fromData, toData, PSYCHOSIS_AFTERSHOCK_UNTIL_KEY);
         copyLong(fromData, toData, PSYCHOSIS_AFTERSHOCK_DURATION_KEY);
         copyDouble(fromData, toData, PSYCHOSIS_INSTABILITY_KEY);
@@ -474,8 +443,6 @@ public final class CyberstrainManager {
     private static void passivelyBuildInstability(Player player, int effectiveCyberstrain) {
         if (effectiveCyberstrain >= PSYCHOSIS_THRESHOLD) {
             addInstability(player, 0.05D + Math.max(0, effectiveCyberstrain - PSYCHOSIS_THRESHOLD) * 0.010D);
-        } else if (effectiveCyberstrain >= CRITICAL_THRESHOLD) {
-            addInstability(player, 0.015D);
         }
     }
 
@@ -487,12 +454,6 @@ public final class CyberstrainManager {
             decayPerTick = 0.08D;
         } else if (effectiveCyberstrain >= PSYCHOSIS_THRESHOLD) {
             decayPerTick = 0.01D;
-        } else if (effectiveCyberstrain >= CRITICAL_THRESHOLD) {
-            decayPerTick = 0.03D;
-        } else if (effectiveCyberstrain >= UNSTABLE_THRESHOLD) {
-            decayPerTick = 0.07D;
-        } else if (effectiveCyberstrain >= STRAINED_THRESHOLD) {
-            decayPerTick = 0.12D;
         } else {
             decayPerTick = 0.20D;
         }
@@ -535,17 +496,19 @@ public final class CyberstrainManager {
     }
 
     private static void startPsychosisEpisode(ServerPlayer player, long durationTicks, boolean forced, EpisodeTier tier) {
+        PsychosisRecovery.cancel(player);
         long gameTime = player.level().getGameTime();
         CompoundTag persistentData = player.getPersistentData();
-        persistentData.putLong(PSYCHOSIS_UNTIL_KEY, gameTime + durationTicks);
-        persistentData.putLong(PSYCHOSIS_COOLDOWN_UNTIL_KEY, gameTime + durationTicks + BASE_EPISODE_COOLDOWN_TICKS);
+        persistentData.putLong(PSYCHOSIS_UNTIL_KEY, gameTime + durationTicks + PsychosisIntroMotion.DURATION);
+        persistentData.putLong(PSYCHOSIS_COOLDOWN_UNTIL_KEY, gameTime + durationTicks + PsychosisIntroMotion.DURATION + BASE_EPISODE_COOLDOWN_TICKS);
         persistentData.putLong(PSYCHOSIS_DURATION_KEY, durationTicks);
         persistentData.putString(PSYCHOSIS_TIER_KEY, tier.name());
         persistentData.remove(PSYCHOSIS_AFTERSHOCK_UNTIL_KEY);
         persistentData.remove(PSYCHOSIS_AFTERSHOCK_DURATION_KEY);
 
-        player.addEffect(new MobEffectInstance(MobEffects.DARKNESS, tier == EpisodeTier.MAJOR ? 100 : 70, 0, true, false, false));
-        player.addEffect(new MobEffectInstance(MobEffects.CONFUSION, tier == EpisodeTier.MAJOR ? 140 : 90, 0, true, false, false));
+        PsychosisIntro.begin(player);
+
+
         player.displayClientMessage(Component.translatable(
                 forced
                         ? "message.cyberneticenhancements.psychosis.forced"
@@ -554,9 +517,12 @@ public final class CyberstrainManager {
                         : "message.cyberneticenhancements.psychosis.triggered_minor"), true);
         PsychosisBossBarManager.update(player);
         syncControlLock(player);
+        player.removeEffect(MobEffects.WEAKNESS);
+        CyberwareEffects.refreshPlayerCyberware(player);
     }
 
     private static void runPsychosisEpisode(Player player, long gameTime) {
+        if (player instanceof ServerPlayer server && PsychosisIntro.tick(server)) return;
         if (player.isSpectator()) {
             if (player instanceof ServerPlayer serverPlayer) {
                 PsychosisPursuitController.clear(player);
@@ -570,42 +536,17 @@ public final class CyberstrainManager {
             return;
         }
 
-        player.addEffect(new MobEffectInstance(MobEffects.DARKNESS, tier == EpisodeTier.MAJOR ? 60 : 35, 0, true, false, false));
+        maintainEpisodeBlindness(player);
+
         player.addEffect(new MobEffectInstance(MobEffects.CONFUSION, tier == EpisodeTier.MAJOR ? 60 : 40, 0, true, false, false));
-        if (tier == EpisodeTier.MAJOR && gameTime % 40L == 0L) {
-            player.addEffect(new MobEffectInstance(MobEffects.WEAKNESS, 40, 0, true, false, false));
-        }
+        player.removeEffect(MobEffects.WEAKNESS);
 
-        LivingEntity target = PsychosisPursuitController.findTarget(player);
-        if (tier == EpisodeTier.MINOR) {
-            runMinorEpisode(player, target, gameTime);
-        } else {
-            runMajorEpisode(player, target, gameTime);
-        }
-    }
-
-    private static void runMinorEpisode(Player player, LivingEntity target, long gameTime) {
-        if (target != null) {
-            if (gameTime % 24L == 0L) {
-                steerLookTowardTarget(player, target);
-            }
-            if (player.distanceToSqr(target) <= 9.0D) {
-                tryAttackTarget(player, target, gameTime, 14L);
-            } else if (gameTime % 22L == 0L && player.getRandom().nextFloat() < 0.35F) {
-                Vec3 direction = flatten(target.position().subtract(player.position()));
-                drivePsychosisMovement(player, direction, 0.42D, false);
-            }
+        if (player instanceof ServerPlayer server && PsychosisIntro.settling(player)) {
+            PsychosisIntro.hold(server);
             return;
         }
-
-        if (gameTime % 32L == 0L) {
-            float yaw = player.getYRot() + (player.getRandom().nextFloat() - 0.5F) * 65.0F;
-            player.setYRot(yaw);
-            player.setYHeadRot(yaw);
-            player.setYBodyRot(yaw);
-            Vec3 direction = Vec3.directionFromRotation(0.0F, yaw);
-            drivePsychosisMovement(player, new Vec3(direction.x, 0.0D, direction.z), 0.35D, false);
-        }
+        LivingEntity target = PsychosisPursuitController.findTarget(player);
+        runMajorEpisode(player, target, gameTime);
     }
 
     private static void runMajorEpisode(Player player, LivingEntity target, long gameTime) {
@@ -628,20 +569,6 @@ public final class CyberstrainManager {
         }
     }
 
-    private static void applyCriticalInstability(Player player, int effectiveCyberstrain, long gameTime) {
-        if (effectiveCyberstrain >= PSYCHOSIS_THRESHOLD) {
-            player.addEffect(new MobEffectInstance(MobEffects.DARKNESS, 60, 0, true, false, false));
-            if (gameTime % 60L == 0L) {
-                player.addEffect(new MobEffectInstance(MobEffects.CONFUSION, 80, 0, true, false, false));
-            }
-        } else if (effectiveCyberstrain >= CRITICAL_THRESHOLD) {
-            player.addEffect(new MobEffectInstance(MobEffects.DARKNESS, 40, 0, true, false, false));
-            if (gameTime % 90L == 0L) {
-                player.addEffect(new MobEffectInstance(MobEffects.CONFUSION, 60, 0, true, false, false));
-            }
-        }
-    }
-
     private static void steerLookTowardTarget(Player player, LivingEntity target) {
         Vec3 delta = target.position().subtract(player.position());
         Vec3 horizontal = flatten(delta);
@@ -659,7 +586,7 @@ public final class CyberstrainManager {
     }
 
     private static void tryAttackTarget(Player player, LivingEntity target, long gameTime, long attackDelayTicks) {
-        if (!(player instanceof ServerPlayer serverPlayer) || player.distanceToSqr(target) > 9.0D) {
+        if (!(player instanceof ServerPlayer serverPlayer) || !PsychosisPursuitController.isValidTarget(target) || !player.hasLineOfSight(target) || player.distanceToSqr(target) > 9.0D) {
             return;
         }
 
@@ -731,14 +658,12 @@ public final class CyberstrainManager {
         long remaining = Math.max(0L, persistentData.getLong(PSYCHOSIS_UNTIL_KEY) - gameTime);
         if (tier == EpisodeTier.MINOR && hardStabilizer) {
             finishPsychosisEpisode(player, true);
-            player.displayClientMessage(Component.translatable("message.cyberneticenhancements.psychosis.stabilized"), true);
             return;
         }
 
         long reducedRemaining = Math.max(0L, remaining - reductionTicks);
         if (reducedRemaining <= 0L) {
             finishPsychosisEpisode(player, true);
-            player.displayClientMessage(Component.translatable("message.cyberneticenhancements.psychosis.stabilized"), true);
             return;
         }
 
@@ -776,7 +701,14 @@ public final class CyberstrainManager {
         }
     }
 
+    public static boolean endPsychosisEpisode(ServerPlayer player) {
+        boolean hadEpisode = player.getPersistentData().contains(PSYCHOSIS_UNTIL_KEY);
+        if (isPsychosisActive(player)) finishPsychosisEpisode(player, true); else clearPsychosis(player);
+        return hadEpisode;
+    }
+
     private static void finishPsychosisEpisode(ServerPlayer player, boolean stabilized) {
+        PsychosisIntro.cancel(player);
         long gameTime = player.level().getGameTime();
         CompoundTag persistentData = player.getPersistentData();
         EpisodeTier tier = readStoredEpisodeTier(persistentData);
@@ -784,18 +716,30 @@ public final class CyberstrainManager {
             return;
         }
 
+        if (player.isAlive()) CyberwareConditionManager.inducePsychosisFaults(player, player.getRandom());
         long aftershockTicks = tier == EpisodeTier.MAJOR ? 35L * 20L : 20L * 20L;
         persistentData.putLong(PSYCHOSIS_AFTERSHOCK_UNTIL_KEY, gameTime + aftershockTicks);
         persistentData.putLong(PSYCHOSIS_AFTERSHOCK_DURATION_KEY, aftershockTicks);
         reduceInstability(player, tier == EpisodeTier.MAJOR ? 42.0D : 28.0D);
         clearPsychosisState(persistentData, false);
         PsychosisPursuitController.clear(player);
+        PsychosisRecovery.begin(player);
         PsychosisBossBarManager.update(player);
         player.displayClientMessage(Component.translatable(
                 stabilized
                         ? "message.cyberneticenhancements.psychosis.stabilized"
                         : "message.cyberneticenhancements.psychosis.ended"), true);
         syncControlLock(player);
+        CyberwareEffects.refreshPlayerCyberware(player);
+    }
+
+    public static void maintainEpisodeBlindness(Player player) {
+        var effect=player.getEffect(MobEffects.BLINDNESS);
+        if(effect==null||effect.getDuration()<40)player.addEffect(new MobEffectInstance(MobEffects.BLINDNESS,60,0,true,false,false));
+    }
+
+    private static void clearEpisodeBlindness(Player player) {
+        if (player.getPersistentData().contains(PSYCHOSIS_UNTIL_KEY)) player.removeEffect(MobEffects.BLINDNESS);
     }
 
     private static void clearPsychosisState(CompoundTag persistentData, boolean clearAftershock) {
@@ -804,6 +748,8 @@ public final class CyberstrainManager {
         persistentData.remove(PSYCHOSIS_LAST_ATTACK_KEY);
         persistentData.remove(PSYCHOSIS_WANDER_YAW_KEY);
         persistentData.remove(PSYCHOSIS_TIER_KEY);
+        persistentData.remove(PsychosisIntro.START); persistentData.remove(PsychosisIntro.YAW); persistentData.remove(PsychosisIntro.PITCH);
+        persistentData.remove(PsychosisIntro.READY);
         if (clearAftershock) {
             persistentData.remove(PSYCHOSIS_AFTERSHOCK_UNTIL_KEY);
             persistentData.remove(PSYCHOSIS_AFTERSHOCK_DURATION_KEY);
@@ -815,7 +761,7 @@ public final class CyberstrainManager {
     }
 
     private static EpisodeTier getEpisodeTier(Player player, long gameTime) {
-        if (!isPsychosisActive(player, gameTime)) {
+        if (!isPsychosisActive(player, gameTime) || PsychosisIntro.active(player)) {
             return EpisodeTier.NONE;
         }
         return readStoredEpisodeTier(player.getPersistentData());
@@ -836,7 +782,7 @@ public final class CyberstrainManager {
 
     private enum EpisodeTier {
         NONE(false),
-        MINOR(false),
+        MINOR(true),
         MAJOR(true);
 
         private final boolean locksControl;

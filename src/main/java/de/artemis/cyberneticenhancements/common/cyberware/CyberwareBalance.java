@@ -718,10 +718,12 @@ public final class CyberwareBalance {
 
     private static Map<String, Integer> createIntDefaults() {
         Map<String, Integer> defaults = new LinkedHashMap<>();
+        defaults.put("condition.short_circuit.water_exposure_ticks", 60);
+        defaults.put("condition.short_circuit.rain_exposure_ticks", 100);
+        defaults.put("condition.short_circuit.cooldown_ticks", 600);
+        defaults.put("condition.short_circuit.cooldown_variation_ticks", 300);
+        defaults.put("condition.short_circuit.shock_ticks", 20);
         defaults.put("cyberstrain.threshold.psychosis", 50);
-        defaults.put("cyberstrain.threshold.critical", 35);
-        defaults.put("cyberstrain.threshold.unstable", 20);
-        defaults.put("cyberstrain.threshold.strained", 10);
 
         defaults.put("consumable.maxdoc_mk1.cooldown_seconds", 50);
         defaults.put("consumable.maxdoc_mk1.overdose_points", 0);
@@ -857,6 +859,8 @@ public final class CyberwareBalance {
 
     private static Map<String, Double> createDoubleDefaults() {
         Map<String, Double> defaults = new LinkedHashMap<>();
+        defaults.put("condition.short_circuit.integrity_threshold", 0.15D);
+        defaults.put("condition.short_circuit.damage", 1.0D);
         de.artemis.cyberneticenhancements.common.cyberware.sandevistan.SandevistanProfile.addBalanceDefaults(defaults);
         defaults.put("combat_status.shock.move_speed_per_stack", -0.08D);
         defaults.put("combat_status.shock.attack_speed_per_stack", -0.12D);

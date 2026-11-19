@@ -37,6 +37,27 @@ public final class ModModelProvider implements DataProvider {
     @Override
     public @NotNull CompletableFuture<?> run(@NotNull CachedOutput output) {
         List<CompletableFuture<?>> futures = new ArrayList<>();
+        futures.add(saveHoloBarrierBlockstate(output));
+        futures.add(saveAliasedItemModel(output, "holo_barrier", "minecraft:item/barrier"));
+        futures.add(saveBarrelBlockstate(output, "iron_quest_crate"));
+        futures.add(saveBarrelBlockstate(output, "dropoff_point"));
+        futures.add(saveBlockItemDefinition(output, "dropoff_point"));
+        for (boolean open : new boolean[]{false, true}) {
+            var model = new JsonObject();
+            model.addProperty("parent", open ? "minecraft:block/barrel_open" : "minecraft:block/barrel");
+            futures.add(DataProvider.saveStable(output, model, blockModelPathProvider.json(id(open ? "dropoff_point_open" : "dropoff_point"))));
+        }
+        futures.add(saveBlockItemDefinition(output, "iron_quest_crate"));
+        for (boolean open : new boolean[]{false, true}) {
+            var model = new JsonObject();
+            model.addProperty("parent", "minecraft:block/barrel");
+            var textures = new JsonObject();
+            textures.addProperty("side", "minecraft:block/blast_furnace_side");
+            textures.addProperty("bottom", "minecraft:block/blast_furnace_top");
+            textures.addProperty("top", open ? "minecraft:block/hopper_top" : "minecraft:block/iron_block");
+            model.add("textures", textures);
+            futures.add(DataProvider.saveStable(output, model, blockModelPathProvider.json(id(open ? "iron_quest_crate_open" : "iron_quest_crate"))));
+        }
         futures.add(saveSimpleBlockstate(output, "cyberware_fabricator"));
         JsonObject fabricatorModel = new JsonObject();
         fabricatorModel.addProperty("parent", "minecraft:block/smithing_table");
@@ -80,10 +101,31 @@ public final class ModModelProvider implements DataProvider {
         futures.add(saveSimpleBlockstate(output, "recycler_station"));
         futures.add(saveBlockItemDefinition(output, "recycler_station"));
 
-        for (String npcType : List.of("fixer", "ripperdoc", "techie", "netrunner", "merc")) {
+        for (String npcType : List.of("fixer", "ripperdoc", "techie", "netrunner", "merc", "med_tech", "maxtec", "dev_test")) {
             futures.add(saveAliasedItemModel(output, npcType + "_spawn_egg", "minecraft:item/template_spawn_egg"));
         }
 
+        Map<String, String> chromiumBlocks = Map.of(
+                "chromium_ore", "minecraft:block/iron_ore",
+                "deepslate_chromium_ore", "minecraft:block/deepslate_iron_ore");
+        futures.add(DataProvider.saveStable(output, chromiumOutlineModel(), blockModelPathProvider.json(id("chromium_outline"))));
+        for (var entry : chromiumBlocks.entrySet()) {
+            JsonObject model = new JsonObject();
+            model.addProperty("parent", "cyberneticenhancements:block/chromium_outline");
+            JsonObject textures = new JsonObject();
+            textures.addProperty("all", entry.getValue());
+            model.add("textures", textures);
+            futures.add(DataProvider.saveStable(output, model, blockModelPathProvider.json(id(entry.getKey()))));
+            futures.add(saveSimpleBlockstate(output, entry.getKey()));
+            futures.add(saveBlockItemDefinition(output, entry.getKey()));
+        }
+        Map<String, String> chromiumItems = Map.of(
+                "raw_chromium", "minecraft:item/raw_iron",
+                "chromium_scrap", "minecraft:item/iron_nugget",
+                "chromium_alloy_ingot", "minecraft:item/iron_ingot",
+                "chromium_survey", "minecraft:item/paper");
+        for (var entry : chromiumItems.entrySet())
+            futures.add(saveAliasedItemModel(output, entry.getKey(), entry.getValue()));
         Map<String, String> materials = Map.ofEntries(
                 Map.entry("copper_wiring", "minecraft:item/copper_ingot"),
                 Map.entry("conductive_paste", "minecraft:item/redstone"),
@@ -97,7 +139,9 @@ public final class ModModelProvider implements DataProvider {
                 Map.entry("rare_item_components", "minecraft:item/diamond"),
                 Map.entry("epic_item_components", "minecraft:item/echo_shard"),
                 Map.entry("legendary_item_components", "minecraft:item/nether_star"),
-                Map.entry("courier_package", "minecraft:item/paper")
+                Map.entry("courier_package", "minecraft:item/paper"),
+                Map.entry("revive_injector", "minecraft:item/glistering_melon_slice"),
+                Map.entry("signal_beacon", "minecraft:item/ender_eye")
         );
         for (Map.Entry<String, String> material : materials.entrySet()) {
             futures.add(saveAliasedItemModel(output, material.getKey(), material.getValue()));
@@ -144,6 +188,23 @@ public final class ModModelProvider implements DataProvider {
         return "Model Definitions: " + CyberneticEnhancements.MOD_ID;
     }
 
+    private CompletableFuture<?> saveBarrelBlockstate(CachedOutput output, String blockName) {
+        var state = new JsonObject();
+        var variants = new JsonObject();
+        for (var direction : net.minecraft.core.Direction.values()) {
+            for (boolean open : new boolean[]{false, true}) {
+                var variant = new JsonObject();
+                variant.addProperty("model", id(open ? blockName + "_open" : blockName).withPrefix("block/").toString());
+                int rotationX = direction == net.minecraft.core.Direction.UP ? 0 : direction == net.minecraft.core.Direction.DOWN ? 180 : 90;
+                if (rotationX != 0) variant.addProperty("x", rotationX);
+                if (direction.getAxis().isHorizontal()) variant.addProperty("y", ((int) direction.toYRot() + 180) % 360);
+                variants.add("facing=" + direction.getSerializedName() + ",open=" + open, variant);
+            }
+        }
+        state.add("variants", variants);
+        return DataProvider.saveStable(output, state, blockstatesPathProvider.json(id(blockName)));
+    }
+
     private CompletableFuture<?> saveCubeBlockModel(CachedOutput output, String modelName, String texturePath) {
         JsonObject json = new JsonObject();
         json.addProperty("parent", "minecraft:block/cube_all");
@@ -153,6 +214,52 @@ public final class ModModelProvider implements DataProvider {
         json.add("textures", textures);
 
         return DataProvider.saveStable(output, json, blockModelPathProvider.json(id(modelName)));
+    }
+
+    /** Five non-overlapping quads per face keep the vanilla texture and a one-texel red rim. */
+    private static JsonObject chromiumOutlineModel() {
+        JsonObject model = new JsonObject();
+        model.addProperty("parent", "minecraft:block/block");
+        JsonObject textures = new JsonObject();
+        textures.addProperty("border", "minecraft:block/red_concrete");
+        textures.addProperty("particle", "#all");
+        model.add("textures", textures);
+        JsonArray elements = new JsonArray();
+        int[][] regions = {{1, 1, 15, 15}, {0, 0, 16, 1}, {0, 15, 16, 16}, {0, 1, 1, 15}, {15, 1, 16, 15}};
+        for (String direction : List.of("north", "south", "west", "east", "down", "up")) {
+            for (int index = 0; index < regions.length; index++) {
+                int[] r = regions[index];
+                JsonObject part = new JsonObject();
+                switch (direction) {
+                    case "north", "south" -> {
+                        int z = direction.equals("north") ? 0 : 16;
+                        part.add("from", vector(r[0], r[1], z));
+                        part.add("to", vector(r[2], r[3], z));
+                    }
+                    case "west", "east" -> {
+                        int x = direction.equals("west") ? 0 : 16;
+                        part.add("from", vector(x, r[1], r[0]));
+                        part.add("to", vector(x, r[3], r[2]));
+                    }
+                    default -> {
+                        int y = direction.equals("down") ? 0 : 16;
+                        part.add("from", vector(r[0], y, r[1]));
+                        part.add("to", vector(r[2], y, r[3]));
+                    }
+                }
+                JsonObject face = face(index == 0 ? "#all" : "#border");
+                face.addProperty("cullface", direction);
+                if (index == 0) {
+                    JsonArray uv = new JsonArray();
+                    for (int coordinate : r) uv.add(coordinate);
+                    face.add("uv", uv);
+                }
+                JsonObject faces = new JsonObject(); faces.add(direction, face);
+                part.add("faces", faces); elements.add(part);
+            }
+        }
+        model.add("elements", elements);
+        return model;
     }
 
     private CompletableFuture<?> saveRelicCacheModel(CachedOutput output, String modelName, String frameTexture, String panelTexture, String accentTexture, String trimTexture) {
@@ -175,6 +282,19 @@ public final class ModModelProvider implements DataProvider {
         json.add("elements", elements);
 
         return DataProvider.saveStable(output, json, blockModelPathProvider.json(id(modelName)));
+    }
+
+    /** The barrier draws itself, so every facing uses the empty model. */
+    private CompletableFuture<?> saveHoloBarrierBlockstate(CachedOutput output) {
+        JsonObject json = new JsonObject();
+        JsonObject variants = new JsonObject();
+        for (String facing : new String[]{"east", "north", "south", "west"}) {
+            JsonObject variant = new JsonObject();
+            variant.addProperty("model", "minecraft:block/air");
+            variants.add("facing=" + facing, variant);
+        }
+        json.add("variants", variants);
+        return DataProvider.saveStable(output, json, blockstatesPathProvider.json(id("holo_barrier")));
     }
 
     private CompletableFuture<?> saveSimpleBlockstate(CachedOutput output, String blockName) {

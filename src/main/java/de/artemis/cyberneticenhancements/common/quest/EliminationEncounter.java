@@ -25,14 +25,16 @@ final class EliminationEncounter {
         int remaining = Math.min(limit - contract.huntSpawnedCount(), contract.targetCount() - contract.progress());
         boolean dirty = false;
         int radius = Math.max(2, Math.min(24, contract.areaRadius() - 2));
+        boolean dimensional = QuestDimension.of(contract.dimensionId()) != QuestDimension.STANDARD;
         for (int attempt = 0; remaining > 0 && attempt < 32; attempt++) {
-            BlockPos column = center.offset(level.random.nextInt(radius * 2 + 1) - radius, 0,
+            BlockPos column = dimensional && attempt == 0 ? center : center.offset(level.random.nextInt(radius * 2 + 1) - radius, 0,
                     level.random.nextInt(radius * 2 + 1) - radius);
             if (!level.hasChunkAt(column)) {
                 continue;
             }
-            BlockPos pos = level.getHeightmapPos(Heightmap.Types.MOTION_BLOCKING_NO_LEAVES, column);
-            if (!pos.closerThan(center, contract.areaRadius()) || player.distanceToSqr(pos.getX() + 0.5, pos.getY(), pos.getZ() + 0.5) < 144
+            BlockPos pos = dimensional ? DimensionalQuestSites.nearbySpawn(level, column)
+                    : level.getHeightmapPos(Heightmap.Types.MOTION_BLOCKING_NO_LEAVES, column);
+            if (pos == null || !pos.closerThan(center, contract.areaRadius()) || player.distanceToSqr(pos.getX() + 0.5, pos.getY(), pos.getZ() + 0.5) < 144
                     || !level.getWorldBorder().isWithinBounds(pos)
                     || !level.getBlockState(pos.below()).isFaceSturdy(level, pos.below(), net.minecraft.core.Direction.UP)
                     || !level.getFluidState(pos).isEmpty()) {

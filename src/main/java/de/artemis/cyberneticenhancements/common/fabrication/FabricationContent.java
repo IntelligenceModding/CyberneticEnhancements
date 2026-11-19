@@ -35,8 +35,6 @@ public final class FabricationContent {
         part("proprietary_neural_core", "heart_of_the_sea");
         part("military_actuator_core", "heavy_core");
         part("experimental_control_core", "echo_shard");
-        part("precision_assembly_module", "daylight_detector");
-        part("high_spec_fabrication_module", "lodestone");
         for (var definition : CyberwareCatalog.definitions())
             if (requiresSchematic(definition)) {
                 String id = definition.id();

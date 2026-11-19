@@ -396,6 +396,7 @@ public final class FrontalCortexManager {
     }
 
     private static void notify(Player player, String translationKey, Object... args) {
+        de.artemis.cyberneticenhancements.common.journal.JournalEvents.ability(player, translationKey, args);
         player.displayClientMessage(Component.translatable(translationKey, args).withStyle(ChatFormatting.AQUA), true);
     }
 

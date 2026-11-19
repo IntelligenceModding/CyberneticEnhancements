@@ -1,5 +1,7 @@
 package de.artemis.cyberneticenhancements.common.economy;
 
+import de.artemis.cyberneticenhancements.common.feedback.PlayerActionFeedback;
+
 import de.artemis.cyberneticenhancements.common.util.BalanceMath;
 import net.minecraft.Util;
 import net.minecraft.nbt.CompoundTag;
@@ -170,6 +172,8 @@ public final class PlayerEurodollarManager {
             return TransferResult.INSUFFICIENT_FUNDS;
         }
         add(to, amount, "player_received", "Received funds", from.getUUID(), from.getGameProfile().getName());
+        PlayerActionFeedback.CASH_TRANSFER.play(from);
+        PlayerActionFeedback.CASH_TRANSFER.play(to);
         return TransferResult.OK;
     }
 
@@ -209,6 +213,8 @@ public final class PlayerEurodollarManager {
         }
         appendRequest(from, request);
         appendTransaction(from, "request_sent", 0, "Requested funds", toPlayerId, toPlayerName);
+        de.artemis.cyberneticenhancements.common.journal.PlayerJournal.recordFor(from.server, toPlayerId, "", net.minecraft.core.BlockPos.ZERO,
+                "banking", "banking", 0, "Incoming payment request", from.getGameProfile().getName());
         return TransferResult.OK;
     }
 
@@ -247,10 +253,14 @@ public final class PlayerEurodollarManager {
             if (!saveOfflinePlayerData(data)) {
                 return TransferResult.TARGET_NOT_FOUND;
             }
+            de.artemis.cyberneticenhancements.common.journal.PlayerJournal.recordFor(approver.server, request.fromPlayerId(), "", net.minecraft.core.BlockPos.ZERO,
+                    "banking", "banking", request.amount(), "Request payment received", approver.getGameProfile().getName());
         }
 
         remove(approver, request.amount(), "request_paid", "Paid requested funds", request.fromPlayerId(), request.fromPlayerName());
         removeRequest(approver, requestId);
+        PlayerActionFeedback.CASH_TRANSFER.play(approver);
+        if (requester != null) PlayerActionFeedback.CASH_TRANSFER.play(requester);
         return TransferResult.OK;
     }
 
@@ -292,43 +302,8 @@ public final class PlayerEurodollarManager {
         return List.copyOf(requests);
     }
 
-    public static int totalIncome(Player player) {
-        long total = 0;
-        for (TransactionEntry entry : ledger(player)) {
-            if (entry.amount() > 0) {
-                total += entry.amount();
-            }
-        }
-        return (int) Math.min(Integer.MAX_VALUE, total);
-    }
 
-    public static int totalExpense(Player player) {
-        long total = 0;
-        for (TransactionEntry entry : ledger(player)) {
-            if (entry.amount() < 0) {
-                total -= (long) entry.amount();
-            }
-        }
-        return (int) Math.min(Integer.MAX_VALUE, total);
-    }
 
-    public static int[] graphNet(Player player, int buckets) {
-        long[] totals = new long[Math.max(1, buckets)];
-        long currentDay = currentDay(player);
-        for (TransactionEntry entry : ledger(player)) {
-            long delta = currentDay - entry.day();
-            if (delta < 0 || delta >= totals.length) {
-                continue;
-            }
-            int index = totals.length - 1 - (int) delta;
-            totals[index] += entry.amount();
-        }
-        int[] values = new int[totals.length];
-        for (int i = 0; i < totals.length; i++) {
-            values[i] = (int) Math.max(Integer.MIN_VALUE, Math.min(Integer.MAX_VALUE, totals[i]));
-        }
-        return values;
-    }
 
     public static void copyState(Player fromPlayer, Player toPlayer) {
         CompoundTag fromData = fromPlayer.getPersistentData();
@@ -337,6 +312,7 @@ public final class PlayerEurodollarManager {
         copyTagIfPresent(fromData, toData, LEDGER_KEY);
         copyTagIfPresent(fromData, toData, REQUESTS_KEY);
         copyTagIfPresent(fromData, toData, SEQUENCE_KEY);
+        copyTagIfPresent(fromData, toData, DailyBankingHistory.KEY);
     }
 
     private static void copyTagIfPresent(CompoundTag fromData, CompoundTag toData, String key) {
@@ -364,11 +340,14 @@ public final class PlayerEurodollarManager {
             @Nullable String counterpartyName
     ) {
         appendTransaction(player.getPersistentData(), currentDay(player), typeId, amount, note, counterpartyId, counterpartyName);
+        de.artemis.cyberneticenhancements.common.journal.PlayerJournal.record(player, "banking", "banking", amount,
+                note == null ? "" : note, counterpartyName == null ? "" : counterpartyName);
     }
 
     private static void appendTransaction(CompoundTag persistentData, long day, String typeId, int amount, String note,
                                           @Nullable UUID counterpartyId, @Nullable String counterpartyName) {
         List<TransactionEntry> entries = readLedger(persistentData);
+        DailyBankingHistory.record(persistentData, day, amount, entries);
         entries.add(0, new TransactionEntry(
                 nextSequence(persistentData),
                 day,

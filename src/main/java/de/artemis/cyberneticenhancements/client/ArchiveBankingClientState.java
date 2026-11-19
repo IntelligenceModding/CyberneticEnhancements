@@ -5,7 +5,7 @@ import de.artemis.cyberneticenhancements.common.network.ArchiveBankingPayload;
 import java.util.List;
 
 public final class ArchiveBankingClientState {
-    private static ArchiveBankingPayload snapshot = new ArchiveBankingPayload(0, 0, 0, 0, List.of(), List.of(), List.of());
+    private static ArchiveBankingPayload snapshot = new ArchiveBankingPayload(0, 0, List.of(), List.of());
     private static boolean loaded;
 
     private ArchiveBankingClientState() {
@@ -25,7 +25,7 @@ public final class ArchiveBankingClientState {
     }
 
     public static void clear() {
-        snapshot = new ArchiveBankingPayload(0, 0, 0, 0, List.of(), List.of(), List.of());
+        snapshot = new ArchiveBankingPayload(0, 0, List.of(), List.of());
         loaded = false;
     }
 }

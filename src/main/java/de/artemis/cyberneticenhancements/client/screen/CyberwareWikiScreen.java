@@ -1,4 +1,8 @@
 package de.artemis.cyberneticenhancements.client.screen;
+import de.artemis.cyberneticenhancements.client.ui.ArchiveContentLayout;
+import de.artemis.cyberneticenhancements.client.ui.WikiArticleLayout;
+import de.artemis.cyberneticenhancements.client.ui.WikiSearch;
+import de.artemis.cyberneticenhancements.client.screen.CyberwareWikiData.ReferenceTableVisual;
 
 import com.mojang.blaze3d.platform.Lighting;
 import com.mojang.blaze3d.vertex.VertexConsumer;
@@ -12,6 +16,7 @@ import de.artemis.cyberneticenhancements.client.screen.CyberwareWikiData.Article
 import de.artemis.cyberneticenhancements.client.screen.CyberwareWikiData.CompactTransformVisual;
 import de.artemis.cyberneticenhancements.client.screen.CyberwareWikiData.CraftingGridVisual;
 import de.artemis.cyberneticenhancements.client.screen.CyberwareWikiData.RelicCacheExampleVisual;
+import de.artemis.cyberneticenhancements.client.screen.CyberwareWikiData.StructureViewVisual;
 import de.artemis.cyberneticenhancements.client.screen.CyberwareWikiData.UpgradeStageVisual;
 import de.artemis.cyberneticenhancements.client.screen.CyberwareWikiData.SectionVisual;
 import de.artemis.cyberneticenhancements.client.screen.CyberwareWikiData.ServiceOperationVisual;
@@ -20,29 +25,20 @@ import de.artemis.cyberneticenhancements.client.screen.CyberwareWikiData.WikiEnt
 import de.artemis.cyberneticenhancements.client.screen.CyberwareWikiData.WikiSection;
 import de.artemis.cyberneticenhancements.client.screen.CyberwareWikiData.WikiTopic;
 import de.artemis.cyberneticenhancements.common.network.ArchiveContactActionPayload;
-import de.artemis.cyberneticenhancements.common.network.ArchiveBankingActionPayload;
-import de.artemis.cyberneticenhancements.common.network.ArchiveBankingPayload;
 import de.artemis.cyberneticenhancements.common.network.ArchiveBankingRequestPayload;
 import de.artemis.cyberneticenhancements.common.network.ArchiveContactsPayload;
 import de.artemis.cyberneticenhancements.common.network.ArchiveContactsRequestPayload;
-import de.artemis.cyberneticenhancements.common.network.ArchiveQuestActionPayload;
-import de.artemis.cyberneticenhancements.common.network.ArchiveQuestsPayload;
 import de.artemis.cyberneticenhancements.common.network.ArchiveQuestsRequestPayload;
 import de.artemis.cyberneticenhancements.common.world.NpcIdentityConfig.NpcCategory;
 import de.artemis.cyberneticenhancements.common.registry.ModBlocks;
 import de.artemis.cyberneticenhancements.common.registry.ModItems;
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.gui.components.PlayerFaceRenderer;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics;
-import net.minecraft.client.gui.components.EditBox;
-import de.artemis.cyberneticenhancements.client.ui.UiEditBox;
 import de.artemis.cyberneticenhancements.client.ui.UiRenderer;
 import de.artemis.cyberneticenhancements.client.ui.ArchiveContactLayout;
-import de.artemis.cyberneticenhancements.client.ui.UiMotion;
 import de.artemis.cyberneticenhancements.client.ui.UiFadeLayer;
 import de.artemis.cyberneticenhancements.client.ui.UiOpeningAnimation;
-import net.minecraft.client.multiplayer.PlayerInfo;
 import net.minecraft.client.model.PlayerModel;
 import net.minecraft.client.model.geom.ModelLayers;
 import net.minecraft.client.renderer.RenderType;
@@ -80,9 +76,11 @@ public final class CyberwareWikiScreen extends ResponsiveScreen {
     private static final int NAV_WIDTH = 230;
     private static final int LIST_WIDTH = 230;
     private static final int ROW_HEIGHT = 22;
-    private static final int ENTRY_ROW_HEIGHT = 38;
+    private static final int NAV_CHILD_INDENT = 4;
+    private static final int ENTRY_ROW_HEIGHT = 27;
     private static final int SECTION_GAP = 10;
     private static final int SCROLLBAR_WIDTH = de.artemis.cyberneticenhancements.client.ui.UiScrollbar.WIDTH;
+    private static final int DECEASED_COLOR = 0xFFF17883;
     private final java.util.Map<DragTarget, de.artemis.cyberneticenhancements.client.ui.UiScrollbar> scrollbars = new java.util.EnumMap<>(DragTarget.class);
     private static final int PANEL_HEADER_HEIGHT = 32;
     private static final int CHIP_HEIGHT = 16;
@@ -94,28 +92,30 @@ public final class CyberwareWikiScreen extends ResponsiveScreen {
     private static final int RELIC_EXAMPLE_CELL_SIZE = 18;
     private static final int RELIC_EXAMPLE_CELL_GAP = 3;
     private static final int RELIC_EXAMPLE_ROUTE_THICKNESS = 2;
-    private static final int PIN_BUTTON_WIDTH = 56;
+    private static final int PIN_BUTTON_WIDTH = 20;
     private static final int CLOSE_BUTTON_WIDTH = de.artemis.cyberneticenhancements.client.ui.UiCloseControl.WIDTH;
-    private static final int QUEST_ACTION_BUTTON_WIDTH = 88;
     private static final int TOP_TAB_HEIGHT = de.artemis.cyberneticenhancements.client.ui.UiCloseControl.HEIGHT;
     private static final int TOP_TAB_GAP = 10;
     private static final int CONTACT_FILTER_TAB_HEIGHT = 20;
     private static final int CONTACT_FILTER_TAB_GAP = 10;
-    private static final int BANK_FILTER_TAB_HEIGHT = 20;
-    private static final int BANK_FILTER_TAB_GAP = 10;
     private static final long CONTENT_ANIMATION_MS = 180L;
-    private static final long BOOT_SEQUENCE_MS = 2400L;
-    private static final long BOOT_FADE_MS = 650L;
+    private static final long BOOT_SEQUENCE_MS = 1200L;
+    private static final long BOOT_FADE_MS = 300L;
     private final SchematicBrowser schematicBrowser = new SchematicBrowser();
+    private final TarotBrowser tarotBrowser = new TarotBrowser();
+    private final ContractBrowser contractBrowser = new ContractBrowser(this::closeForPlacement);
+    private final BankingBrowser bankingBrowser = new BankingBrowser();
+    private final CompassBrowser compassBrowser = new CompassBrowser();
+    private final HudBrowser hudBrowser = new HudBrowser();
+    private final JournalBrowser journalBrowser = new JournalBrowser();
+    private boolean initialized;
     private static final String BANKING_TAB_ID = "banking";
     private static final String CONTACTS_TAB_ID = "contacts";
     private static final String QUESTS_TAB_ID = "quests";
-    private static final String BANK_FILTER_ALL = "all";
-    private static final String BANK_FILTER_INCOME = "income";
-    private static final String BANK_FILTER_EXPENSE = "expense";
     private static final String CONTACT_FILTER_ALL = "all";
     private static final String CONTACT_FILTER_PINNED = "pinned";
     private static final String CONTACT_FILTER_HIDDEN = "hidden";
+    private static final String CONTACT_FILTER_DECEASED = "deceased";
     private static final String PINNED_TOPIC_ID = "pinned_entries_root";
     private static final String PINNED_SECTION_ID = "pinned_entries";
     private static final Set<String> PINNED_ENTRY_IDS = new LinkedHashSet<>();
@@ -125,6 +125,7 @@ public final class CyberwareWikiScreen extends ResponsiveScreen {
     private final Screen parent;
     private final List<ArchiveTab> archiveTabs = new ArrayList<>(CyberwareWikiData.buildArchiveTabs());
     private int schematicRevision = de.artemis.cyberneticenhancements.common.fabrication.SchematicKnowledge.revision();
+    private int economyRevision = de.artemis.cyberneticenhancements.common.economy.EconomyBalance.clientRevision();
     private int referenceRevision = de.artemis.cyberneticenhancements.client.ArchiveReferenceData.revision();
     private int upgradeRevision = de.artemis.cyberneticenhancements.common.cyberware.CyberwareUpgradeRegistry.clientRevision();
     private final Map<String, WikiEntry> entryIndex = new HashMap<>();
@@ -145,10 +146,16 @@ public final class CyberwareWikiScreen extends ResponsiveScreen {
     private ArchiveTab activeTab;
     private WikiSection selectedSection;
     private WikiEntry selectedEntry;
+    private de.artemis.cyberneticenhancements.client.ui.UiEditBox wikiSearch;
+    private String wikiQuery = "", wikiBeforeSearchEntry = "";
+    private WikiSection wikiSearchResults;
+    private List<WikiSearch.Document> wikiSearchDocuments = List.of();
+    private final Map<String, String> wikiSearchContexts = new HashMap<>();
+    private Component hoveredSearchContext;
     private DragTarget dragTarget = DragTarget.NONE;
     private int articleContentHeight;
     private ItemStack hoveredVisualStack = ItemStack.EMPTY;
-    private final UiMotion bankDropdownMotion = new UiMotion();
+    private Component hoveredPinTooltip;
     private final UiFadeLayer openingFade = new UiFadeLayer();
     private final UiOpeningAnimation openingAnimation = new UiOpeningAnimation(System.nanoTime(), BOOT_SEQUENCE_MS, BOOT_FADE_MS, showOpeningAnimation);
     private UiOpeningAnimation.Frame openingFrame = openingAnimation.sample(System.nanoTime());
@@ -156,11 +163,10 @@ public final class CyberwareWikiScreen extends ResponsiveScreen {
     private int currentMouseY;
     private final String initialEntryId;
     private int contactsRefreshCooldown;
-    private String activeBankFilterId = BANK_FILTER_ALL;
+    private final Set<String> seenDeceasedContacts = new LinkedHashSet<>();
     private String activeContactsFilterId = CONTACT_FILTER_ALL;
-    private EditBox bankTargetField;
-    private EditBox bankAmountField;
-    private boolean bankPlayerDropdownOpen;
+    private de.artemis.cyberneticenhancements.client.ui.UiEditBox contactsSearch;
+    private String contactsQuery = "", contactsType = "";
 
     public CyberwareWikiScreen(Screen parent) {
         this(parent, null);
@@ -170,6 +176,7 @@ public final class CyberwareWikiScreen extends ResponsiveScreen {
         super(Component.translatable("screen.cyberneticenhancements.archive.title"));
         this.parent = parent;
         this.initialEntryId = initialEntryId;
+        applySavedTabOrder();
         this.activeTab = archiveTabs.isEmpty() ? null : archiveTabs.getFirst();
         indexTabs(archiveTabs);
         if (initialEntryId != null) {
@@ -182,10 +189,12 @@ public final class CyberwareWikiScreen extends ResponsiveScreen {
 
     @Override
     protected void init() {
-        boolean firstInitialization = bankTargetField == null;
+        PINNED_ENTRY_IDS.clear();
+        PINNED_ENTRY_IDS.addAll(de.artemis.cyberneticenhancements.client.ClientConfig.WIKI_PINNED_ENTRIES.get());
+        boolean firstInitialization = !initialized;
         super.init();
         openingFade.prepare();
-        initBankingFields();
+        initialized = true;
         if (firstInitialization) {
             activateTab(activeTab);
             if (initialEntryId != null) {
@@ -199,14 +208,35 @@ public final class CyberwareWikiScreen extends ResponsiveScreen {
 
     @Override
     public void onClose() {
+        cancelArchiveTabDrag();
         ArchiveBankingClientState.clear();
         ArchiveContactsClientState.clear();
         ArchiveQuestsClientState.clear();
         Minecraft.getInstance().setScreen(parent);
     }
 
+    private void closeForPlacement() {
+        onClose();
+        var minecraft = Minecraft.getInstance();
+        if (minecraft.player != null) minecraft.player.closeContainer();
+        else minecraft.setScreen(null);
+    }
+
+    public void onDropoffClaimResult(boolean granted) {
+        if (contractBrowser.dropoffClaimResult(granted) && isQuestsTab()) closeForPlacement();
+    }
+
     @Override
     public void removed() {
+        if (minecraft != null && minecraft.getConnection() != null) {
+            for (String npcId : seenDeceasedContacts) {
+                PacketDistributor.sendToServer(new ArchiveContactActionPayload(
+                        ArchiveContactActionPayload.ACTION_ACKNOWLEDGE_DECEASED, npcId));
+            }
+        }
+        seenDeceasedContacts.clear();
+        cancelArchiveTabDrag();
+        compassBrowser.hide();
         openingFade.close();
         super.removed();
     }
@@ -219,7 +249,8 @@ public final class CyberwareWikiScreen extends ResponsiveScreen {
             graphics.flush();
         }
         renderBlurredBackground(partialTick);
-        graphics.fill(0, 0, width, height, 0x28081018);
+        if (!de.artemis.cyberneticenhancements.client.TitleSlideshow.renderedForCurrentScreen())
+            graphics.fill(0, 0, width, height, 0x28081018);
     }
 
     @Override
@@ -228,7 +259,9 @@ public final class CyberwareWikiScreen extends ResponsiveScreen {
         int revision = de.artemis.cyberneticenhancements.common.fabrication.SchematicKnowledge.revision();
         int references = de.artemis.cyberneticenhancements.client.ArchiveReferenceData.revision();
         int upgrades = de.artemis.cyberneticenhancements.common.cyberware.CyberwareUpgradeRegistry.clientRevision();
-        if (revision != schematicRevision || references != referenceRevision || upgrades != upgradeRevision) {
+        int economy = de.artemis.cyberneticenhancements.common.economy.EconomyBalance.clientRevision();
+        if (revision != schematicRevision || references != referenceRevision || upgrades != upgradeRevision || economy != economyRevision) {
+            economyRevision = economy;
             schematicRevision = revision;
             referenceRevision = references;
             upgradeRevision = upgrades;
@@ -256,23 +289,6 @@ public final class CyberwareWikiScreen extends ResponsiveScreen {
         return false;
     }
 
-    private void initBankingFields() {
-        String target = bankTargetField == null ? "" : bankTargetField.getValue();
-        String amount = bankAmountField == null ? "" : bankAmountField.getValue();
-        bankTargetField = new UiEditBox(font, 0, 0, 120, 20, Component.translatable("screen.cyberneticenhancements.archive.banking.target"));
-        bankTargetField.setMaxLength(32);
-        bankTargetField.setHint(Component.translatable("screen.cyberneticenhancements.archive.banking.target"));
-        bankTargetField.setVisible(false);
-        addRenderableWidget(bankTargetField);
-
-        bankAmountField = new UiEditBox(font, 0, 0, 72, 20, Component.translatable("screen.cyberneticenhancements.archive.banking.amount"));
-        bankAmountField.setMaxLength(9);
-        bankAmountField.setHint(Component.translatable("screen.cyberneticenhancements.archive.banking.amount"));
-        bankAmountField.setVisible(false);
-        addRenderableWidget(bankAmountField);
-        bankTargetField.setValue(target);
-        bankAmountField.setValue(amount);
-    }
 
     @Override
     protected void renderContent(GuiGraphics guiGraphics, int mouseX, int mouseY, float partialTick) {
@@ -281,6 +297,8 @@ public final class CyberwareWikiScreen extends ResponsiveScreen {
         currentMouseX = mouseX;
         currentMouseY = mouseY;
         hoveredVisualStack = ItemStack.EMPTY;
+        hoveredPinTooltip = null;
+        hoveredSearchContext = null;
 
         navScroll.tick();
         listScroll.tick();
@@ -305,50 +323,65 @@ public final class CyberwareWikiScreen extends ResponsiveScreen {
         RootLayout layout = rootLayout();
         WikiFrameRenderer.drawPanel(guiGraphics, layout.rootX(), layout.rootY(), layout.rootWidth(), layout.rootHeight(), StationScreenStyle.PANEL_BG);
         drawTopBar(guiGraphics, layout.rootX(), layout.rootY(), layout.rootWidth());
+        if (isWikiTab()) renderWikiSearch(guiGraphics, layout, mouseX, mouseY, partialTick);
 
         Pane navPane = layout.navPane();
         Pane listPane = layout.listPane();
         Pane articlePane = layout.articlePane();
+        if (isHudTab()) {
+            hudBrowser.render(guiGraphics, font, articlePane.x, articlePane.y, articlePane.width, articlePane.height, mouseX, mouseY);
+            return;
+        }
+        if (isJournalTab()) {
+            journalBrowser.render(guiGraphics, font, articlePane.x, articlePane.y, articlePane.width, articlePane.height, mouseX, mouseY);
+            return;
+        }
+        journalBrowser.hide();
+        if (isCompassTab()) {
+            bankingBrowser.hide();
+            compassBrowser.render(guiGraphics, font, articlePane.x, articlePane.y, articlePane.width, articlePane.height, mouseX, mouseY);
+            return;
+        }
+        compassBrowser.hide();
         boolean bankingTab = isBankingTab();
         boolean contactsTab = isContactsTab();
         boolean questsTab = isQuestsTab();
         if (!bankingTab) {
-            setBankingFieldsVisible(false);
+            bankingBrowser.hide();
         }
 
-        if (isSchematicsTab()) {
+        if (isLoreTab()) {
+            tarotBrowser.render(guiGraphics, font, articlePane.x, articlePane.y, articlePane.width, articlePane.height, mouseX, mouseY);
+        } else if (isSchematicsTab()) {
             schematicBrowser.render(guiGraphics, font, articlePane.x, articlePane.y, articlePane.width, articlePane.height, mouseX, mouseY);
-        } else if (!bankingTab && !contactsTab && !questsTab) {
-            drawPanelShell(guiGraphics, navPane, activeTab == null ? Component.translatable("screen.cyberneticenhancements.archive.topics") : activeTab.navigationTitle(), 0);
+        } else if (questsTab) {
+            contractBrowser.render(guiGraphics, font, articlePane.x, articlePane.y, articlePane.width, articlePane.height, mouseX, mouseY);
+        } else if (bankingTab) {
+            bankingBrowser.render(guiGraphics, font, articlePane.x, articlePane.y, articlePane.width, articlePane.height, mouseX, mouseY);
+        } else if (!bankingTab && !contactsTab) {
+            if (!wikiSearching()) drawPanelShell(guiGraphics, navPane, activeTab == null ? Component.translatable("screen.cyberneticenhancements.archive.topics") : activeTab.navigationTitle(), 0);
             if (!layout.listCollapsed()) {
                 drawPanelShell(guiGraphics, listPane, selectedSection == null ? Component.translatable("screen.cyberneticenhancements.archive.entries") : selectedSection.title());
             }
             drawPanelShell(guiGraphics, articlePane, selectedEntry == null ? Component.translatable("screen.cyberneticenhancements.archive.entry") : selectedEntry.title(), selectedEntry == null ? 0 : PIN_BUTTON_WIDTH + 12);
-            renderNavigation(guiGraphics, navPane, mouseX, mouseY);
+            if (!wikiSearching()) renderNavigation(guiGraphics, navPane, mouseX, mouseY);
             if (!layout.listCollapsed()) {
                 renderEntryList(guiGraphics, listPane, mouseX, mouseY);
             }
             renderArticle(guiGraphics, articlePane);
             renderPinButton(guiGraphics, articlePane);
         } else {
-            drawPanelShell(guiGraphics, articlePane,
-                    bankingTab
-                            ? Component.translatable("screen.cyberneticenhancements.archive.banking.title")
-                            : questsTab
-                            ? Component.translatable("screen.cyberneticenhancements.archive.quests.title")
-                            : Component.translatable("screen.cyberneticenhancements.archive.contacts.title"),
-                    0);
-            if (bankingTab) {
-                renderBankingRoster(guiGraphics, articlePane, mouseX, mouseY, partialTick);
-            } else if (contactsTab) {
-                renderContactsRoster(guiGraphics, articlePane);
-            } else {
-                renderQuestsRoster(guiGraphics, articlePane);
-            }
+            UiRenderer.panel(guiGraphics, articlePane.x, articlePane.y, articlePane.width, articlePane.height, UiRenderer.PANEL);
+            renderContactsRoster(guiGraphics, articlePane);
         }
 
         if (!bootSequenceBlocksInput() && !hoveredVisualStack.isEmpty()) {
             guiGraphics.renderTooltip(font, hoveredVisualStack, mouseX, mouseY);
+        }
+        if (!bootSequenceBlocksInput() && hoveredPinTooltip != null) {
+            guiGraphics.renderTooltip(font, hoveredPinTooltip, mouseX, mouseY);
+        } else if (!bootSequenceBlocksInput() && hoveredSearchContext != null) {
+            guiGraphics.renderTooltip(font, font.split(hoveredSearchContext, 300), mouseX, mouseY);
         }
     }
 
@@ -366,10 +399,7 @@ public final class CyberwareWikiScreen extends ResponsiveScreen {
         boolean bankingTab = isBankingTab();
         boolean contactsTab = isContactsTab();
         boolean questsTab = isQuestsTab();
-        if (bankingTab) {
-            TextFieldFocusHelper.unfocusOnOutsideClick(this, mouseX, mouseY, List.of(bankTargetField, bankAmountField));
-        }
-        if (handleArchiveTabClick(mouseX, mouseY, layout.rootX(), layout.rootY(), layout.rootWidth())) {
+        if (button == 0 && handleArchiveTabClick(mouseX, mouseY, layout.rootX(), layout.rootY(), layout.rootWidth())) {
             return true;
         }
 
@@ -379,10 +409,37 @@ public final class CyberwareWikiScreen extends ResponsiveScreen {
             return true;
         }
 
+        if (isHudTab()) return button == 0 && hudBrowser.click(mouseX, mouseY);
+        if (isCompassTab()) return compassBrowser.click(mouseX, mouseY);
+        if (isJournalTab()) return journalBrowser.click(mouseX, mouseY);
+        if (isWikiTab() && wikiSearch != null) {
+            var clear = wikiSearchClearBounds(layout);
+            if (isInside(mouseX, mouseY, clear)) {
+                if (!wikiQuery.isEmpty()) { wikiSearch.setValue(""); playClick(); }
+                wikiSearch.setFocused(true);
+                return true;
+            }
+            boolean searchClicked = wikiSearch.mouseClicked(mouseX, mouseY, button);
+            wikiSearch.setFocused(searchClicked);
+            if (searchClicked) return true;
+        }
+        if (isLoreTab()) {
+            boolean handled = tarotBrowser.click(mouseX, mouseY);
+            if (handled) playClick();
+            String placement = tarotBrowser.takePlacementRequest();
+            if (placement != null) {
+                closeForPlacement();
+                de.artemis.cyberneticenhancements.client.TarotDecorationClient.start(placement);
+            }
+            return handled;
+        }
         if (isSchematicsTab()) return schematicBrowser.click(mouseX, mouseY);
+        if (isQuestsTab()) return contractBrowser.click(mouseX, mouseY);
+        if (bankingTab) return bankingBrowser.click(mouseX, mouseY);
+        if (contactsTab && handleContactsSearchClick(mouseX, mouseY, layout.articlePane())) return true;
 
         if (!bankingTab && !contactsTab && !questsTab) {
-            if (tryStartScrollbarDrag(mouseX, mouseY, layout.navPane(), navScroll, maxNavScroll(), DragTarget.NAV)) {
+            if (!wikiSearching() && tryStartScrollbarDrag(mouseX, mouseY, layout.navPane(), navScroll, maxNavScroll(), DragTarget.NAV)) {
                 return true;
             }
             if (!layout.listCollapsed() && tryStartScrollbarDrag(mouseX, mouseY, layout.listPane(), listScroll, maxListScroll(), DragTarget.LIST)) {
@@ -392,7 +449,7 @@ public final class CyberwareWikiScreen extends ResponsiveScreen {
                 return true;
             }
         } else if (tryStartScrollbarDrag(mouseX, mouseY, layout.articlePane(), articleScroll,
-                bankingTab ? maxBankingScroll(layout.articlePane()) : contactsTab ? maxContactsScroll(layout.articlePane()) : maxQuestsScroll(layout.articlePane()), DragTarget.ARTICLE)) {
+                maxContactsScroll(layout.articlePane()), DragTarget.ARTICLE)) {
             return true;
         }
 
@@ -400,19 +457,13 @@ public final class CyberwareWikiScreen extends ResponsiveScreen {
             return true;
         }
 
-        if (!bankingTab && !contactsTab && !questsTab && handleNavigationClick(mouseX, mouseY, layout.navPane())) {
+        if (!bankingTab && !contactsTab && !questsTab && !wikiSearching() && handleNavigationClick(mouseX, mouseY, layout.navPane())) {
             return true;
         }
         if (!bankingTab && !contactsTab && !questsTab && !layout.listCollapsed() && handleEntryClick(mouseX, mouseY, layout.listPane())) {
             return true;
         }
-        if (bankingTab && handleBankingClick(mouseX, mouseY, layout.articlePane())) {
-            return true;
-        }
         if (contactsTab && handleContactsClick(mouseX, mouseY, layout.articlePane())) {
-            return true;
-        }
-        if (questsTab && handleQuestsClick(mouseX, mouseY, layout.articlePane())) {
             return true;
         }
 
@@ -421,7 +472,14 @@ public final class CyberwareWikiScreen extends ResponsiveScreen {
 
     @Override
     protected boolean mouseReleasedContent(double mouseX, double mouseY, int button) {
+        tarotBrowser.release();
+        if (button == 0 && draggedArchiveTab != null) return finishArchiveTabDrag(mouseX, mouseY);
         schematicBrowser.release();
+        contractBrowser.release();
+        bankingBrowser.release();
+        compassBrowser.release();
+        hudBrowser.release();
+        journalBrowser.release();
         scrollbars.values().forEach(de.artemis.cyberneticenhancements.client.ui.UiScrollbar::release);
         if (bootSequenceBlocksInput()) {
             dragTarget = DragTarget.NONE;
@@ -435,8 +493,23 @@ public final class CyberwareWikiScreen extends ResponsiveScreen {
 
     @Override
     protected boolean mouseDraggedContent(double mouseX, double mouseY, int button, double dragX, double dragY) {
+        if (button == 0 && draggedArchiveTab != null) {
+            updateArchiveTabDrag(mouseX, mouseY);
+            return true;
+        }
+        if (isLoreTab()) return tarotBrowser.drag(mouseX, mouseY);
         if (isSchematicsTab()) return schematicBrowser.drag(mouseX, mouseY);
+        if (isQuestsTab()) return contractBrowser.drag(mouseX, mouseY);
+        if (isBankingTab()) return bankingBrowser.drag(mouseX, mouseY);
+        if (isHudTab()) return hudBrowser.drag(mouseX, mouseY);
+        if (isCompassTab()) return compassBrowser.drag(mouseX, mouseY);
+        if (isJournalTab()) return journalBrowser.drag(mouseX, mouseY);
         if (bootSequenceBlocksInput()) {
+            return true;
+        }
+        if (button == 0 && dragTarget == DragTarget.NONE && structureViewArea.length == 4 && mouseX >= structureViewArea[0] && mouseX < structureViewArea[2]
+                && mouseY >= structureViewArea[1] && mouseY < structureViewArea[3]) {
+            StructureView.drag(dragX, dragY);
             return true;
         }
         if (button != 0 || dragTarget == DragTarget.NONE) {
@@ -456,7 +529,7 @@ public final class CyberwareWikiScreen extends ResponsiveScreen {
                 }
             }
             case ARTICLE ->
-                    dragScrollbar(articleScroll, layout.articlePane(), mouseY, isBankingTab() ? maxBankingScroll(layout.articlePane()) : isContactsTab() ? maxContactsScroll(layout.articlePane()) : isQuestsTab() ? maxQuestsScroll(layout.articlePane()) : maxArticleScroll(layout.articlePane()));
+                    dragScrollbar(articleScroll, layout.articlePane(), mouseY, isContactsTab() ? maxContactsScroll(layout.articlePane()) : maxArticleScroll(layout.articlePane()));
             default -> {
             }
         }
@@ -470,10 +543,16 @@ public final class CyberwareWikiScreen extends ResponsiveScreen {
         }
         RootLayout layout = rootLayout();
         double amount = -scrollY * de.artemis.cyberneticenhancements.client.ui.UiScrollState.WHEEL_STEP;
+        if (isLoreTab()) return tarotBrowser.scroll(mouseX, mouseY, scrollY);
         if (isSchematicsTab()) return schematicBrowser.scroll(mouseX, mouseY, scrollY);
-        if (isSchematicsTab() || isBankingTab() || isContactsTab() || isQuestsTab()) {
+        if (isQuestsTab()) return contractBrowser.scroll(mouseX, mouseY, scrollY);
+        if (isBankingTab()) return bankingBrowser.scroll(mouseX, mouseY, scrollY);
+        if (isHudTab()) return hudBrowser.scroll(mouseX, mouseY, scrollY);
+        if (isCompassTab()) return compassBrowser.scroll(mouseX, mouseY, scrollY);
+        if (isJournalTab()) return journalBrowser.scroll(mouseX, mouseY, scrollY);
+        if (isLoreTab() || isSchematicsTab() || isBankingTab() || isContactsTab() || isQuestsTab()) {
             if (isInsidePane(mouseX, mouseY, layout.articlePane())) {
-                articleScroll.add(amount, isBankingTab() ? maxBankingScroll(layout.articlePane()) : isContactsTab() ? maxContactsScroll(layout.articlePane()) : maxQuestsScroll(layout.articlePane()));
+                articleScroll.add(amount, maxContactsScroll(layout.articlePane()));
                 return true;
             }
             return super.mouseScrolledContent(mouseX, mouseY, scrollX, scrollY);
@@ -495,8 +574,21 @@ public final class CyberwareWikiScreen extends ResponsiveScreen {
 
     @Override
     public boolean keyPressed(int keyCode, int scanCode, int modifiers) {
+        if (keyCode == 256 && draggedArchiveTab != null) { cancelArchiveTabDrag(); return true; }
+        if (isHudTab() && !bootSequenceBlocksInput() && hudBrowser.key(keyCode, scanCode, modifiers)) return true;
+        if (isCompassTab() && !bootSequenceBlocksInput() && compassBrowser.key(keyCode, scanCode, modifiers)) return true;
+        if (isJournalTab() && !bootSequenceBlocksInput() && journalBrowser.key(keyCode, scanCode, modifiers)) return true;
+        if (isContactsTab() && contactsSearch != null && contactsSearch.isFocused() && !bootSequenceBlocksInput()) {
+            if (keyCode == 256) contactsSearch.setFocused(false);
+            else { contactsSearch.keyPressed(keyCode, scanCode, modifiers); return true; }
+        }
+        if (isWikiTab() && wikiSearch != null && wikiSearch.isFocused() && !bootSequenceBlocksInput()) {
+            if (keyCode == 256) wikiSearch.setFocused(false);
+            else { wikiSearch.keyPressed(keyCode, scanCode, modifiers); return true; }
+        }
         if (isSchematicsTab() && schematicBrowser.key(keyCode, scanCode, modifiers)) return true;
-        if (isBankingTab() && handleBankingFieldKeyPressed(keyCode, scanCode, modifiers)) {
+        if (isQuestsTab() && contractBrowser.key(keyCode, scanCode, modifiers)) return true;
+        if (isBankingTab() && bankingBrowser.key(keyCode, scanCode, modifiers)) {
             return true;
         }
         if (keyCode == 256 || Minecraft.getInstance().options.keyInventory.matches(keyCode, scanCode)) {
@@ -511,17 +603,75 @@ public final class CyberwareWikiScreen extends ResponsiveScreen {
 
     @Override
     public boolean charTyped(char codePoint, int modifiers) {
+        if (isHudTab() && !bootSequenceBlocksInput()) return hudBrowser.character(codePoint, modifiers);
+        if (isCompassTab() && !bootSequenceBlocksInput()) return compassBrowser.character(codePoint, modifiers);
+        if (isJournalTab() && !bootSequenceBlocksInput()) return journalBrowser.character(codePoint, modifiers);
+        if (isContactsTab() && contactsSearch != null && contactsSearch.isFocused() && !bootSequenceBlocksInput())
+            return contactsSearch.charTyped(codePoint, modifiers);
+        if (isWikiTab() && wikiSearch != null && wikiSearch.isFocused() && !bootSequenceBlocksInput()) return wikiSearch.charTyped(codePoint, modifiers);
         if (isSchematicsTab() && schematicBrowser.character(codePoint, modifiers)) return true;
-        if (isBankingTab() && bankingFieldFocused()) {
-            if (bankTargetField.charTyped(codePoint, modifiers)) {
-                return true;
-            }
-            if (bankAmountField.charTyped(codePoint, modifiers)) {
-                return true;
-            }
-            return true;
-        }
+        if (isQuestsTab() && contractBrowser.character(codePoint, modifiers)) return true;
+        if (isBankingTab() && bankingBrowser.character(codePoint, modifiers)) return true;
         return super.charTyped(codePoint, modifiers);
+    }
+
+    private boolean isWikiTab() { return activeTab != null && activeTab.id().equals("wiki"); }
+
+    private boolean wikiSearching() { return isWikiTab() && !wikiQuery.isEmpty(); }
+
+    private Rect wikiSearchClearBounds(RootLayout layout) {
+        return new Rect("wiki_search_clear", layout.rootX() + layout.rootWidth() - PANEL_GAP - 80,
+                layout.rootY() + TOP_BAR_HEIGHT + PANEL_GAP + 10, 70, 22);
+    }
+
+    private void renderWikiSearch(GuiGraphics graphics, RootLayout layout, int mouseX, int mouseY, float partialTick) {
+        int x = layout.rootX() + PANEL_GAP, y = layout.rootY() + TOP_BAR_HEIGHT + PANEL_GAP;
+        int width = layout.rootWidth() - PANEL_GAP * 2;
+        UiRenderer.panel(graphics, x, y, width, 42, UiRenderer.PANEL);
+        var hint = Component.translatable("screen.cyberneticenhancements.archive.wiki.search");
+        if (wikiSearch == null) {
+            wikiSearch = new de.artemis.cyberneticenhancements.client.ui.UiEditBox(font, x + 10, y + 10, width - 100, 22, hint);
+            wikiSearch.setMaxLength(80);
+            wikiSearch.setHint(hint);
+            wikiSearch.setResponder(this::applyWikiSearch);
+        }
+        wikiSearch.setX(x + 10);
+        wikiSearch.setY(y + 10);
+        wikiSearch.setWidth(width - 100);
+        wikiSearch.render(graphics, mouseX, mouseY, partialTick);
+        var clear = wikiSearchClearBounds(layout);
+        UiRenderer.button(graphics, font, clear.x(), clear.y(), clear.width(), clear.height(),
+                Component.translatable("screen.cyberneticenhancements.archive.wiki.clear"), !wikiQuery.isEmpty(), false,
+                !bootSequenceBlocksInput() && isInside(mouseX, mouseY, clear), -1);
+    }
+
+    private void applyWikiSearch(String value) {
+        String query = value.strip().toLowerCase(Locale.ROOT);
+        boolean changed = !query.equals(wikiQuery);
+        if (wikiQuery.isEmpty() && !query.isEmpty()) wikiBeforeSearchEntry = selectedEntry == null ? "" : selectedEntry.id();
+        wikiQuery = query;
+        navScroll.reset();
+        listScroll.reset();
+        dragTarget = DragTarget.NONE;
+        scrollbars.values().forEach(de.artemis.cyberneticenhancements.client.ui.UiScrollbar::release);
+        if (query.isEmpty()) {
+            wikiSearchResults = null;
+            wikiSearchContexts.clear();
+            String entry = selectedEntry == null ? wikiBeforeSearchEntry : selectedEntry.id();
+            if (entryIndex.containsKey(entry)) selectEntryById(entry);
+            else selectFirstSection();
+            return;
+        }
+        var hits = WikiSearch.search(wikiSearchDocuments, query);
+        wikiSearchContexts.clear();
+        hits.forEach(hit -> wikiSearchContexts.put(hit.id(), hit.context()));
+        var results = hits.stream().map(hit -> entryIndex.get(hit.id())).filter(java.util.Objects::nonNull).toList();
+        wikiSearchResults = new WikiSection("wiki_search_results", Component.translatable("screen.cyberneticenhancements.archive.wiki.results", results.size()), results);
+        selectedSection = wikiSearchResults;
+        WikiEntry next = changed || selectedEntry == null ? null : results.stream().filter(entry -> entry.id().equals(selectedEntry.id())).findFirst().orElse(null);
+        if (next == null && !results.isEmpty()) next = results.getFirst();
+        setSelectedEntry(next);
+        sectionChangedAt = animationAnchorTime();
     }
 
     private void renderNavigation(GuiGraphics guiGraphics, Pane pane, int mouseX, int mouseY) {
@@ -539,19 +689,25 @@ public final class CyberwareWikiScreen extends ResponsiveScreen {
                 continue;
             }
 
-            boolean hovered = mouseX >= pane.x + 6 && mouseX <= pane.x + rowAreaWidth && mouseY >= rowY && mouseY <= rowY + ROW_HEIGHT - 2;
+            int rowX = pane.x + 6 + row.depth() * NAV_CHILD_INDENT;
+            int rowWidth = rowAreaWidth - 4 - row.depth() * NAV_CHILD_INDENT;
+            boolean hovered = mouseX >= rowX && mouseX < rowX + rowWidth && mouseY >= rowY && mouseY <= rowY + ROW_HEIGHT - 2;
             boolean selected = row.topic().section() != null && selectedSection != null && selectedSection.id().equals(row.topic().section().id());
             float emphasis = animateToward(navEmphasis, row.topic().id(), selected ? hovered ? 1.0F : 0.82F : hovered ? 0.55F : 0.0F, 0.22F);
-            drawListRow(guiGraphics, pane.x + 6, rowY, rowAreaWidth - 4, ROW_HEIGHT - 2, selected, emphasis, row.alpha());
+            drawListRow(guiGraphics, rowX, rowY, rowWidth, ROW_HEIGHT - 2, selected, emphasis, row.alpha());
 
-            int textX = pane.x + 14 + row.depth() * 12;
+            int textX = pane.x + 28 + row.depth() * 12;
             if (row.topic().hasChildren()) {
-                UiRenderer.disclosureChevron(guiGraphics, textX + 3, rowY + ROW_HEIGHT / 2.0F,
+                UiRenderer.disclosureChevron(guiGraphics, textX - 11, rowY + ROW_HEIGHT / 2.0F,
                         topicExpansion.getOrDefault(row.topic().id(), expandedTopics.contains(row.topic().id()) ? 1.0F : 0.0F),
                         withAlpha(hovered || selected ? StationScreenStyle.ACCENT : StationScreenStyle.TEXT_SECONDARY, row.alpha()));
-                textX += 12;
             }
-            guiGraphics.drawString(font, row.topic().title(), textX, rowY + 6, withAlpha(selected ? StationScreenStyle.TEXT_PRIMARY : StationScreenStyle.TEXT_SECONDARY, row.alpha()), false);
+            int entryCount = topicEntryCount(row.topic());
+            String count = entryCount == 1 ? "" : Integer.toString(entryCount);
+            int countX = pane.x + rowAreaWidth - 11 - font.width(count);
+            guiGraphics.drawString(font, trimStyled(row.topic().title(), Math.max(1, countX - textX - 8)), textX, rowY + 6,
+                    withAlpha(UiRenderer.TEXT_SECONDARY, row.alpha()), false);
+            guiGraphics.drawString(font, count, countX, rowY + 6, withAlpha(UiRenderer.TEXT_SECONDARY, row.alpha()), false);
         }
         guiGraphics.disableScissor();
         drawScrollbar(guiGraphics, pane, navScroll, maxScroll, viewportHeight, contentY);
@@ -584,21 +740,28 @@ public final class CyberwareWikiScreen extends ResponsiveScreen {
             int rowX = pane.x + 6 + rowOffsetX;
             int rowWidth = rowAreaWidth - 4;
             int rowHeight = ENTRY_ROW_HEIGHT - 2;
-            int iconX = rowX + 10, iconY = rowY + (rowHeight - 16) / 2;
-            int textX = iconX + 26, textWidth = rowX + rowWidth - 10 - textX;
+            int iconX = rowX + 4, iconY = rowY + 4;
+            int textX = rowX + 26, textWidth = rowWidth - 50;
             drawListRow(guiGraphics, rowX, rowY, rowWidth, rowHeight, selected, emphasis, rowAlpha);
-            StationSlotRenderer.drawStandardSlot(guiGraphics, 0, 0, iconX, iconY, StationScreenStyle.SLOT_BG);
             renderEntryIcon(guiGraphics, entry, iconX, iconY);
-            int titleY = rowY + (rowHeight - (font.lineHeight * 2 + 4)) / 2;
+            int titleY = rowY + 3;
             guiGraphics.drawString(font, trimStyled(entry.title(), textWidth), textX, titleY, withAlpha(StationScreenStyle.TEXT_PRIMARY, rowAlpha), false);
-            guiGraphics.drawString(font, trimStyled(entry.badge(), textWidth), textX, titleY + font.lineHeight + 4, withAlpha(StationScreenStyle.TEXT_SECONDARY, rowAlpha), false);        }
+            Component detail = wikiSearching() ? Component.literal(wikiSearchContexts.getOrDefault(entry.id(), entry.badge().getString())) : entry.badge();
+            guiGraphics.drawString(font, trimStyled(detail, textWidth), textX, rowY + 14, withAlpha(UiRenderer.ACCENT, rowAlpha), false);
+            int pinX = rowX + rowWidth - 20;
+            boolean pinHovered = hovered && mouseX >= pinX && mouseY >= contentY && mouseY < contentY + viewportHeight;
+            UiRenderer.listPin(guiGraphics, font, pinX, rowY + 2, isPinned(entry.id()), pinHovered);
+            if (pinHovered) hoveredPinTooltip = pinLabel(entry.id());
+            else if (hovered && wikiSearching() && mouseY >= contentY && mouseY < contentY + viewportHeight)
+                hoveredSearchContext = entry.title().copy().append("\n").append(detail);
+        }
         guiGraphics.disableScissor();
         drawScrollbar(guiGraphics, pane, listScroll, maxScroll, viewportHeight, contentY);
     }
 
     private void renderEntryIcon(GuiGraphics graphics, WikiEntry entry, int x, int y) {
         boolean known = !entry.id().startsWith("schematic:") || de.artemis.cyberneticenhancements.common.fabrication.SchematicKnowledge.clientKnows(entry.id().substring(entry.id().lastIndexOf(':') + 1));
-        de.artemis.cyberneticenhancements.client.render.SchematicIconRenderer.draw(graphics, entry.icon(), x, y, known);
+        de.artemis.cyberneticenhancements.client.render.SchematicIconRenderer.drawWithShadow(graphics, entry.icon(), x, y, known);
     }
 
     private void renderArticle(GuiGraphics guiGraphics, Pane pane) {
@@ -612,7 +775,7 @@ public final class CyberwareWikiScreen extends ResponsiveScreen {
         articleContentHeight = metrics.contentHeight();
 
         if (selectedEntry == null) {
-            guiGraphics.drawString(font, Component.translatable("screen.cyberneticenhancements.archive.no_entry"), headerX, headerY, StationScreenStyle.TEXT_SECONDARY, false);
+            guiGraphics.drawString(font, Component.translatable(wikiSearching() ? "screen.cyberneticenhancements.archive.wiki.no_results" : "screen.cyberneticenhancements.archive.no_entry"), headerX, headerY, StationScreenStyle.TEXT_SECONDARY, false);
             return;
         }
 
@@ -628,17 +791,21 @@ public final class CyberwareWikiScreen extends ResponsiveScreen {
 
         StationSlotRenderer.drawStandardSlot(guiGraphics, 0, 0, headerX + contentOffsetX, y + 2, StationScreenStyle.SLOT_ACTIVE);
         renderEntryIcon(guiGraphics, selectedEntry, headerX + contentOffsetX, y + 2);
-        guiGraphics.drawString(font, selectedEntry.title(), headerX + 22 + contentOffsetX, y + 1, withAlpha(StationScreenStyle.TEXT_PRIMARY, alphaMask), false);
+        guiGraphics.drawString(font, trimStyled(selectedEntry.title(), Math.max(1, contentWidth - 26)), headerX + 22 + contentOffsetX, y + 1, withAlpha(StationScreenStyle.TEXT_PRIMARY, alphaMask), false);
         guiGraphics.drawString(font, selectedEntry.badge(), headerX + 22 + contentOffsetX, y + 12, withAlpha(StationScreenStyle.ACCENT, alphaMask), false);
         y += 26;
 
-        for (var line : font.split(selectedEntry.subtitle(), contentWidth - 8)) {
-            guiGraphics.drawString(font, line, contentX + contentOffsetX, y, withAlpha(StationScreenStyle.TEXT_SECONDARY, alphaMask), false);
-            y += 11;
+        if (!selectedEntry.subtitle().getString().isBlank()) {
+            for (var line : font.split(selectedEntry.subtitle(), Math.min(WikiArticleLayout.MAX_PROSE_WIDTH, contentWidth - 8))) {
+                guiGraphics.drawString(font, line, contentX + contentOffsetX, y, withAlpha(StationScreenStyle.TEXT_SECONDARY, alphaMask), false);
+                y += WikiArticleLayout.LINE_HEIGHT;
+            }
+            y += 6;
         }
 
-        y += 6;
-        y = renderChips(guiGraphics, selectedEntry.chips(), contentX + contentOffsetX, y, contentWidth, alphaMask);
+        if (!selectedEntry.chips().isEmpty()) {
+            y = renderChips(guiGraphics, selectedEntry.chips(), contentX + contentOffsetX, y, contentWidth, alphaMask);
+        }
         y += 6;
 
         for (ArticleSection section : selectedEntry.sections()) {
@@ -650,701 +817,143 @@ public final class CyberwareWikiScreen extends ResponsiveScreen {
         drawScrollbar(guiGraphics, pane, articleScroll, maxScroll, viewportHeight, viewportY);
     }
 
-    private void renderContactsRoster(GuiGraphics guiGraphics, Pane pane) {
-        int viewportY = pane.y + PANEL_HEADER_HEIGHT + 6;
-        int viewportHeight = pane.height - PANEL_HEADER_HEIGHT - 12;
+    private int contactsContentWidth(Pane pane) {
+        int fullWidth = ArchiveContentLayout.contentWidth(pane.width);
+        int visible = Math.max(1, pane.y + pane.height - 10 - contactsContentTop(pane));
+        int count = filteredContacts(ArchiveContactsClientState.get().contacts()).size();
+        boolean overflowing = ArchiveContactLayout.contentHeight(count, fullWidth) > visible;
+        return ArchiveContentLayout.contentWidth(pane.width, overflowing);
+    }
+    private int contactsContentTop(Pane pane) {
+        return pane.y + 42 + contactFilterTabsHeight(contactFilters(), ArchiveContentLayout.contentWidth(pane.width)) + SECTION_GAP;
+    }
+
+    private void renderContactsRoster(GuiGraphics g, Pane pane) {
+        renderContactsSearch(g, pane);
+        int contentX = ArchiveContentLayout.contentX(pane.x), contentWidth = contactsContentWidth(pane);
+        var allContacts = ArchiveContactsClientState.get().contacts();
+        renderContactFilterTabs(g, contactFilters(), contentX, pane.y + 42, ArchiveContentLayout.contentWidth(pane.width), -1);
+        int top = contactsContentTop(pane), visible = Math.max(1, pane.y + pane.height - 10 - top);
         double maxScroll = maxContactsScroll(pane);
-        int contentWidth = pane.width - 20 - SCROLLBAR_WIDTH;
-        int contentX = pane.x + 10;
-        int headerX = pane.x + 10;
-        int headerY = pane.y + PANEL_HEADER_HEIGHT + 8;
-
-        float contentAnim = easeOutCubic(animationProgress(contentChangedAt, CONTENT_ANIMATION_MS));
-        int contentOffsetX = 0;
-        int alphaMask = ((int) (contentAnim * 255.0F) << 24) | 0x00FFFFFF;
-
         articleScroll.clamp(maxScroll);
-
-        guiGraphics.enableScissor(pane.x + 4, viewportY, contentX + contentWidth + 4, viewportY + viewportHeight);
-        int y = headerY - (int) Math.round(articleScroll.current);
-
-        guiGraphics.drawString(font, Component.translatable("screen.cyberneticenhancements.archive.contacts.subtitle"), headerX + contentOffsetX, y, withAlpha(StationScreenStyle.TEXT_SECONDARY, alphaMask), false);
-        y += 18;
-
-        if (!ArchiveContactsClientState.isLoaded()) {
-            guiGraphics.drawString(font, Component.translatable("screen.cyberneticenhancements.archive.contacts.syncing"), headerX + contentOffsetX, y + 6, withAlpha(StationScreenStyle.TEXT_SECONDARY, alphaMask), false);
-            guiGraphics.disableScissor();
-            drawScrollbar(guiGraphics, pane, articleScroll, maxScroll, viewportHeight, viewportY);
-            return;
-        }
-
-        List<ArchiveContactsPayload.ContactEntry> allContacts = ArchiveContactsClientState.get().contacts();
-        if (allContacts.isEmpty()) {
-            guiGraphics.drawString(font, Component.translatable("screen.cyberneticenhancements.archive.contacts.empty"), headerX + contentOffsetX, y + 6, withAlpha(StationScreenStyle.TEXT_SECONDARY, alphaMask), false);
-            guiGraphics.disableScissor();
-            drawScrollbar(guiGraphics, pane, articleScroll, maxScroll, viewportHeight, viewportY);
-            return;
-        }
-
-        List<ContactFilter> filters = contactFilters(allContacts);
-        y = renderContactFilterTabs(guiGraphics, filters, contentX + contentOffsetX, y, contentWidth, alphaMask);
-
-        List<ArchiveContactsPayload.ContactEntry> contacts = filteredContacts(allContacts);
-        if (contacts.isEmpty()) {
-            guiGraphics.drawString(font, Component.translatable("screen.cyberneticenhancements.archive.contacts.empty_filtered"), headerX + contentOffsetX, y + 6, withAlpha(StationScreenStyle.TEXT_SECONDARY, alphaMask), false);
-            guiGraphics.disableScissor();
-            drawScrollbar(guiGraphics, pane, articleScroll, maxScroll, viewportHeight, viewportY);
-            return;
-        }
-
-        for (int index = 0; index < contacts.size(); index++) {
+        int cardTop = top - (int) Math.round(articleScroll.current);
+        g.enableScissor(contentX, top, contentX + contentWidth + 3, top + visible);
+        var contacts = filteredContacts(allContacts);
+        if (!ArchiveContactsClientState.isLoaded() || contacts.isEmpty()) {
+            String key = !ArchiveContactsClientState.isLoaded() ? "syncing" : allContacts.isEmpty() ? "empty" : "empty_filtered";
+            UiRenderer.panel(g, contentX, top, contentWidth, 74, UiRenderer.ROW);
+            g.drawCenteredString(font, Component.translatable("screen.cyberneticenhancements.archive.contacts." + key), contentX + contentWidth / 2, top + 32, UiRenderer.TEXT_SECONDARY);
+        } else for (int index = 0; index < contacts.size(); index++) {
             var card = ArchiveContactLayout.card(index, contentWidth);
-            int cardY = y + card.y();
-            if (cardY + card.height() >= viewportY && cardY < viewportY + viewportHeight)
-                drawContactCard(guiGraphics, contacts.get(index), contentX + card.x(), cardY, card.width(), card.height(), alphaMask);
-        }
-        guiGraphics.disableScissor();
-        drawScrollbar(guiGraphics, pane, articleScroll, maxScroll, viewportHeight, viewportY);
-    }
-
-    private void renderQuestsRoster(GuiGraphics guiGraphics, Pane pane) {
-        int viewportY = pane.y + PANEL_HEADER_HEIGHT + 6;
-        int viewportHeight = pane.height - PANEL_HEADER_HEIGHT - 12;
-        double maxScroll = maxQuestsScroll(pane);
-        int contentWidth = pane.width - 20 - SCROLLBAR_WIDTH;
-        int contentX = pane.x + 10;
-        int headerX = pane.x + 10;
-        int headerY = pane.y + PANEL_HEADER_HEIGHT + 8;
-
-        float contentAnim = easeOutCubic(animationProgress(contentChangedAt, CONTENT_ANIMATION_MS));
-        int contentOffsetX = 0;
-        int alphaMask = ((int) (contentAnim * 255.0F) << 24) | 0x00FFFFFF;
-
-        articleScroll.clamp(maxScroll);
-        guiGraphics.enableScissor(pane.x + 4, viewportY, contentX + contentWidth + 4, viewportY + viewportHeight);
-        int y = headerY - (int) Math.round(articleScroll.current);
-
-        guiGraphics.drawString(font, Component.translatable("screen.cyberneticenhancements.archive.quests.subtitle"), headerX + contentOffsetX, y, withAlpha(StationScreenStyle.TEXT_SECONDARY, alphaMask), false);
-        y += 18;
-
-        if (!ArchiveQuestsClientState.isLoaded()) {
-            guiGraphics.drawString(font, Component.translatable("screen.cyberneticenhancements.archive.quests.syncing"), headerX + contentOffsetX, y + 6, withAlpha(StationScreenStyle.TEXT_SECONDARY, alphaMask), false);
-            guiGraphics.disableScissor();
-            drawScrollbar(guiGraphics, pane, articleScroll, maxScroll, viewportHeight, viewportY);
-            return;
-        }
-
-        List<ArchiveQuestsPayload.QuestEntry> quests = ArchiveQuestsClientState.get().quests();
-        if (quests.isEmpty()) {
-            guiGraphics.drawString(font, Component.translatable("screen.cyberneticenhancements.archive.quests.empty"), headerX + contentOffsetX, y + 6, withAlpha(StationScreenStyle.TEXT_SECONDARY, alphaMask), false);
-            guiGraphics.disableScissor();
-            drawScrollbar(guiGraphics, pane, articleScroll, maxScroll, viewportHeight, viewportY);
-            return;
-        }
-
-        String currentGroup = "";
-        for (ArchiveQuestsPayload.QuestEntry quest : quests) {
-            String nextGroup = questGroupLabelKey(quest.sortGroup());
-            if (!nextGroup.equals(currentGroup)) {
-                currentGroup = nextGroup;
-                guiGraphics.drawString(font, Component.translatable(nextGroup), contentX + contentOffsetX, y, withAlpha(StationScreenStyle.ACCENT, alphaMask), false);
-                y += 14;
-            }
-            int cardHeight = questCardHeight(quest, contentWidth);
-            if (y + cardHeight >= viewportY && y < viewportY + viewportHeight)
-                drawQuestCard(guiGraphics, quest, contentX + contentOffsetX, y, contentWidth, cardHeight, alphaMask);
-            y += cardHeight + SECTION_GAP;
-        }
-
-        guiGraphics.disableScissor();
-        drawScrollbar(guiGraphics, pane, articleScroll, maxScroll, viewportHeight, viewportY);
-    }
-
-    private void renderBankingRoster(GuiGraphics guiGraphics, Pane pane, int mouseX, int mouseY, float partialTick) {
-        int viewportY = pane.y + PANEL_HEADER_HEIGHT + 6;
-        int viewportHeight = pane.height - PANEL_HEADER_HEIGHT - 12;
-        double maxScroll = maxBankingScroll(pane);
-        int contentWidth = pane.width - 20 - SCROLLBAR_WIDTH;
-        int contentX = pane.x + 10;
-        int headerY = pane.y + PANEL_HEADER_HEIGHT + 8;
-
-        float contentAnim = easeOutCubic(animationProgress(contentChangedAt, CONTENT_ANIMATION_MS));
-        int contentOffsetX = 0;
-        int alphaMask = ((int) (contentAnim * 255.0F) << 24) | 0x00FFFFFF;
-
-        articleScroll.clamp(maxScroll);
-        guiGraphics.enableScissor(pane.x + 4, viewportY, contentX + contentWidth + 4, viewportY + viewportHeight);
-        int y = headerY - (int) Math.round(articleScroll.current);
-
-        guiGraphics.drawString(font, Component.translatable("screen.cyberneticenhancements.archive.banking.subtitle"), contentX + contentOffsetX, y, withAlpha(StationScreenStyle.TEXT_SECONDARY, alphaMask), false);
-        y += 18;
-
-        if (!ArchiveBankingClientState.isLoaded()) {
-            setBankingFieldsVisible(false);
-            guiGraphics.drawString(font, Component.translatable("screen.cyberneticenhancements.archive.banking.syncing"), contentX + contentOffsetX, y + 6, withAlpha(StationScreenStyle.TEXT_SECONDARY, alphaMask), false);
-            guiGraphics.disableScissor();
-            drawScrollbar(guiGraphics, pane, articleScroll, maxScroll, viewportHeight, viewportY);
-            return;
-        }
-
-        ArchiveBankingPayload banking = ArchiveBankingClientState.get();
-        drawBankingSummary(guiGraphics, banking, contentX + contentOffsetX, y, contentWidth, alphaMask);
-        y += 50;
-
-        drawBankingGraph(guiGraphics, banking.graphNet(), contentX + contentOffsetX, y, contentWidth, alphaMask);
-        y += 80;
-
-        updateBankingFieldLayout(contentX + contentOffsetX, y, contentWidth);
-        drawBankingActionPanel(guiGraphics, banking, contentX + contentOffsetX, y, contentWidth, alphaMask, mouseX, mouseY, partialTick);
-        y += bankingActionPanelHeight() + SECTION_GAP;
-
-        y = drawBankingRequestsPanel(guiGraphics, banking.requests(), contentX + contentOffsetX, y, contentWidth, alphaMask);
-
-        List<BankFilter> filters = bankFilters();
-        y = renderBankFilterTabs(guiGraphics, filters, contentX + contentOffsetX, y, contentWidth, alphaMask);
-
-        List<ArchiveBankingPayload.LedgerEntry> entries = filteredBankEntries(banking.entries());
-        if (entries.isEmpty()) {
-            guiGraphics.drawString(font, Component.translatable("screen.cyberneticenhancements.archive.banking.entries.empty"), contentX + contentOffsetX, y + 6, withAlpha(StationScreenStyle.TEXT_SECONDARY, alphaMask), false);
-        } else {
-            for (ArchiveBankingPayload.LedgerEntry entry : entries) {
-                int rowHeight = bankEntryRowHeight(entry, contentWidth);
-                drawBankEntryRow(guiGraphics, entry, contentX + contentOffsetX, y, contentWidth, rowHeight, alphaMask);
-                y += rowHeight + SECTION_GAP;
+            int cardY = cardTop + card.y();
+            if (cardY + card.height() > top && cardY < top + visible) {
+                drawContactCard(g, contacts.get(index), contentX + card.x(), cardY, card.width(), card.height(), -1);
+                var contact = contacts.get(index);
+                if (contact.deceased() && !contact.hidden() && !contact.isPlayer()) seenDeceasedContacts.add(contact.npcId());
             }
         }
-
-        guiGraphics.disableScissor();
-        drawScrollbar(guiGraphics, pane, articleScroll, maxScroll, viewportHeight, viewportY);
+        g.disableScissor();
+        drawScrollbar(g, pane, articleScroll, maxScroll, visible, top);
     }
 
-    private void drawBankingSummary(GuiGraphics guiGraphics, ArchiveBankingPayload banking, int x, int y, int width, int alphaMask) {
-        int chipWidth = Math.max(96, (width - 12) / 4);
-        drawMiniChip(guiGraphics, x, y, chipWidth, CHIP_HEIGHT, Component.translatable("screen.cyberneticenhancements.archive.banking.balance", banking.balance()), alphaMask);
-        drawMiniChip(guiGraphics, x + chipWidth + 4, y, chipWidth, CHIP_HEIGHT, Component.translatable("screen.cyberneticenhancements.archive.banking.income", banking.totalIncome()), alphaMask);
-        drawMiniChip(guiGraphics, x + (chipWidth + 4) * 2, y, chipWidth, CHIP_HEIGHT, Component.translatable("screen.cyberneticenhancements.archive.banking.expense", banking.totalExpense()), alphaMask);
-        drawMiniChip(guiGraphics, x + (chipWidth + 4) * 3, y, chipWidth, CHIP_HEIGHT, Component.translatable("screen.cyberneticenhancements.archive.banking.net", banking.net()), alphaMask);
-        guiGraphics.drawString(font, Component.translatable("screen.cyberneticenhancements.archive.banking.summary"), x, y + 26, withAlpha(StationScreenStyle.TEXT_SECONDARY, alphaMask), false);
+    private List<String> contactTypes() {
+        return ArchiveContactsClientState.get().contacts().stream().map(ArchiveContactsPayload.ContactEntry::npcTypeId)
+                .distinct().sorted().toList();
     }
 
-    private void drawBankingGraph(GuiGraphics guiGraphics, List<Integer> points, int x, int y, int width, int alphaMask) {
-        int height = 70;
-        drawArchiveCard(guiGraphics, x, y, width, height, alphaMask);
-        guiGraphics.drawString(font, Component.translatable("screen.cyberneticenhancements.archive.banking.graph"), x + 10, y + 10, withAlpha(StationScreenStyle.TEXT_PRIMARY, alphaMask), false);
-
-        int graphX = x + 8;
-        int graphY = y + 24;
-        int graphWidth = width - 16;
-        int graphHeight = 20;
-        guiGraphics.fill(graphX, graphY + graphHeight / 2, graphX + graphWidth, graphY + graphHeight / 2 + 1, withAlpha(StationScreenStyle.FRAME_HIGHLIGHT_SOFT, alphaMask));
-
-        int maxAbs = 1;
-        for (int point : points) {
-            maxAbs = Math.max(maxAbs, Math.abs(point));
-        }
-        int barGap = 3;
-        int barWidth = Math.max(6, (graphWidth - Math.max(0, points.size() - 1) * barGap) / Math.max(1, points.size()));
-        for (int index = 0; index < points.size(); index++) {
-            int value = points.get(index);
-            int barX = graphX + index * (barWidth + barGap);
-            int magnitude = Math.max(1, Math.round((Math.abs(value) / (float) maxAbs) * (graphHeight / 2f - 2)));
-            if (value >= 0) {
-                guiGraphics.fill(barX, graphY + graphHeight / 2 - magnitude, barX + barWidth, graphY + graphHeight / 2, withAlpha(StationScreenStyle.ACCENT, alphaMask));
-            } else {
-                guiGraphics.fill(barX, graphY + graphHeight / 2 + 1, barX + barWidth, graphY + graphHeight / 2 + 1 + magnitude, withAlpha(StationScreenStyle.WARNING, alphaMask));
-            }
-        }
-        guiGraphics.drawString(font, Component.translatable("screen.cyberneticenhancements.archive.banking.graph.caption"), x + 10, y + 50, withAlpha(StationScreenStyle.TEXT_SECONDARY, alphaMask), false);
+    private Rect contactsTypeBounds(Pane pane) {
+        int labelWidth = font.width(Component.translatable("screen.cyberneticenhancements.archive.quests.all_types"));
+        for (String type : contactTypes()) labelWidth = Math.max(labelWidth, font.width(contactTypeFilterLabel(type)));
+        int width = labelWidth + 54;
+        return new Rect("contacts_type", pane.x + pane.width - 10 - width, pane.y + 10, width, 22);
     }
 
-    private void drawBankingActionPanel(GuiGraphics guiGraphics, ArchiveBankingPayload banking, int x, int y, int width, int alphaMask, int mouseX, int mouseY, float partialTick) {
-        int panelHeight = bankingActionPanelHeight();
-        drawArchiveCard(guiGraphics, x, y, width, panelHeight, alphaMask);
-        guiGraphics.drawString(font, Component.translatable("screen.cyberneticenhancements.archive.banking.actions"), x + 10, y + 10, withAlpha(StationScreenStyle.TEXT_PRIMARY, alphaMask), false);
-        guiGraphics.drawString(font, Component.translatable("screen.cyberneticenhancements.archive.banking.target"), bankTargetField.getX(), y + 28, withAlpha(StationScreenStyle.TEXT_SECONDARY, alphaMask), false);
-        guiGraphics.drawString(font, Component.translatable("screen.cyberneticenhancements.archive.banking.amount"), bankAmountField.getX(), y + 28, withAlpha(StationScreenStyle.TEXT_SECONDARY, alphaMask), false);
-        setBankingFieldsVisible(true);
-        bankTargetField.render(guiGraphics, mouseX, mouseY, partialTick);
-        bankAmountField.render(guiGraphics, mouseX, mouseY, partialTick);
-        drawBankPlayerDropdownToggle(guiGraphics, x, y, width, alphaMask);
-        drawContactActionButton(guiGraphics, bankSendButtonBounds(x, y, width), Component.translatable("screen.cyberneticenhancements.archive.banking.button.send"), alphaMask);
-        drawContactActionButton(guiGraphics, bankRequestButtonBounds(x, y, width), Component.translatable("screen.cyberneticenhancements.archive.banking.button.request"), alphaMask);
-        if (bankPlayerDropdownOpen) {
-            drawBankPlayerDropdown(guiGraphics, x, y, width, alphaMask);
+    private void renderContactsSearch(GuiGraphics graphics, Pane pane) {
+        if (!contactsType.isEmpty() && !contactTypes().contains(contactsType)) {
+            contactsType = "";
+            articleScroll.reset();
         }
+        var type = contactsTypeBounds(pane);
+        int x = ArchiveContentLayout.contentX(pane.x);
+        int width = Math.max(80, type.x() - x - 10);
+        Component hint = Component.translatable("screen.cyberneticenhancements.archive.contacts.search");
+        if (contactsSearch == null) {
+            contactsSearch = new de.artemis.cyberneticenhancements.client.ui.UiEditBox(font, x, pane.y + 10, width, 22, hint);
+            contactsSearch.setHint(hint);
+            contactsSearch.setMaxLength(80);
+            contactsSearch.setResponder(value -> {
+                contactsQuery = value.strip().toLowerCase(Locale.ROOT);
+                articleScroll.reset();
+            });
+        }
+        contactsSearch.setX(x);
+        contactsSearch.setY(pane.y + 10);
+        contactsSearch.setWidth(width);
+        contactsSearch.render(graphics, currentMouseX, currentMouseY, 0);
+        Component selected = contactsType.isEmpty() ? Component.translatable("screen.cyberneticenhancements.archive.quests.all_types")
+                : contactTypeFilterLabel(contactsType);
+        UiRenderer.button(graphics, font, type.x(), type.y(), type.width(), type.height(),
+                Component.translatable("screen.cyberneticenhancements.archive.quests.type_filter", selected), true,
+                !contactsType.isEmpty(), !bootSequenceBlocksInput() && isInside(currentMouseX, currentMouseY, type), -1);
     }
 
-    private int drawBankingRequestsPanel(GuiGraphics guiGraphics, List<ArchiveBankingPayload.RequestEntry> requests, int x, int y, int width, int alphaMask) {
-        int panelHeight = bankingRequestsPanelHeight(requests, width);
-        int innerX = x + 10;
-        int innerY = y + 28;
-        int innerWidth = width - 20;
-        drawArchiveCard(guiGraphics, x, y, width, panelHeight, alphaMask);
-        guiGraphics.drawString(font, Component.translatable("screen.cyberneticenhancements.archive.banking.requests"), x + 10, y + 10, withAlpha(StationScreenStyle.TEXT_PRIMARY, alphaMask), false);
-        if (requests.isEmpty()) {
-            guiGraphics.drawString(font, Component.translatable("screen.cyberneticenhancements.archive.banking.requests.empty"), innerX, innerY + 2, withAlpha(StationScreenStyle.TEXT_SECONDARY, alphaMask), false);
-        } else {
-            for (ArchiveBankingPayload.RequestEntry request : requests) {
-                int cardHeight = bankRequestCardHeight(request);
-                drawBankRequestCard(guiGraphics, request, innerX, innerY, innerWidth, cardHeight, alphaMask);
-                innerY += cardHeight + SECTION_GAP;
-            }
+    private boolean handleContactsSearchClick(double mouseX, double mouseY, Pane pane) {
+        if (contactsSearch != null) {
+            boolean clicked = contactsSearch.mouseClicked(mouseX, mouseY, 0);
+            contactsSearch.setFocused(clicked);
+            if (clicked) return true;
         }
-        return y + panelHeight + SECTION_GAP;
-    }
-
-    private void drawBankPlayerDropdownToggle(GuiGraphics guiGraphics, int x, int y, int width, int alphaMask) {
-        Rect bounds = bankPlayerDropdownToggleBounds(x, y, width);
-        drawInteractiveFrame(guiGraphics, bounds.x(), bounds.y(), bounds.width(), bounds.height(), bankPlayerDropdownOpen, alphaMask);
-        UiRenderer.disclosureChevron(guiGraphics, bounds.x() + bounds.width() / 2.0F,
-                bounds.y() + bounds.height() / 2.0F, 1.0F - 2.0F * bankDropdownMotion.update(bankPlayerDropdownOpen),
-                withAlpha(StationScreenStyle.TEXT_PRIMARY, alphaMask));
-    }
-
-    private void drawBankPlayerDropdown(GuiGraphics guiGraphics, int x, int y, int width, int alphaMask) {
-        List<PlayerInfo> players = onlineBankPlayers();
-        Rect bounds = bankPlayerDropdownBounds(x, y, width, players.size());
-        UiRenderer.panel(guiGraphics, bounds.x(), bounds.y(), bounds.width(), bounds.height(), withAlpha(UiRenderer.FIELD, alphaMask), withAlpha(UiRenderer.FIELD_EDGE, alphaMask));
-        if (players.isEmpty()) {
-            guiGraphics.drawString(font, Component.translatable("screen.cyberneticenhancements.archive.banking.players.none"), bounds.x() + 8, bounds.y() + 8, withAlpha(StationScreenStyle.TEXT_SECONDARY, alphaMask), false);
-            return;
-        }
-        for (int index = 0; index < players.size(); index++) {
-            PlayerInfo player = players.get(index);
-            Rect row = bankPlayerDropdownRowBounds(x, y, width, index);
-            boolean selected = bankTargetField.getValue().equalsIgnoreCase(player.getProfile().getName());
-            drawInteractiveFrame(guiGraphics, row.x(), row.y(), row.width(), row.height(), selected, alphaMask);
-            PlayerFaceRenderer.draw(guiGraphics, player.getSkin().texture(), row.x() + 4, row.y() + 4, 12);
-            guiGraphics.drawString(font, trimStyled(Component.literal(player.getProfile().getName()), row.width() - 24), row.x() + 20, row.y() + 6, withAlpha(StationScreenStyle.TEXT_PRIMARY, alphaMask), false);
-        }
-    }
-
-    private int renderBankFilterTabs(GuiGraphics g, List<BankFilter> filters, int startX, int startY, int width, int alphaMask) {
-        for (Rect bounds : bankFilterTabBounds(filters, startX, startY, width))
-            drawActionButton(g, bounds.x(), bounds.y(), bounds.width(), bounds.height(), bankFilterLabel(bounds.id(), filters), alphaMask, bounds.id().equals(activeBankFilterId));
-        return startY + bankFilterTabsHeight(filters, width) + SECTION_GAP;
-    }
-
-    private void drawBankEntryRow(GuiGraphics guiGraphics, ArchiveBankingPayload.LedgerEntry entry, int x, int y, int width, int height, int alphaMask) {
-        drawArchiveCard(guiGraphics, x, y, width, height, alphaMask);
-
-        String amount = (entry.amount() >= 0 ? "+" : "") + entry.amount() + " €$";
-        int amountColor = entry.amount() >= 0 ? StationScreenStyle.ACCENT : StationScreenStyle.WARNING;
-        guiGraphics.drawString(font, trimStyled(Component.literal(entry.note()), width - 130), x + 10, y + 10, withAlpha(StationScreenStyle.TEXT_PRIMARY, alphaMask), false);
-        guiGraphics.drawString(font, Component.literal(amount), x + width - font.width(amount) - 10, y + 10, withAlpha(amountColor, alphaMask), false);
-
-        int lineY = y + 26;
-        Component counterpart = entry.counterpartyName().isBlank()
-                ? Component.translatable("screen.cyberneticenhancements.archive.banking.counterparty.system")
-                : Component.translatable("screen.cyberneticenhancements.archive.banking.counterparty.named", entry.counterpartyName());
-        drawWrappedQuestLine(guiGraphics, counterpart, x + 8, lineY, width - 16, alphaMask);
-        lineY += wrappedQuestLineHeight(counterpart, width - 16);
-        Component type = Component.translatable("screen.cyberneticenhancements.archive.banking.entry.type", humanizeId(entry.typeId()));
-        drawWrappedQuestLine(guiGraphics, type, x + 8, lineY, width - 16, alphaMask);
-        lineY += wrappedQuestLineHeight(type, width - 16);
-        Component day = Component.translatable("screen.cyberneticenhancements.archive.banking.entry.day", entry.day());
-        drawWrappedQuestLine(guiGraphics, day, x + 8, lineY, width - 16, alphaMask);
-    }
-
-    private void drawBankRequestCard(GuiGraphics guiGraphics, ArchiveBankingPayload.RequestEntry request, int x, int y, int width, int height, int alphaMask) {
-        drawArchiveCard(guiGraphics, x, y, width, height, alphaMask);
-
-        Component title = request.incoming()
-                ? Component.translatable("screen.cyberneticenhancements.archive.banking.request.incoming", request.fromName())
-                : Component.translatable("screen.cyberneticenhancements.archive.banking.request.outgoing", request.toName());
-        guiGraphics.drawString(font, trimStyled(title, width - 160), x + 10, y + 10, withAlpha(StationScreenStyle.TEXT_PRIMARY, alphaMask), false);
-        guiGraphics.drawString(font, Component.literal(request.amount() + " €$"), x + width - 72, y + 6, withAlpha(StationScreenStyle.ACCENT, alphaMask), false);
-
-        int lineY = y + 28;
-        drawWrappedQuestLine(guiGraphics, Component.translatable("screen.cyberneticenhancements.archive.banking.entry.day", request.createdDay()), x + 8, lineY, width - 16, alphaMask);
-        if (request.incoming()) {
-            drawContactActionButton(guiGraphics, bankApproveRequestBounds(request, x, y, width), Component.translatable("screen.cyberneticenhancements.archive.banking.button.approve"), alphaMask);
-            drawContactActionButton(guiGraphics, bankDeclineRequestBounds(request, x, y, width), Component.translatable("screen.cyberneticenhancements.archive.banking.button.decline"), alphaMask);
-        } else {
-            drawContactActionButton(guiGraphics, bankDeclineRequestBounds(request, x, y, width), Component.translatable("screen.cyberneticenhancements.archive.banking.button.cancel"), alphaMask);
-        }
-    }
-
-    private boolean handleBankingClick(double mouseX, double mouseY, Pane pane) {
-        if (!insideRosterViewport(mouseX, mouseY, pane)) return false;
-        if (!ArchiveBankingClientState.isLoaded()) {
-            return false;
-        }
-        double maxScroll = maxBankingScroll(pane);
-        int contentWidth = pane.width - 20 - SCROLLBAR_WIDTH;
-        int contentX = pane.x + 10;
-        int y = pane.y + PANEL_HEADER_HEIGHT + 8 - (int) Math.round(articleScroll.current);
-        y += 18 + 50 + 80;
-
-        Rect dropdownToggle = bankPlayerDropdownToggleBounds(contentX, y, contentWidth);
-        if (isInside(mouseX, mouseY, dropdownToggle)) {
-            bankPlayerDropdownOpen = !bankPlayerDropdownOpen;
-            playClick();
-            return true;
-        }
-        if (bankPlayerDropdownOpen) {
-            List<PlayerInfo> players = onlineBankPlayers();
-            for (int index = 0; index < players.size(); index++) {
-                Rect row = bankPlayerDropdownRowBounds(contentX, y, contentWidth, index);
-                if (isInside(mouseX, mouseY, row)) {
-                    bankTargetField.setValue(players.get(index).getProfile().getName());
-                    bankPlayerDropdownOpen = false;
-                    clearBankingFieldFocus();
-                    playClick();
-                    return true;
-                }
-            }
-        }
-
-        Rect send = bankSendButtonBounds(contentX, y, contentWidth);
-        if (isInside(mouseX, mouseY, send)) {
-            PacketDistributor.sendToServer(new ArchiveBankingActionPayload(
-                    ArchiveBankingActionPayload.ACTION_SEND,
-                    bankTargetField.getValue(),
-                    parseBankAmountField(),
-                    ""
-            ));
-            bankPlayerDropdownOpen = false;
-            playClick();
-            return true;
-        }
-        Rect request = bankRequestButtonBounds(contentX, y, contentWidth);
-        if (isInside(mouseX, mouseY, request)) {
-            PacketDistributor.sendToServer(new ArchiveBankingActionPayload(
-                    ArchiveBankingActionPayload.ACTION_REQUEST,
-                    bankTargetField.getValue(),
-                    parseBankAmountField(),
-                    ""
-            ));
-            bankPlayerDropdownOpen = false;
-            playClick();
-            return true;
-        }
-
-        List<BankFilter> filters = bankFilters();
-        y += bankingActionPanelHeight() + SECTION_GAP;
-
-        ArchiveBankingPayload banking = ArchiveBankingClientState.get();
-        int requestsPanelHeight = bankingRequestsPanelHeight(banking.requests(), contentWidth);
-        int requestsInnerX = contentX + 10;
-        int requestsInnerY = y + 28;
-        int requestsInnerWidth = contentWidth - 20;
-        for (ArchiveBankingPayload.RequestEntry requestEntry : banking.requests()) {
-            if (requestEntry.incoming()) {
-                Rect approve = bankApproveRequestBounds(requestEntry, requestsInnerX, requestsInnerY, requestsInnerWidth);
-                if (isInside(mouseX, mouseY, approve)) {
-                    PacketDistributor.sendToServer(new ArchiveBankingActionPayload(ArchiveBankingActionPayload.ACTION_APPROVE, "", 0, requestEntry.requestId()));
-                    playClick();
-                    return true;
-                }
-            }
-            Rect decline = bankDeclineRequestBounds(requestEntry, requestsInnerX, requestsInnerY, requestsInnerWidth);
-            if (isInside(mouseX, mouseY, decline)) {
-                PacketDistributor.sendToServer(new ArchiveBankingActionPayload(ArchiveBankingActionPayload.ACTION_DECLINE, "", 0, requestEntry.requestId()));
-                playClick();
-                return true;
-            }
-            requestsInnerY += bankRequestCardHeight(requestEntry) + SECTION_GAP;
-        }
-
-        y += requestsPanelHeight + SECTION_GAP;
-
-        for (Rect bounds : bankFilterTabBounds(filters, contentX, y, contentWidth)) {
-            if (isInside(mouseX, mouseY, bounds)) {
-                setBankFilter(bounds.id());
-                playClick();
-                return true;
-            }
-        }
-
-        y += bankFilterTabsHeight(filters, contentWidth) + SECTION_GAP;
-        bankPlayerDropdownOpen = false;
-        return false;
-    }
-
-    private void updateBankingFieldLayout(int x, int y, int width) {
-        int amountWidth = Math.max(96, font.width(Component.translatable("screen.cyberneticenhancements.archive.banking.amount")) + 20);
-        int targetWidth = Math.max(92, width - 248 - amountWidth);
-        bankTargetField.setX(x + 10);
-        bankTargetField.setY(y + 42);
-        bankTargetField.setWidth(targetWidth);
-        bankTargetField.setHeight(20);
-        bankAmountField.setX(bankTargetField.getX() + targetWidth + 40);
-        bankAmountField.setY(y + 42);
-        bankAmountField.setWidth(amountWidth);
-        bankAmountField.setHeight(20);
-    }
-
-    private void setBankingFieldsVisible(boolean visible) {
-        if (bankTargetField != null) {
-            bankTargetField.setVisible(visible);
-        }
-        if (bankAmountField != null) {
-            bankAmountField.setVisible(visible);
-        }
-    }
-
-    private boolean handleBankingFieldKeyPressed(int keyCode, int scanCode, int modifiers) {
-        if (!bankingFieldFocused()) {
-            return false;
-        }
-        if (keyCode == 257 || keyCode == 335 || keyCode == 256) {
-            clearBankingFieldFocus();
-            return true;
-        }
-        if (bankTargetField.keyPressed(keyCode, scanCode, modifiers)) {
-            return true;
-        }
-        if (bankAmountField.keyPressed(keyCode, scanCode, modifiers)) {
-            return true;
-        }
+        if (!isInside(mouseX, mouseY, contactsTypeBounds(pane))) return false;
+        var types = contactTypes();
+        int index = contactsType.isEmpty() ? -1 : types.indexOf(contactsType);
+        contactsType = index + 1 < types.size() ? types.get(index + 1) : "";
+        articleScroll.reset();
+        playClick();
         return true;
     }
-
-    private boolean bankingFieldFocused() {
-        return (bankTargetField != null && bankTargetField.isVisible() && bankTargetField.isFocused())
-                || (bankAmountField != null && bankAmountField.isVisible() && bankAmountField.isFocused());
-    }
-
-    private void clearBankingFieldFocus() {
-        TextFieldFocusHelper.clearFocus(this, List.of(bankTargetField, bankAmountField));
-    }
-
-    private int parseBankAmountField() {
-        if (bankAmountField == null) {
-            return 0;
-        }
-        try {
-            return Integer.parseInt(bankAmountField.getValue().trim());
-        } catch (NumberFormatException ignored) {
-            return 0;
-        }
-    }
-
-    private List<BankFilter> bankFilters() {
-        return List.of(
-                new BankFilter(BANK_FILTER_ALL, Component.translatable("screen.cyberneticenhancements.archive.banking.filter.all")),
-                new BankFilter(BANK_FILTER_INCOME, Component.translatable("screen.cyberneticenhancements.archive.banking.filter.income")),
-                new BankFilter(BANK_FILTER_EXPENSE, Component.translatable("screen.cyberneticenhancements.archive.banking.filter.expense"))
-        );
-    }
-
-    private List<ArchiveBankingPayload.LedgerEntry> filteredBankEntries(List<ArchiveBankingPayload.LedgerEntry> entries) {
-        List<ArchiveBankingPayload.LedgerEntry> filtered = new ArrayList<>();
-        for (ArchiveBankingPayload.LedgerEntry entry : entries) {
-            if (BANK_FILTER_INCOME.equals(activeBankFilterId) && entry.amount() <= 0) {
-                continue;
-            }
-            if (BANK_FILTER_EXPENSE.equals(activeBankFilterId) && entry.amount() >= 0) {
-                continue;
-            }
-            filtered.add(entry);
-        }
-        return filtered;
-    }
-
-    private List<Rect> bankFilterTabBounds(List<BankFilter> filters, int startX, int startY, int availableWidth) {
-        List<Rect> bounds = new ArrayList<>(filters.size());
-        int x = startX;
-        for (BankFilter filter : filters) {
-            int tabWidth = Math.max(84, font.width(filter.label()) + 20);
-            if (x > startX && x + tabWidth > startX + availableWidth) {
-                x = startX;
-                startY += BANK_FILTER_TAB_HEIGHT + BANK_FILTER_TAB_GAP;
-            }
-            bounds.add(new Rect(filter.id(), x, startY, tabWidth, BANK_FILTER_TAB_HEIGHT));
-            x += tabWidth + BANK_FILTER_TAB_GAP;
-        }
-        return bounds;
-    }
-
-    private int bankFilterTabsHeight(List<BankFilter> filters, int availableWidth) {
-        if (filters.isEmpty()) {
-            return 0;
-        }
-        int rows = 1;
-        int rowWidth = 0;
-        for (BankFilter filter : filters) {
-            int tabWidth = Math.max(84, font.width(filter.label()) + 20);
-            if (rowWidth > 0 && rowWidth + BANK_FILTER_TAB_GAP + tabWidth > availableWidth) {
-                rows++;
-                rowWidth = tabWidth;
-            } else {
-                rowWidth = rowWidth == 0 ? tabWidth : rowWidth + BANK_FILTER_TAB_GAP + tabWidth;
-            }
-        }
-        return rows * BANK_FILTER_TAB_HEIGHT + Math.max(0, rows - 1) * BANK_FILTER_TAB_GAP;
-    }
-
-    private Component bankFilterLabel(String id, List<BankFilter> filters) {
-        for (BankFilter filter : filters) {
-            if (filter.id().equals(id)) {
-                return filter.label();
-            }
-        }
-        return Component.literal(id);
-    }
-
-    private void setBankFilter(String filterId) {
-        if (filterId == null || filterId.equals(activeBankFilterId)) {
-            return;
-        }
-        activeBankFilterId = filterId;
-        articleScroll.reset();
-        contentChangedAt = animationAnchorTime();
-    }
-
-    private int bankEntryRowHeight(ArchiveBankingPayload.LedgerEntry entry, int width) {
-        int bodyWidth = width - 16;
-        int height = 24;
-        height += wrappedQuestLineHeight(
-                entry.counterpartyName().isBlank()
-                        ? Component.translatable("screen.cyberneticenhancements.archive.banking.counterparty.system")
-                        : Component.translatable("screen.cyberneticenhancements.archive.banking.counterparty.named", entry.counterpartyName()),
-                bodyWidth);
-        height += wrappedQuestLineHeight(Component.translatable("screen.cyberneticenhancements.archive.banking.entry.type", humanizeId(entry.typeId())), bodyWidth);
-        height += wrappedQuestLineHeight(Component.translatable("screen.cyberneticenhancements.archive.banking.entry.day", entry.day()), bodyWidth);
-        return height + 8;
-    }
-
-    private int bankRequestCardHeight(ArchiveBankingPayload.RequestEntry request) {
-        return 58;
-    }
-
-    private int bankingActionPanelHeight() {
-        return 72 + bankPlayerDropdownHeight();
-    }
-
-    private int bankPlayerDropdownHeight() {
-        if (!bankPlayerDropdownOpen) {
-            return 0;
-        }
-        int rows = Math.max(1, onlineBankPlayers().size());
-        return 18 + rows * 20;
-    }
-
-    private int bankingRequestsPanelHeight(List<ArchiveBankingPayload.RequestEntry> requests, int width) {
-        if (requests.isEmpty()) return 52;
-        int height = 28;
-        for (var request : requests) height += bankRequestCardHeight(request) + SECTION_GAP;
-        return height;
-    }
-    private List<PlayerInfo> onlineBankPlayers() {
-        Minecraft minecraft = Minecraft.getInstance();
-        if (minecraft.getConnection() == null) {
-            return List.of();
-        }
-        List<PlayerInfo> players = new ArrayList<>();
-        String selfName = minecraft.player == null ? "" : minecraft.player.getGameProfile().getName();
-        for (PlayerInfo info : minecraft.getConnection().getOnlinePlayers()) {
-            if (info.getProfile().getName().equalsIgnoreCase(selfName)) {
-                continue;
-            }
-            players.add(info);
-        }
-        players.sort((left, right) -> left.getProfile().getName().compareToIgnoreCase(right.getProfile().getName()));
-        return players;
-    }
-
-    private Rect bankSendButtonBounds(int x, int y, int width) {
-        return new Rect("bank_send", x + width - 188, y + 42, 84, 20);
-    }
-
-    private Rect bankRequestButtonBounds(int x, int y, int width) {
-        return new Rect("bank_request", x + width - 94, y + 42, 84, 20);
-    }
-
-    private Rect bankPlayerDropdownToggleBounds(int x, int y, int width) {
-        return new Rect("bank_dropdown", bankTargetField.getX() + bankTargetField.getWidth() + 10, y + 42, 20, 20);
-    }
-
-    private Rect bankPlayerDropdownBounds(int x, int y, int width, int playerCount) {
-        int rows = Math.max(1, playerCount);
-        return new Rect("bank_dropdown_rows", bankTargetField.getX(), y + 72, bankTargetField.getWidth() + 30, 8 + rows * 20);
-    }
-
-    private Rect bankPlayerDropdownRowBounds(int x, int y, int width, int index) {
-        Rect dropdown = bankPlayerDropdownBounds(x, y, width, onlineBankPlayers().size());
-        return new Rect("bank_dropdown_row_" + index, dropdown.x() + 4, dropdown.y() + 4 + index * 20, dropdown.width() - 8, 20);
-    }
-
-    private Rect bankApproveRequestBounds(ArchiveBankingPayload.RequestEntry request, int x, int y, int width) {
-        return new Rect(request.requestId() + ":approve", x + width - 188, y + 28, 84, 20);
-    }
-
-    private Rect bankDeclineRequestBounds(ArchiveBankingPayload.RequestEntry request, int x, int y, int width) {
-        return new Rect(request.requestId() + ":decline", x + width - 94, y + 28, 84, 20);
-    }
-
-    private void drawQuestCard(GuiGraphics guiGraphics, ArchiveQuestsPayload.QuestEntry quest, int x, int y, int width, int height, int alphaMask) {
-        drawArchiveCard(guiGraphics, x, y, width, height, alphaMask);
-
-        guiGraphics.drawString(font, trimStyled(Component.literal(quest.title()), width - 20), x + 10, y + 10, withAlpha(StationScreenStyle.TEXT_PRIMARY, alphaMask), false);
-        Component issuer = Component.translatable("screen.cyberneticenhancements.archive.quests.issuer", quest.issuerName());
-        int bodyWidth = width - 16;
-        Rect discardBounds = questCanBeDiscarded(quest) ? discardQuestButtonBounds(quest, x, y, width) : null;
-        int issuerWidth = discardBounds == null ? bodyWidth : discardBounds.x() - (x + 8) - 8;
-        guiGraphics.drawString(font, trimStyled(issuer, issuerWidth), x + 8, y + 28, withAlpha(StationScreenStyle.ACCENT, alphaMask), false);
-        if (discardBounds != null) {
-            drawQuestActionButton(guiGraphics, discardBounds, Component.translatable("screen.cyberneticenhancements.archive.quests.button.discard"), alphaMask);
-        }
-
-        int lineY = y + 48;
-        Component objective = Component.translatable("screen.cyberneticenhancements.archive.quests.objective", quest.objective());
-        drawWrappedQuestLine(guiGraphics, objective, x + 8, lineY, bodyWidth, alphaMask);
-        lineY += wrappedQuestLineHeight(objective, bodyWidth);
-        Component reward = Component.translatable("screen.cyberneticenhancements.archive.quests.reward", quest.reward());
-        drawWrappedQuestLine(guiGraphics, reward, x + 8, lineY, bodyWidth, alphaMask);
-        lineY += wrappedQuestLineHeight(reward, bodyWidth);
-        if (quest.hasLocation()) {
-            Component location = Component.translatable("screen.cyberneticenhancements.archive.quests.location", formatDimension(quest.dimensionId()), quest.x(), quest.y(), quest.z());
-            drawWrappedQuestLine(guiGraphics, location, x + 8, lineY, bodyWidth, alphaMask);
-            lineY += wrappedQuestLineHeight(location, bodyWidth);
-        }
-        Component status = Component.translatable("screen.cyberneticenhancements.archive.quests.status", quest.statusLabel());
-        drawWrappedQuestLine(guiGraphics, status, x + 8, lineY, bodyWidth, alphaMask);
-    }
-
-    private void drawWrappedQuestLine(GuiGraphics guiGraphics, Component line, int x, int y, int width, int alphaMask) {
-        int lineOffset = 0;
-        for (FormattedCharSequence wrapped : font.split(line, width)) {
-            guiGraphics.drawString(font, wrapped, x, y + lineOffset, withAlpha(StationScreenStyle.TEXT_SECONDARY, alphaMask), false);
-            lineOffset += 11;
-        }
-    }
-
-    private int wrappedQuestLineHeight(Component line, int width) {
-        return font.split(line, width).size() * 11 + 2;
-    }
-
-    private void drawQuestActionButton(GuiGraphics guiGraphics, Rect bounds, Component label, int alphaMask) {
-        drawContactActionButton(guiGraphics, bounds, label, alphaMask);
-    }
-
     private void drawContactCard(GuiGraphics g, ArchiveContactsPayload.ContactEntry contact, int x, int y, int width, int height, int alphaMask) {
-        drawArchiveCard(g, x, y, width, height, alphaMask);
-        int padding = SECTION_GAP;
+        UiRenderer.panel(g, x, y, width, height, withAlpha(UiRenderer.ROW, alphaMask), withAlpha(contact.deceased() ? 0xFFAA4F59 : UiRenderer.FIELD_EDGE, alphaMask));
+        int padding = ArchiveContactLayout.PADDING;
         Component status = contactStateLabel(contact);
-        g.drawString(font, trimStyled(Component.literal(contact.name()), width - padding * 2), x + padding, y + 12, withAlpha(StationScreenStyle.TEXT_PRIMARY, alphaMask), false);
-        g.drawString(font, trimStyled(status, width - padding * 2), x + padding, y + 28, withAlpha(contactStateColor(contact), alphaMask), false);        drawNpcHeadPreview(g, contact, x + padding, y + 46, 44, alphaMask);
-        int textX = x + 78, textWidth = width - 88;
-        Component[] details = {contactTypeLabel(contact), trustLabel(contact), locationLabel(contact), positionLabel(contact)};
-        for (int i = 0; i < details.length; i++)
-            g.drawString(font, trimStyled(details[i], textWidth), textX, y + 48 + i * 14, withAlpha(StationScreenStyle.TEXT_SECONDARY, alphaMask), false);
-        g.fill(x + padding, y + height - 40, x + width - padding, y + height - 39, withAlpha(UiRenderer.FIELD_EDGE, alphaMask));
+        int statusWidth = Math.min(width / 2, font.width(status));
+        g.drawString(font, trimStyled(contact.displayName(), width - padding * 2 - statusWidth - ArchiveContactLayout.GAP),
+                x + padding, y + padding, withAlpha(contact.deceased() ? DECEASED_COLOR : UiRenderer.TEXT, alphaMask), false);
+        g.drawString(font, trimStyled(status, statusWidth), x + width - padding - statusWidth, y + padding,
+                withAlpha(contactStateColor(contact), alphaMask), false);
+        int headerDivider = ArchiveContactLayout.BODY_TOP - ArchiveContactLayout.GAP - 1;
+        g.fill(x + padding, y + headerDivider, x + width - padding, y + headerDivider + 1, withAlpha(UiRenderer.FIELD_EDGE, alphaMask));
+        int bodyY = y + ArchiveContactLayout.BODY_TOP;
+        drawNpcHeadPreview(g, contact, x + padding, bodyY, ArchiveContactLayout.PORTRAIT_SIZE - 14, alphaMask);
+        int textX = x + padding + ArchiveContactLayout.PORTRAIT_SIZE + ArchiveContactLayout.GAP;
+        int textWidth = x + width - padding - textX;
+        Component[] details = {contactTypeLabel(contact), trustLabel(contact), locationLabel(contact), contact.deceased()
+                ? Component.translatable("screen.cyberneticenhancements.archive.contacts.connection_closed") : positionLabel(contact)};
+        if (contact.isPlayer()) details = new Component[]{contactTypeLabel(contact),
+                Component.translatable("screen.cyberneticenhancements.call.player." + contact.callStatus()),
+                Component.translatable("screen.cyberneticenhancements.call.player.voice_required"),
+                Component.translatable("screen.cyberneticenhancements.call.player.private_call")};
+        for (int index = 0; index < details.length; index++) {
+            g.drawString(font, trimStyled(details[index], textWidth), textX, bodyY + index * 16, withAlpha(UiRenderer.TEXT_SECONDARY, alphaMask), false);
+        }
+        g.fill(x + padding, y + ArchiveContactLayout.FOOTER_Y, x + width - padding, y + ArchiveContactLayout.FOOTER_Y + 1, withAlpha(UiRenderer.FIELD_EDGE, alphaMask));
         drawContactActionButton(g, pinButtonBounds(contact, x, y, width), Component.translatable(contact.pinned() ? "screen.cyberneticenhancements.archive.contacts.button.unpin" : "screen.cyberneticenhancements.archive.contacts.button.pin"), alphaMask, contact.pinned());
-        drawContactActionButton(g, hideButtonBounds(contact, x, y, width), Component.translatable(contact.hidden() ? "screen.cyberneticenhancements.archive.contacts.button.unhide" : "screen.cyberneticenhancements.archive.contacts.button.hide"), alphaMask, contact.hidden());
-        drawContactActionButton(g, locateButtonBounds(contact, x, y, width), Component.translatable("screen.cyberneticenhancements.archive.contacts.button.locate"), alphaMask);
-        drawContactActionButton(g, meetupButtonBounds(contact, x, y, width), Component.translatable("screen.cyberneticenhancements.archive.contacts.button.meetup"), alphaMask);
+        drawContactActionButton(g, hideButtonBounds(contact, x, y, width), Component.translatable(contact.isPlayer()
+                ? "screen.cyberneticenhancements.call.player." + (contact.callStatus().equals("blocked") ? "unblock" : "block_contact")
+                : contact.hidden() ? "screen.cyberneticenhancements.archive.contacts.button.unhide" : "screen.cyberneticenhancements.archive.contacts.button.hide"), alphaMask, contact.isPlayer() ? contact.callStatus().equals("blocked") : contact.hidden());
+        var call = callButtonBounds(contact, x, y, width);
+        UiRenderer.button(g, font, call.x(), call.y(), call.width(), call.height(),
+                Component.translatable(contact.deceased() ? "screen.cyberneticenhancements.archive.contacts.state.deceased" : "screen.cyberneticenhancements.archive.contacts.button.call"),
+                !contact.deceased() && (!contact.isPlayer() || contact.callStatus().equals("available")), false, !bootSequenceBlocksInput() && isInside(currentMouseX, currentMouseY, call)
+                        && g.containsPointInScissor(currentMouseX, currentMouseY), alphaMask);
     }
-
     private void drawNpcHeadPreview(GuiGraphics guiGraphics, ArchiveContactsPayload.ContactEntry contact, int x, int y, int size, int alphaMask) {
-        UiRenderer.panel(guiGraphics, x, y, size + 14, size + 14, withAlpha(UiRenderer.FIELD, alphaMask), withAlpha(UiRenderer.FIELD_EDGE, alphaMask));
+        UiRenderer.panel(guiGraphics, x, y, size + 14, size + 14, withAlpha(UiRenderer.FIELD, alphaMask), withAlpha(contact.deceased() ? 0xFFAA4F59 : UiRenderer.FIELD_EDGE, alphaMask));
         ResourceLocation texture = FixerEntityRenderer.resolveTexture(parseUuid(contact.npcId()), NpcCategory.fromId(contact.categoryId()));
-        renderNpcHeadModel(guiGraphics, texture, x + 7, y + 7, size, alphaMask);
+        if (contact.isPlayer()) texture = de.artemis.cyberneticenhancements.client.PlayerCallClient.skin(parseUuid(contact.npcId()));
+        renderNpcHeadModel(guiGraphics, texture, x + 7, y + 7, size, alphaMask, contact.deceased() ? 0xFFB08080 : 0xFFFFFFFF);
     }
 
-    private void renderNpcHeadModel(GuiGraphics guiGraphics, ResourceLocation texture, int x, int y, int renderSize, int alphaMask) {
+    private void renderNpcHeadModel(GuiGraphics guiGraphics, ResourceLocation texture, int x, int y, int renderSize, int alphaMask, int tint) {
         PlayerModel<?> model = new PlayerModel<>(minecraft.getEntityModels().bakeLayer(ModelLayers.PLAYER), false);
         model.setAllVisible(false);
         model.head.visible = true;
@@ -1368,118 +977,55 @@ public final class CyberwareWikiScreen extends ResponsiveScreen {
         Lighting.setupForEntityInInventory();
 
         VertexConsumer buffer = guiGraphics.bufferSource().getBuffer(RenderType.entityTranslucent(texture));
-        model.head.render(guiGraphics.pose(), buffer, 15728880, OverlayTexture.NO_OVERLAY, withAlpha(0xFFFFFFFF, alphaMask));
-        model.hat.render(guiGraphics.pose(), buffer, 15728880, OverlayTexture.NO_OVERLAY, withAlpha(0xFFFFFFFF, alphaMask));
+        model.head.render(guiGraphics.pose(), buffer, 15728880, OverlayTexture.NO_OVERLAY, withAlpha(tint, alphaMask));
+        model.hat.render(guiGraphics.pose(), buffer, 15728880, OverlayTexture.NO_OVERLAY, withAlpha(tint, alphaMask));
         guiGraphics.flush();
         Lighting.setupFor3DItems();
         guiGraphics.pose().popPose();
     }
 
-    private int renderChips(GuiGraphics guiGraphics, List<Component> chips, int startX, int startY, int width, int alphaMask) {
-        int x = startX;
-        int y = startY;
+    private record ChipBox(Component text, int x, int y, int width, int height) {}
+    private record ChipLayout(List<ChipBox> boxes, int height) {}
+
+    private static ChipLayout layoutChips(Font font, List<Component> chips, int availableWidth) {
+        int width = Math.max(1, availableWidth), x = 0, y = 0, rowHeight = 0;
+        List<ChipBox> boxes = new ArrayList<>();
         for (Component chip : chips) {
-            int chipWidth = Math.min(width, font.width(chip) + 10);
-            if (x + chipWidth > startX + width) {
-                x = startX;
-                y += CHIP_HEIGHT + 4;
+            int chipWidth = Math.min(width, font.width(chip) + 12);
+            int lines = font.split(chip, Math.max(1, chipWidth - 12)).size();
+            int chipHeight = Math.max(CHIP_HEIGHT, lines * font.lineHeight + 7);
+            if (x > 0 && x + chipWidth > width) {
+                x = 0;
+                y += rowHeight + 4;
+                rowHeight = 0;
             }
-            drawMiniChip(guiGraphics, x, y, chipWidth, CHIP_HEIGHT, chip, alphaMask);
+            boxes.add(new ChipBox(chip, x, y, chipWidth, chipHeight));
             x += chipWidth + 4;
+            rowHeight = Math.max(rowHeight, chipHeight);
         }
-        return y + CHIP_HEIGHT;
+        return new ChipLayout(boxes, boxes.isEmpty() ? 0 : y + rowHeight);
+    }
+
+    private int renderChips(GuiGraphics guiGraphics, List<Component> chips, int startX, int startY, int width, int alphaMask) {
+        ChipLayout layout = layoutChips(font, chips, width);
+        for (ChipBox box : layout.boxes())
+            drawMiniChip(guiGraphics, startX + box.x(), startY + box.y(), box.width(), box.height(), box.text(), alphaMask);
+        return startY + layout.height();
     }
 
     private int measureContactsHeight(Pane pane) {
-        int height = 18;
-        if (!ArchiveContactsClientState.isLoaded()) {
-            return height + 22;
-        }
-        List<ArchiveContactsPayload.ContactEntry> allContacts = ArchiveContactsClientState.get().contacts();
-        if (allContacts.isEmpty()) {
-            return height + 22;
-        }
-        height += contactFilterTabsHeight(contactFilters(allContacts), pane.width - 20 - SCROLLBAR_WIDTH) + SECTION_GAP;
-        List<ArchiveContactsPayload.ContactEntry> contacts = filteredContacts(allContacts);
-        if (contacts.isEmpty()) {
-            return height + 22;
-        }
-        return height + ArchiveContactLayout.contentHeight(contacts.size(), pane.width - 20 - SCROLLBAR_WIDTH);
+        if (!ArchiveContactsClientState.isLoaded()) return 74;
+        return Math.max(74, ArchiveContactLayout.contentHeight(filteredContacts(ArchiveContactsClientState.get().contacts()).size(), contactsContentWidth(pane)));
     }
 
-    private int measureBankingHeight(Pane pane) {
-        int contentWidth = pane.width - 20 - SCROLLBAR_WIDTH;
-        int height = 18 + 50 + 80 + bankingActionPanelHeight() + SECTION_GAP;
-        height += ArchiveBankingClientState.isLoaded()
-                ? bankingRequestsPanelHeight(ArchiveBankingClientState.get().requests(), contentWidth) + SECTION_GAP
-                : bankingRequestsPanelHeight(List.of(), contentWidth) + SECTION_GAP;
-        List<BankFilter> filters = bankFilters();
-        height += bankFilterTabsHeight(filters, contentWidth) + SECTION_GAP;
-        if (!ArchiveBankingClientState.isLoaded()) {
-            return height + 22;
-        }
-        ArchiveBankingPayload banking = ArchiveBankingClientState.get();
-        List<ArchiveBankingPayload.LedgerEntry> entries = filteredBankEntries(banking.entries());
-        if (entries.isEmpty()) {
-            return height + 22;
-        }
-        for (ArchiveBankingPayload.LedgerEntry entry : entries) {
-            height += bankEntryRowHeight(entry, contentWidth) + SECTION_GAP;
-        }
-        return height;
-    }
 
-    private int measureQuestsHeight(Pane pane) {
-        int height = 18;
-        if (!ArchiveQuestsClientState.isLoaded()) {
-            return height + 22;
-        }
-        List<ArchiveQuestsPayload.QuestEntry> quests = ArchiveQuestsClientState.get().quests();
-        if (quests.isEmpty()) {
-            return height + 22;
-        }
-        String currentGroup = "";
-        int contentWidth = pane.width - 20 - SCROLLBAR_WIDTH;
-        for (ArchiveQuestsPayload.QuestEntry quest : quests) {
-            String nextGroup = questGroupLabelKey(quest.sortGroup());
-            if (!nextGroup.equals(currentGroup)) {
-                currentGroup = nextGroup;
-                height += 14;
-            }
-            height += questCardHeight(quest, contentWidth) + SECTION_GAP;
-        }
-        return height;
-    }
 
-    private int questCardHeight(ArchiveQuestsPayload.QuestEntry quest, int width) {
-        int innerWidth = width - 16;
-        int contentHeight = 0;
-        contentHeight += wrappedQuestLineHeight(Component.translatable("screen.cyberneticenhancements.archive.quests.objective", quest.objective()), innerWidth);
-        contentHeight += wrappedQuestLineHeight(Component.translatable("screen.cyberneticenhancements.archive.quests.reward", quest.reward()), innerWidth);
-        if (quest.hasLocation()) {
-            contentHeight += wrappedQuestLineHeight(Component.translatable("screen.cyberneticenhancements.archive.quests.location", formatDimension(quest.dimensionId()), quest.x(), quest.y(), quest.z()), innerWidth);
-        }
-        contentHeight += wrappedQuestLineHeight(Component.translatable("screen.cyberneticenhancements.archive.quests.status", quest.statusLabel()), innerWidth);
-        return 52 + contentHeight;
-    }
 
-    private boolean questCanBeDiscarded(ArchiveQuestsPayload.QuestEntry quest) {
-        return "active".equals(quest.statusId()) || "ready".equals(quest.statusId());
-    }
 
-    private Rect discardQuestButtonBounds(ArchiveQuestsPayload.QuestEntry quest, int cardX, int cardY, int cardWidth) {
-        return new Rect(
-                quest.questId() + ":discard",
-                cardX + cardWidth - QUEST_ACTION_BUTTON_WIDTH - 10,
-                cardY + 24,
-                QUEST_ACTION_BUTTON_WIDTH,
-                20
-        );
-    }
 
     private boolean insideRosterViewport(double mouseX, double mouseY, Pane pane) {
-        return mouseX >= pane.x + 10 && mouseX < pane.x + pane.width - 10 - SCROLLBAR_WIDTH
-                && mouseY >= pane.y + PANEL_HEADER_HEIGHT + 6 && mouseY < pane.y + pane.height - 6;
+        return mouseX >= ArchiveContentLayout.contentX(pane.x) && mouseX < ArchiveContentLayout.contentX(pane.x) + ArchiveContentLayout.contentWidth(pane.width)
+                && mouseY >= pane.y + 42 && mouseY < pane.y + pane.height - 10;
     }
     private boolean handleContactsClick(double mouseX, double mouseY, Pane pane) {
         if (!insideRosterViewport(mouseX, mouseY, pane)) return false;
@@ -1488,14 +1034,13 @@ public final class CyberwareWikiScreen extends ResponsiveScreen {
         }
 
         double maxScroll = maxContactsScroll(pane);
-        int contentWidth = pane.width - 20 - SCROLLBAR_WIDTH;
-        int contentX = pane.x + 10;
-        int headerY = pane.y + PANEL_HEADER_HEIGHT + 8;
-        int y = headerY - (int) Math.round(articleScroll.current) + 18;
+        int contentWidth = contactsContentWidth(pane);
+        int contentX = ArchiveContentLayout.contentX(pane.x);
+        int y = pane.y + 42;
         List<ArchiveContactsPayload.ContactEntry> allContacts = ArchiveContactsClientState.get().contacts();
-        List<ContactFilter> filters = contactFilters(allContacts);
+        List<ContactFilter> filters = contactFilters();
 
-        for (Rect bounds : contactFilterTabBounds(filters, contentX, y, contentWidth)) {
+        for (Rect bounds : contactFilterTabBounds(filters, contentX, y, ArchiveContentLayout.contentWidth(pane.width))) {
             if (isInside(mouseX, mouseY, bounds)) {
                 setContactsFilter(bounds.id());
                 playClick();
@@ -1503,7 +1048,8 @@ public final class CyberwareWikiScreen extends ResponsiveScreen {
             }
         }
 
-        y += contactFilterTabsHeight(filters, contentWidth) + SECTION_GAP;
+        if (mouseY < contactsContentTop(pane)) return false;
+        y = contactsContentTop(pane) - (int) Math.round(articleScroll.current);
         var contacts = filteredContacts(allContacts);
         for (int index = 0; index < contacts.size(); index++) {
             var contact = contacts.get(index);
@@ -1517,63 +1063,22 @@ public final class CyberwareWikiScreen extends ResponsiveScreen {
             }
             Rect hide = hideButtonBounds(contact, cardX, cardY, card.width());
             if (isInside(mouseX, mouseY, hide)) {
-                PacketDistributor.sendToServer(new ArchiveContactActionPayload(ArchiveContactActionPayload.ACTION_TOGGLE_HIDE, contact.npcId()));
+                PacketDistributor.sendToServer(new ArchiveContactActionPayload(contact.isPlayer() ? ArchiveContactActionPayload.ACTION_TOGGLE_BLOCK : ArchiveContactActionPayload.ACTION_TOGGLE_HIDE, contact.npcId()));
                 playClick();
                 return true;
             }
-            Rect locate = locateButtonBounds(contact, cardX, cardY, card.width());
-            if (isInside(mouseX, mouseY, locate)) {
-                PacketDistributor.sendToServer(new ArchiveContactActionPayload(ArchiveContactActionPayload.ACTION_LOCATE, contact.npcId()));
+            Rect call = callButtonBounds(contact, cardX, cardY, card.width());
+            if (isInside(mouseX, mouseY, call)) {
+                if (contact.deceased() || contact.isPlayer() && !contact.callStatus().equals("available")) return true;
                 playClick();
                 onClose();
-                return true;
-            }
-            Rect meetup = meetupButtonBounds(contact, cardX, cardY, card.width());
-            if (isInside(mouseX, mouseY, meetup)) {
-                PacketDistributor.sendToServer(new ArchiveContactActionPayload(ArchiveContactActionPayload.ACTION_MEETUP, contact.npcId()));
-                playClick();
-                onClose();
+                de.artemis.cyberneticenhancements.client.NpcCallOverlay.start(contact);
                 return true;
             }
         }
         return false;
     }
 
-    private boolean handleQuestsClick(double mouseX, double mouseY, Pane pane) {
-        if (!insideRosterViewport(mouseX, mouseY, pane)) return false;
-        if (!ArchiveQuestsClientState.isLoaded()) {
-            return false;
-        }
-        int viewportY = pane.y + PANEL_HEADER_HEIGHT + 6;
-        int viewportHeight = pane.height - PANEL_HEADER_HEIGHT - 12;
-        double maxScroll = maxQuestsScroll(pane);
-        int contentWidth = pane.width - 20 - SCROLLBAR_WIDTH;
-        int contentX = pane.x + 10;
-        int headerY = pane.y + PANEL_HEADER_HEIGHT + 8;
-        int y = headerY - (int) Math.round(articleScroll.current);
-
-        y += 18;
-        List<ArchiveQuestsPayload.QuestEntry> quests = ArchiveQuestsClientState.get().quests();
-        String currentGroup = "";
-        for (ArchiveQuestsPayload.QuestEntry quest : quests) {
-            String nextGroup = questGroupLabelKey(quest.sortGroup());
-            if (!nextGroup.equals(currentGroup)) {
-                currentGroup = nextGroup;
-                y += 14;
-            }
-            int cardHeight = questCardHeight(quest, contentWidth);
-            if (questCanBeDiscarded(quest)) {
-                Rect discard = discardQuestButtonBounds(quest, contentX, y, contentWidth);
-                if (isInside(mouseX, mouseY, discard)) {
-                    PacketDistributor.sendToServer(new ArchiveQuestActionPayload(ArchiveQuestActionPayload.ACTION_DISCARD, quest.questId()));
-                    playClick();
-                    return true;
-                }
-            }
-            y += cardHeight + SECTION_GAP;
-        }
-        return false;
-    }
 
 private int renderContactFilterTabs(GuiGraphics g, List<ContactFilter> filters, int startX, int startY, int width, int alphaMask) {
         for (Rect bounds : contactFilterTabBounds(filters, startX, startY, width)) {
@@ -1602,42 +1107,24 @@ private int renderContactFilterTabs(GuiGraphics g, List<ContactFilter> filters, 
         return contactActionBounds(contact, x, y, width, 1, "hide");
     }
 
-    private Rect locateButtonBounds(ArchiveContactsPayload.ContactEntry contact, int x, int y, int width) {
-        return contactActionBounds(contact, x, y, width, 2, "locate");
+    private Rect callButtonBounds(ArchiveContactsPayload.ContactEntry contact, int x, int y, int width) {
+        return contactActionBounds(contact, x, y, width, 2, "call");
     }
 
-    private Rect meetupButtonBounds(ArchiveContactsPayload.ContactEntry contact, int x, int y, int width) {
-        return contactActionBounds(contact, x, y, width, 3, "meetup");
-    }
-
-    private List<ContactFilter> contactFilters(List<ArchiveContactsPayload.ContactEntry> contacts) {
-        List<ContactFilter> filters = new ArrayList<>();
-        filters.add(new ContactFilter(CONTACT_FILTER_ALL, Component.translatable("screen.cyberneticenhancements.archive.contacts.filter.all"), null));
-        LinkedHashSet<String> seenTypes = new LinkedHashSet<>();
-        for (ArchiveContactsPayload.ContactEntry contact : contacts) {
-            if (seenTypes.add(contact.npcTypeId())) {
-                filters.add(new ContactFilter("type:" + contact.npcTypeId(), contactTypeFilterLabel(contact.npcTypeId()), contact.npcTypeId()));
-            }
-        }
-        filters.add(new ContactFilter(CONTACT_FILTER_PINNED, Component.translatable("screen.cyberneticenhancements.archive.contacts.filter.pinned"), null));
-        filters.add(new ContactFilter(CONTACT_FILTER_HIDDEN, Component.translatable("screen.cyberneticenhancements.archive.contacts.filter.hidden"), null));
-        boolean filterFound = false;
-        for (ContactFilter filter : filters) {
-            if (filter.id().equals(activeContactsFilterId)) {
-                filterFound = true;
-                break;
-            }
-        }
-        if (!filterFound) {
-            activeContactsFilterId = CONTACT_FILTER_ALL;
-        }
-        return filters;
+    private List<ContactFilter> contactFilters() {
+        return List.of(
+                new ContactFilter(CONTACT_FILTER_ALL, Component.translatable("screen.cyberneticenhancements.archive.contacts.filter.all")),
+                new ContactFilter(CONTACT_FILTER_PINNED, Component.translatable("screen.cyberneticenhancements.archive.contacts.filter.pinned")),
+                new ContactFilter(CONTACT_FILTER_DECEASED, Component.translatable("screen.cyberneticenhancements.archive.contacts.filter.deceased")),
+                new ContactFilter(CONTACT_FILTER_HIDDEN, Component.translatable("screen.cyberneticenhancements.archive.contacts.filter.hidden")));
     }
 
     private List<ArchiveContactsPayload.ContactEntry> filteredContacts(List<ArchiveContactsPayload.ContactEntry> contacts) {
         List<ArchiveContactsPayload.ContactEntry> filtered = new ArrayList<>();
         for (ArchiveContactsPayload.ContactEntry contact : contacts) {
-            if (!matchesContactsFilter(contact)) {
+            if (!matchesContactsFilter(contact) || !contactsType.isEmpty() && !contactsType.equals(contact.npcTypeId())
+                    || !(contact.name() + " " + contact.npcTypeId() + " " + contactTypeLabel(contact).getString())
+                            .toLowerCase(Locale.ROOT).contains(contactsQuery)) {
                 continue;
             }
             filtered.add(contact);
@@ -1658,9 +1145,7 @@ private int renderContactFilterTabs(GuiGraphics g, List<ContactFilter> filters, 
         if (CONTACT_FILTER_PINNED.equals(activeContactsFilterId)) {
             return contact.pinned();
         }
-        if (activeContactsFilterId.startsWith("type:")) {
-            return activeContactsFilterId.substring(5).equals(contact.npcTypeId());
-        }
+        if (CONTACT_FILTER_DECEASED.equals(activeContactsFilterId)) return contact.deceased();
         return true;
     }
 
@@ -1724,15 +1209,6 @@ private int renderContactFilterTabs(GuiGraphics g, List<ContactFilter> filters, 
         return Component.translatable("entity.cyberneticenhancements." + npcTypeId);
     }
 
-    private String questGroupLabelKey(int sortGroup) {
-        return switch (sortGroup) {
-            case 0 -> "screen.cyberneticenhancements.archive.quests.group.ready";
-            case 1 -> "screen.cyberneticenhancements.archive.quests.group.active";
-            case 3 -> "screen.cyberneticenhancements.archive.quests.group.completed";
-            case 4 -> "screen.cyberneticenhancements.archive.quests.group.failed";
-            default -> "screen.cyberneticenhancements.archive.quests.group.other";
-        };
-    }
 
     private Component trustLabel(ArchiveContactsPayload.ContactEntry contact) {
         return Component.translatable(
@@ -1756,7 +1232,8 @@ private int renderContactFilterTabs(GuiGraphics g, List<ContactFilter> filters, 
     }
 
     private Component contactStateLabel(ArchiveContactsPayload.ContactEntry contact) {
-        String stateKey = contact.refusing()
+        if (contact.isPlayer()) return Component.translatable("screen.cyberneticenhancements.call.player." + contact.callStatus());
+        String stateKey = contact.deceased() ? "screen.cyberneticenhancements.archive.contacts.state.deceased" : contact.refusing()
                 ? "screen.cyberneticenhancements.archive.contacts.state.refusing"
                 : contact.surchargeActive()
                 ? "screen.cyberneticenhancements.archive.contacts.state.hiking"
@@ -1768,6 +1245,8 @@ private int renderContactFilterTabs(GuiGraphics g, List<ContactFilter> filters, 
     }
 
     private int contactStateColor(ArchiveContactsPayload.ContactEntry contact) {
+        if (contact.isPlayer()) return contact.callStatus().equals("available") ? StationScreenStyle.ACCENT : StationScreenStyle.WARNING;
+        if (contact.deceased()) return DECEASED_COLOR;
         if (contact.refusing()) {
             return StationScreenStyle.WARNING;
         }
@@ -1842,8 +1321,15 @@ private int renderContactFilterTabs(GuiGraphics g, List<ContactFilter> filters, 
     private void drawArticleSection(GuiGraphics guiGraphics, ArticleSection section, int x, int y, int width, int alphaMask) {
         int height = sectionHeight(font, section, width);
         drawArchiveCard(guiGraphics, x, y, width, height, alphaMask);
-        guiGraphics.drawString(font, trimStyled(section.title(), width - 20), x + 10, y + 10, withAlpha(StationScreenStyle.TEXT_PRIMARY, alphaMask), false);
-        int lineY = y + 28;
+        int headingHeight = sectionHeadingHeight(section, width);
+        guiGraphics.fill(x + 1, y + 1, x + width - 1, y + headingHeight - 5, withAlpha(UiRenderer.FIELD, alphaMask));
+        guiGraphics.fill(x + 1, y + 8, x + 3, y + headingHeight - 10, withAlpha(UiRenderer.ACCENT, alphaMask));
+        int titleY = y + 9;
+        for (var line : font.split(section.title(), Math.max(1, width - 24))) {
+            guiGraphics.drawString(font, line, x + 12, titleY, withAlpha(UiRenderer.TEXT, alphaMask), false);
+            titleY += WikiArticleLayout.LINE_HEIGHT;
+        }
+        int lineY = y + headingHeight;
         if (section.visual() != null) {
             renderSectionVisual(guiGraphics, section.visual(), x + 10, lineY, width - 20, alphaMask);
             lineY += visualHeight(section.visual(), width - 20);
@@ -1851,29 +1337,95 @@ private int renderContactFilterTabs(GuiGraphics g, List<ContactFilter> filters, 
                 lineY += 6;
             }
         }
-        for (Component line : section.lines()) {
-            for (var wrapped : font.split(line, width - 20)) {
-                guiGraphics.drawString(font, wrapped, x + 10, lineY, withAlpha(StationScreenStyle.TEXT_SECONDARY, alphaMask), false);
-                lineY += 11;
+        drawArticleFlow(guiGraphics, articleTextFlow(section.lines(), width - 20), x + 10, lineY, width - 20, alphaMask);
+    }
+
+    private int sectionHeadingHeight(ArticleSection section, int width) {
+        return font.split(section.title(), Math.max(1, width - 24)).size() * WikiArticleLayout.LINE_HEIGHT + 16;
+    }
+
+    private WikiArticleLayout.Flow articleTextFlow(List<Component> paragraphs, int width) {
+        return articleFlow(paragraphs.stream().map(WikiArticleLayout::describe).toList(), width);
+    }
+
+    private WikiArticleLayout.Flow articleFlow(List<WikiArticleLayout.Block> blocks, int width) {
+        return WikiArticleLayout.layout(blocks, width, font::width, (text, wrapWidth) -> font.split(text, wrapWidth).size());
+    }
+
+    private void drawArticleFlow(GuiGraphics graphics, WikiArticleLayout.Flow flow, int x, int y, int width, int alphaMask) {
+        for (var row : flow.rows()) {
+            var block = row.block();
+            int textY = y + row.y();
+            int valueX = x;
+            if (block.fact()) {
+                graphics.fill(x, textY, x + width, textY + row.height(), withAlpha(0x70111820, alphaMask));
+                drawArticleLines(graphics, block.label(), x + 6, textY + 4, row.labelWidth(), UiRenderer.TEXT_SECONDARY, alphaMask);
+                valueX += 6 + row.labelWidth() + WikiArticleLayout.COLUMN_GAP;
+                textY += 4;
             }
-            lineY += 2;
+            drawArticleLines(graphics, block.value(), valueX, textY, row.valueWidth(),
+                    block.fact() ? UiRenderer.TEXT : UiRenderer.TEXT_SECONDARY, alphaMask);
+        }
+    }
+
+    private void drawArticleLines(GuiGraphics graphics, Component text, int x, int y, int width, int color, int alphaMask) {
+        for (var line : font.split(text, Math.max(1, width))) {
+            graphics.drawString(font, line, x, y, withAlpha(color, alphaMask), false);
+            y += WikiArticleLayout.LINE_HEIGHT;
+        }
+    }
+
+    private int referenceTableHeight(ReferenceTableVisual visual, int width) {
+        if (referenceColumns(visual, width)) {
+            int columnWidth = (width - 14) / 2;
+            return visual.groups().stream().mapToInt(group -> referenceGroupHeight(group, columnWidth)).max().orElse(0);
+        }
+        int height = 0;
+        for (var group : visual.groups()) {
+            height += referenceGroupHeight(group, width) + 10;
+        }
+        return Math.max(0, height - 10);
+    }
+
+    private boolean referenceColumns(ReferenceTableVisual visual, int width) {
+        return visual.groups().size() == 2 && width >= 380;
+    }
+
+    private int referenceGroupHeight(CyberwareWikiData.ReferenceGroup group, int width) {
+        int height = font.split(group.title(), Math.max(1, width)).size() * WikiArticleLayout.LINE_HEIGHT + 6
+                + articleFlow(group.rows(), width).height();
+        if (!group.notes().isEmpty()) height += 6 + articleTextFlow(group.notes(), width).height();
+        return height;
+    }
+
+    private void renderReferenceTable(GuiGraphics graphics, ReferenceTableVisual visual, int x, int y, int width, int alphaMask) {
+        boolean columns = referenceColumns(visual, width);
+        int groupWidth = columns ? (width - 14) / 2 : width;
+        int groupX = x, groupY = y;
+        for (var group : visual.groups()) {
+            int contentY = groupY;
+            drawArticleLines(graphics, group.title(), groupX, contentY, groupWidth, UiRenderer.ACCENT, alphaMask);
+            contentY += font.split(group.title(), Math.max(1, groupWidth)).size() * WikiArticleLayout.LINE_HEIGHT + 6;
+            var flow = articleFlow(group.rows(), groupWidth);
+            drawArticleFlow(graphics, flow, groupX, contentY, groupWidth, alphaMask);
+            contentY += flow.height();
+            if (!group.notes().isEmpty()) {
+                contentY += 6;
+                var notes = articleTextFlow(group.notes(), groupWidth);
+                drawArticleFlow(graphics, notes, groupX, contentY, groupWidth, alphaMask);
+            }
+            if (columns) groupX += groupWidth + 14;
+            else groupY += referenceGroupHeight(group, groupWidth) + 10;
         }
     }
 
     private int measureArticleHeight(Font font, WikiEntry entry, int width) {
         int height = 26;
-        height += font.split(entry.subtitle(), width - 8).size() * 11;
-        int chipLines = 1;
-        int lineWidth = 0;
-        for (Component chip : entry.chips()) {
-            int chipWidth = Math.min(width, font.width(chip) + 10) + 4;
-            if (lineWidth + chipWidth > width) {
-                chipLines++;
-                lineWidth = 0;
-            }
-            lineWidth += chipWidth;
+        if (!entry.subtitle().getString().isBlank()) {
+            height += font.split(entry.subtitle(), Math.min(WikiArticleLayout.MAX_PROSE_WIDTH, width - 8)).size() * WikiArticleLayout.LINE_HEIGHT + 6;
         }
-        height += 12 + chipLines * (CHIP_HEIGHT + 4);
+        if (!entry.chips().isEmpty()) height += layoutChips(font, entry.chips(), width).height();
+        height += 6;
         for (ArticleSection section : entry.sections()) {
             height += sectionHeight(font, section, width) + SECTION_GAP;
         }
@@ -1881,21 +1433,20 @@ private int renderContactFilterTabs(GuiGraphics g, List<ContactFilter> filters, 
     }
 
     private int sectionHeight(Font font, ArticleSection section, int width) {
-        int height = 28;
+        int height = sectionHeadingHeight(section, width);
         if (section.visual() != null) {
             height += visualHeight(section.visual(), width - 20);
             if (!section.lines().isEmpty()) {
                 height += 6;
             }
         }
-        for (Component line : section.lines()) {
-            height += font.split(line, width - 20).size() * 11 + 2;
-        }
+        height += articleTextFlow(section.lines(), width - 20).height();
         return height + 10;
     }
 
     private void renderSectionVisual(GuiGraphics guiGraphics, SectionVisual visual, int x, int y, int width, int alphaMask) {
         switch (visual) {
+            case ReferenceTableVisual table -> renderReferenceTable(guiGraphics, table, x, y, width, alphaMask);
             case CraftingGridVisual craftingGridVisual ->
                     renderCraftingVisual(guiGraphics, craftingGridVisual, x, y, width);
             case CompactTransformVisual compactTransformVisual ->
@@ -1904,18 +1455,21 @@ private int renderContactFilterTabs(GuiGraphics g, List<ContactFilter> filters, 
                     renderServiceVisual(guiGraphics, serviceOperationsVisual, x, y, width, alphaMask);
             case RelicCacheExampleVisual relicCacheExampleVisual ->
                     renderRelicCacheExampleVisual(guiGraphics, relicCacheExampleVisual, x, y, width, alphaMask);
+            case StructureViewVisual structure -> renderStructureView(guiGraphics, structure, x, y, width, alphaMask);
         }
     }
 
     private int visualHeight(SectionVisual visual, int width) {
         return switch (visual) {
+            case ReferenceTableVisual table -> referenceTableHeight(table, width);
             case CraftingGridVisual grid -> grid.unlocked()
                     ? slotSpan(grid.grids().getFirst().length == 25 ? 5 : 3) + VISUAL_CONTENT_PADDING * 2
                     : font.split(lockedRecipeMessage(), Math.max(1, width - VISUAL_CONTENT_PADDING * 2)).size() * 11 + VISUAL_CONTENT_PADDING * 2;
             case CompactTransformVisual compactTransformVisual ->
-                    compactTransformVisual.outputs().size() > 2 ? compactTransformVisualHeight(2) : compactTransformVisualHeight(1);
+                    compactTransformVisualHeight(Math.max(1, (compactTransformVisual.outputs().size() + 2) / 3));
             case ServiceOperationsVisual serviceOperationsVisual -> serviceVisualHeight(serviceOperationsVisual, width);
             case RelicCacheExampleVisual ignored -> relicCacheExampleVisualHeight();
+            case StructureViewVisual ignored -> STRUCTURE_VIEW_HEIGHT;
         };
     }
 
@@ -1931,13 +1485,19 @@ private int renderContactFilterTabs(GuiGraphics g, List<ContactFilter> filters, 
         ItemStack[] grid = visual.grids().getFirst();
         int columns = grid.length == 25 ? 5 : 3;
         int contentSize = slotSpan(columns);
-        int startX = x + Math.max(VISUAL_CONTENT_PADDING, (width - contentSize) / 2);
+        int resultOffset = contentSize + 40;
+        int diagramWidth = resultOffset + StationSlotRenderer.SLOT_FRAME_SIZE;
+        int startX = x + Math.max(VISUAL_CONTENT_PADDING, (width - diagramWidth) / 2);
         int startY = y + VISUAL_CONTENT_PADDING;
+        drawRecipeSurface(guiGraphics, startX - 3, startY - 3, diagramWidth + 6, contentSize + 6);
         for (int index = 0; index < grid.length; index++) {
             int slotX = startX + (index % columns) * VISUAL_SLOT_STRIDE;
             int slotY = startY + (index / columns) * VISUAL_SLOT_STRIDE;
             drawVisualSlot(guiGraphics, grid[index], slotX, slotY, StationScreenStyle.SLOT_BG);
         }
+        int resultY = startY + (contentSize - StationSlotRenderer.SLOT_FRAME_SIZE) / 2;
+        drawArrow(guiGraphics, startX + contentSize + 8, resultY + 8, startX + resultOffset - 8);
+        drawVisualSlot(guiGraphics, visual.output(), startX + resultOffset, resultY, StationScreenStyle.SLOT_ACTIVE);
     }
 
     private Component lockedRecipeMessage() {
@@ -1945,26 +1505,22 @@ private int renderContactFilterTabs(GuiGraphics g, List<ContactFilter> filters, 
     }
 
     private void renderCompactTransformVisual(GuiGraphics guiGraphics, CompactTransformVisual visual, int x, int y, int width, int alphaMask) {
-        int outputColumns = Math.min(2, Math.max(1, visual.outputs().size()));
-        int outputRows = visual.outputs().size() > 2 ? 2 : 1;
+        int outputColumns = Math.min(3, Math.max(1, visual.outputs().size()));
+        int outputRows = Math.max(1, (visual.outputs().size() + 2) / 3);
         int contentWidth = TRANSFORM_OUTPUT_START + slotSpan(outputColumns);
         int contentHeight = slotSpan(outputRows);
         int visualHeight = compactTransformVisualHeight(outputRows);
         int startX = x + Math.max(VISUAL_CONTENT_PADDING, (width - contentWidth) / 2);
         int startY = y + Math.max(VISUAL_CONTENT_PADDING, (visualHeight - contentHeight) / 2);
+        drawRecipeSurface(guiGraphics, startX - 3, startY - 3, contentWidth + 6, contentHeight + 6);
         int inputY = startY + Math.max(0, (contentHeight - StationSlotRenderer.SLOT_FRAME_SIZE) / 2);
         drawVisualSlot(guiGraphics, visual.input(), startX, inputY, StationScreenStyle.SLOT_BG);
         int outputStartX = startX + TRANSFORM_OUTPUT_START;
         drawArrow(guiGraphics, startX + 22, inputY + 8, outputStartX - 8);
-        int cursorX = outputStartX;
-        int cursorY = startY;
         for (int index = 0; index < visual.outputs().size(); index++) {
-            if (index == 2) {
-                cursorX = outputStartX;
-                cursorY += VISUAL_SLOT_STRIDE;
-            }
+            int cursorX = outputStartX + index % outputColumns * VISUAL_SLOT_STRIDE;
+            int cursorY = startY + index / outputColumns * VISUAL_SLOT_STRIDE;
             drawVisualSlot(guiGraphics, visual.outputs().get(index), cursorX, cursorY, StationScreenStyle.SLOT_ACTIVE);
-            cursorX += VISUAL_SLOT_STRIDE;
         }
     }
 
@@ -1986,6 +1542,22 @@ private int renderContactFilterTabs(GuiGraphics g, List<ContactFilter> filters, 
         if (!visual.upgradeStages().isEmpty()) {
             renderUpgradeStages(guiGraphics, visual.upgradeStages(), x, rowY, width, alphaMask);
         }
+    }
+
+    private static final int STRUCTURE_VIEW_HEIGHT = 280;
+    private int[] structureViewArea = new int[0];
+
+    private void renderStructureView(GuiGraphics guiGraphics, StructureViewVisual visual, int x, int y, int width, int alphaMask) {
+        drawRecipeSurface(guiGraphics, x, y, width, STRUCTURE_VIEW_HEIGHT);
+        structureViewArea = new int[] {x, y, x + width, y + STRUCTURE_VIEW_HEIGHT};
+        guiGraphics.enableScissor(x + 1, y + 1, x + width - 1, y + STRUCTURE_VIEW_HEIGHT - 1);
+        StructureView.render(guiGraphics, visual.template(), x, y, width, STRUCTURE_VIEW_HEIGHT);
+        guiGraphics.disableScissor();
+        guiGraphics.pose().pushPose();
+        guiGraphics.pose().translate(0, 0, 600); // in front of the model's depth
+        guiGraphics.drawString(font, Component.translatable("wiki.cyberneticenhancements.view.drag_to_rotate"), x + 8, y + STRUCTURE_VIEW_HEIGHT - 14,
+                StationScreenStyle.TEXT_SECONDARY, false);
+        guiGraphics.pose().popPose();
     }
 
     private void renderRelicCacheExampleVisual(GuiGraphics guiGraphics, RelicCacheExampleVisual visual, int x, int y, int width, int alphaMask) {
@@ -2081,61 +1653,38 @@ private int renderContactFilterTabs(GuiGraphics g, List<ContactFilter> filters, 
     }
 
     private int renderServiceSummaryChips(GuiGraphics guiGraphics, List<Component> chips, int startX, int startY, int width, int alphaMask) {
-        int x = startX;
-        int y = startY;
-        for (Component chip : chips) {
-            int chipWidth = Math.min(width, font.width(chip) + 12) + 4;
-            if (x + chipWidth > startX + width) {
-                x = startX;
-                y += CHIP_HEIGHT + 4;
-            }
-            drawMiniChip(guiGraphics, x, y, chipWidth, CHIP_HEIGHT, chip, alphaMask);
-            x += chipWidth + 4;
-        }
-        return y + CHIP_HEIGHT;
+        return renderChips(guiGraphics, chips, startX, startY, width, alphaMask);
     }
 
     private int measureServiceSummaryChipHeight(List<Component> chips, int width) {
-        int lineCount = 1;
-        int lineWidth = 0;
-        for (Component chip : chips) {
-            int chipWidth = Math.min(width, font.width(chip) + 12) + 4;
-            int spacing = lineWidth == 0 ? 0 : 4;
-            if (lineWidth > 0 && lineWidth + spacing + chipWidth > width) {
-                lineCount++;
-                lineWidth = chipWidth;
-            } else {
-                lineWidth += spacing + chipWidth;
-            }
-        }
-        return lineCount * CHIP_HEIGHT + Math.max(0, lineCount - 1) * 4;
+        return layoutChips(font, chips, width).height();
     }
 
     private void renderServiceOperationCard(GuiGraphics guiGraphics, ServiceOperationVisual operation, int x, int y, int width, int height, int alphaMask) {
         guiGraphics.drawString(font, operation.label(), x, y, withAlpha(StationScreenStyle.TEXT_PRIMARY, alphaMask), false);
 
-        int lineY = y + 12;
-        for (FormattedCharSequence wrapped : font.split(operation.note(), width - 12)) {
-            guiGraphics.drawString(font, wrapped, x, lineY, withAlpha(StationScreenStyle.TEXT_SECONDARY, alphaMask), false);
-            lineY += 11;
-        }
-
-        int slotsY = lineY + 4;
+        int slotsY = y + 16;
         int inputX = x + Math.max(0, (width - serviceSlotRowWidth(operation.materials().size())) / 2);
         int materialsX = inputX + SERVICE_MATERIALS_START;
+        drawRecipeSurface(guiGraphics, inputX - 3, slotsY - 3,
+                serviceSlotRowWidth(operation.materials().size()) + 6, StationSlotRenderer.SLOT_FRAME_SIZE + 6);
         drawVisualSlot(guiGraphics, operation.input(), inputX, slotsY, StationScreenStyle.SLOT_BG);
         for (int index = 0; index < operation.materials().size(); index++) {
             drawVisualSlot(guiGraphics, operation.materials().get(index), materialsX + index * VISUAL_SLOT_STRIDE, slotsY, StationScreenStyle.SLOT_BG);
         }
 
         int outputX = inputX + SERVICE_MATERIALS_START + Math.max(1, operation.materials().size()) * VISUAL_SLOT_STRIDE + SERVICE_OUTPUT_GAP;
-        drawArrow(guiGraphics, inputX + 18, slotsY + 8, materialsX - 6);
+        guiGraphics.drawString(font, "+", inputX + 23, slotsY + 4,
+                withAlpha(StationScreenStyle.TEXT_SECONDARY, alphaMask), false);
         drawArrow(guiGraphics, materialsX + Math.max(1, operation.materials().size()) * VISUAL_SLOT_STRIDE, slotsY + 8, outputX - 6);
         drawVisualSlot(guiGraphics, operation.output(), outputX, slotsY, StationScreenStyle.SLOT_ACTIVE);
+        int lineY = slotsY + StationSlotRenderer.SLOT_FRAME_SIZE + 6;
+        drawArticleFlow(guiGraphics, articleTextFlow(List.of(operation.note()), width), x, lineY, width, alphaMask);
     }
 
     private int serviceOperationCardHeight(ServiceOperationVisual operation, int width) {
-        return 16 + font.split(operation.note(), width - 12).size() * 11 + StationSlotRenderer.SLOT_FRAME_SIZE + 11;
+        return 16 + StationSlotRenderer.SLOT_FRAME_SIZE + 6
+                + articleTextFlow(List.of(operation.note()), width).height() + 4;
     }
 
     private int renderUpgradeStages(GuiGraphics guiGraphics, List<UpgradeStageVisual> stages, int x, int y, int width, int alphaMask) {
@@ -2144,24 +1693,18 @@ private int renderContactFilterTabs(GuiGraphics g, List<ContactFilter> filters, 
         int stageY = y + 18;
         for (UpgradeStageVisual stage : stages) {
             int stageHeight = stageHeight(stage, width);
+            guiGraphics.fill(x, stageY + stageHeight - 1, x + width, stageY + stageHeight,
+                    withAlpha(StationScreenStyle.FRAME_HIGHLIGHT_SOFT, alphaMask));
             int chipWidth = Math.max(34, font.width(stage.label()) + 12);
             drawMiniChip(guiGraphics, x, stageY, chipWidth, CHIP_HEIGHT, stage.label(), alphaMask);
-            int lineY = stageY + 22;
             if (!stage.materials().isEmpty()) {
-                guiGraphics.drawString(font, Component.translatable("wiki.cyberneticenhancements.service.stage.cost"), x, lineY, withAlpha(StationScreenStyle.TEXT_PRIMARY, alphaMask), false);
-                int materialX = x + 32;
+                int materialX = x + chipWidth + 10;
                 for (int index = 0; index < stage.materials().size(); index++) {
-                    drawVisualSlot(guiGraphics, stage.materials().get(index), materialX + index * VISUAL_SLOT_STRIDE, lineY - 4, StationScreenStyle.SLOT_BG);
+                    drawVisualSlot(guiGraphics, stage.materials().get(index), materialX + index * VISUAL_SLOT_STRIDE, stageY, StationScreenStyle.SLOT_BG);
                 }
-                lineY += 22;
             }
-            for (Component change : stage.changes()) {
-                for (var wrapped : font.split(change, width - 8)) {
-                    guiGraphics.drawString(font, wrapped, x, lineY, withAlpha(StationScreenStyle.TEXT_SECONDARY, alphaMask), false);
-                    lineY += 11;
-                }
-                lineY += 2;
-            }
+            int lineY = stageY + Math.max(CHIP_HEIGHT, StationSlotRenderer.SLOT_FRAME_SIZE) + 6;
+            drawArticleFlow(guiGraphics, articleTextFlow(stage.changes(), width), x, lineY, width, alphaMask);
             stageY += stageHeight;
             if (stage != stages.getLast()) {
                 stageY += 4;
@@ -2182,13 +1725,8 @@ private int renderContactFilterTabs(GuiGraphics g, List<ContactFilter> filters, 
     }
 
     private int stageHeight(UpgradeStageVisual stage, int width) {
-        int height = 20;
-        if (!stage.materials().isEmpty()) {
-            height += 22;
-        }
-        for (Component change : stage.changes()) {
-            height += font.split(change, width - 12).size() * 11 + 2;
-        }
+        int height = Math.max(CHIP_HEIGHT, StationSlotRenderer.SLOT_FRAME_SIZE) + 6;
+        height += articleTextFlow(stage.changes(), width).height();
         return height + 4;
     }
 
@@ -2208,6 +1746,11 @@ private int renderContactFilterTabs(GuiGraphics g, List<ContactFilter> filters, 
         return SERVICE_MATERIALS_START + Math.max(1, materialCount) * VISUAL_SLOT_STRIDE + SERVICE_OUTPUT_GAP + StationSlotRenderer.SLOT_FRAME_SIZE;
     }
 
+    private void drawRecipeSurface(GuiGraphics graphics, int x, int y, int width, int height) {
+        graphics.fill(x, y, x + width, y + height, UiRenderer.FIELD);
+        UiRenderer.outline(graphics, x, y, width, height, UiRenderer.PANEL_EDGE);
+    }
+
     private void drawVisualSlot(GuiGraphics guiGraphics, ItemStack stack, int x, int y, int fill) {
         StationSlotRenderer.drawStandardSlot(guiGraphics, 0, 0, x, y, fill);
         ItemStack safeStack = stack == null ? ItemStack.EMPTY : stack;
@@ -2224,11 +1767,9 @@ private int renderContactFilterTabs(GuiGraphics g, List<ContactFilter> filters, 
         if (endX <= startX) {
             return;
         }
-        int color = StationScreenStyle.ACCENT;
-        guiGraphics.fill(startX, centerY, endX, centerY + 1, color);
-        guiGraphics.fill(endX - 4, centerY - 2, endX, centerY - 1, color);
-        guiGraphics.fill(endX - 4, centerY + 2, endX, centerY + 3, color);
-        guiGraphics.fill(endX - 2, centerY - 1, endX + 2, centerY + 2, color);
+        String arrow = "→";
+        guiGraphics.drawString(font, arrow, (startX + endX - font.width(arrow)) / 2,
+                centerY - font.lineHeight / 2, UiRenderer.TEXT_SECONDARY, false);
     }
 
     private int pathIndex(int[] pathCells, int cellIndex) {
@@ -2273,7 +1814,8 @@ private int renderContactFilterTabs(GuiGraphics g, List<ContactFilter> filters, 
             if (rowY + ROW_HEIGHT < contentY || rowY > contentY + viewportHeight) {
                 continue;
             }
-            if (mouseX >= pane.x + 6 && mouseX <= pane.x + 6 + rowAreaWidth - 4 && mouseY >= rowY && mouseY <= rowY + ROW_HEIGHT - 2) {
+            int rowX = pane.x + 6 + row.depth() * NAV_CHILD_INDENT;
+            if (mouseX >= rowX && mouseX < pane.x + 6 + rowAreaWidth - 4 && mouseY >= rowY && mouseY <= rowY + ROW_HEIGHT - 2) {
                 playClick();
                 if (row.topic().hasChildren()) {
                     if (!expandedTopics.add(row.topic().id())) {
@@ -2296,6 +1838,7 @@ private int renderContactFilterTabs(GuiGraphics g, List<ContactFilter> filters, 
         List<WikiEntry> entries = selectedSection.entries();
         int contentY = pane.y + PANEL_HEADER_HEIGHT + 6;
         int viewportHeight = pane.height - PANEL_HEADER_HEIGHT - 12;
+        if (mouseY < contentY || mouseY >= contentY + viewportHeight) return false;
         int rowAreaWidth = pane.width - 12 - (Math.max(0.0D, entries.size() * (double) ENTRY_ROW_HEIGHT - viewportHeight) > 0.0D ? SCROLLBAR_WIDTH : 0);
         for (int index = 0; index < entries.size(); index++) {
             int rowY = contentY + index * ENTRY_ROW_HEIGHT - (int) Math.round(listScroll.current);
@@ -2303,6 +1846,11 @@ private int renderContactFilterTabs(GuiGraphics g, List<ContactFilter> filters, 
                 continue;
             }
             if (mouseX >= pane.x + 6 && mouseX <= pane.x + 6 + rowAreaWidth - 4 && mouseY >= rowY && mouseY <= rowY + ENTRY_ROW_HEIGHT - 2) {
+                if (mouseX >= pane.x + 6 + rowAreaWidth - 4 - 20) {
+                    togglePinned(entries.get(index).id());
+                    playClick();
+                    return true;
+                }
                 setSelectedEntry(entries.get(index));
                 playClick();
                 return true;
@@ -2312,7 +1860,7 @@ private int renderContactFilterTabs(GuiGraphics g, List<ContactFilter> filters, 
     }
 
     private de.artemis.cyberneticenhancements.client.ui.UiScrollbar.Track scrollTrack(Pane pane, double value, double max, int viewport, int top) {
-        return de.artemis.cyberneticenhancements.client.ui.UiScrollbar.layout(pane.x + pane.width - SCROLLBAR_WIDTH - 6, top, SCROLLBAR_WIDTH, viewport, false, viewport, max, value);
+        return de.artemis.cyberneticenhancements.client.ui.UiScrollbar.layout(isContactsTab() ? ArchiveContentLayout.scrollbarX(pane.x, pane.width) : pane.x + pane.width - SCROLLBAR_WIDTH - 6, top, SCROLLBAR_WIDTH, viewport, false, viewport, max, value);
     }
 
     private DragTarget scrollTarget(ScrollState state) {
@@ -2324,7 +1872,8 @@ private int renderContactFilterTabs(GuiGraphics g, List<ContactFilter> filters, 
     }
 
     private boolean tryStartScrollbarDrag(double mouseX, double mouseY, Pane pane, ScrollState scroll, double maxScroll, DragTarget target) {
-        int top = pane.y + PANEL_HEADER_HEIGHT + 6, viewport = pane.height - PANEL_HEADER_HEIGHT - 12;
+        int top = isContactsTab() && scroll == articleScroll ? contactsContentTop(pane) : pane.y + PANEL_HEADER_HEIGHT + 6;
+        int viewport = isContactsTab() && scroll == articleScroll ? Math.max(1, pane.y + pane.height - 10 - top) : pane.height - PANEL_HEADER_HEIGHT - 12;
         var track = scrollTrack(pane, scroll.current, maxScroll, viewport, top);
         var bar = scrollbar(target);
         if (!bar.begin(track, mouseX, mouseY)) return false;
@@ -2334,7 +1883,8 @@ private int renderContactFilterTabs(GuiGraphics g, List<ContactFilter> filters, 
     }
 
     private void dragScrollbar(ScrollState scroll, Pane pane, double mouseY, double maxScroll) {
-        int top = pane.y + PANEL_HEADER_HEIGHT + 6, viewport = pane.height - PANEL_HEADER_HEIGHT - 12;
+        int top = isContactsTab() && scroll == articleScroll ? contactsContentTop(pane) : pane.y + PANEL_HEADER_HEIGHT + 6;
+        int viewport = isContactsTab() && scroll == articleScroll ? Math.max(1, pane.y + pane.height - 10 - top) : pane.height - PANEL_HEADER_HEIGHT - 12;
         var track = scrollTrack(pane, scroll.current, maxScroll, viewport, top);
         scroll.set(scrollbar(scrollTarget(scroll)).value(track, currentMouseX, mouseY), maxScroll);
     }
@@ -2393,19 +1943,11 @@ private int renderContactFilterTabs(GuiGraphics g, List<ContactFilter> filters, 
     }
 
     private double maxContactsScroll(Pane pane) {
-        int viewportHeight = pane.height - PANEL_HEADER_HEIGHT - 12;
-        return Math.max(0.0D, measureContactsHeight(pane) - viewportHeight + 4.0D);
+        int viewportHeight = Math.max(1, pane.y + pane.height - 10 - contactsContentTop(pane));
+        return Math.max(0.0D, measureContactsHeight(pane) - viewportHeight);
     }
 
-    private double maxBankingScroll(Pane pane) {
-        int viewportHeight = pane.height - PANEL_HEADER_HEIGHT - 12;
-        return Math.max(0.0D, measureBankingHeight(pane) - viewportHeight + 4.0D);
-    }
 
-    private double maxQuestsScroll(Pane pane) {
-        int viewportHeight = pane.height - PANEL_HEADER_HEIGHT - 12;
-        return Math.max(0.0D, measureQuestsHeight(pane) - viewportHeight + 4.0D);
-    }
 
     private ArticleMetrics articleMetrics(Pane pane) {
         int viewportHeight = pane.height - PANEL_HEADER_HEIGHT - 12;
@@ -2427,12 +1969,14 @@ private int renderContactFilterTabs(GuiGraphics g, List<ContactFilter> filters, 
     }
 
     private void refreshReferenceEntries() {
+        cancelArchiveTabDrag();
         String tabId = activeTab == null ? "wiki" : activeTab.id();
         String entryId = selectedEntry == null ? "" : selectedEntry.id();
         String sectionId = selectedSection == null ? "" : selectedSection.id();
         boolean pinned = PINNED_SECTION_ID.equals(sectionId);
         archiveTabs.clear();
         archiveTabs.addAll(CyberwareWikiData.buildArchiveTabs());
+        applySavedTabOrder();
         entryIndex.clear();
         tabByEntryId.clear();
         baseSectionsByEntryId.clear();
@@ -2445,18 +1989,30 @@ private int renderContactFilterTabs(GuiGraphics g, List<ContactFilter> filters, 
                 var topic = buildPinnedTopic();
                 if (topic != null) selectedSection = topic.section();
             }
-        } else if (!isSchematicsTab() && !isContactsTab() && !isBankingTab() && !isQuestsTab()) {
+        } else if (!isLoreTab() && !isSchematicsTab() && !isContactsTab() && !isBankingTab() && !isQuestsTab()) {
             selectFirstSection();
         }
         articleContentHeight = 0;
         hoveredVisualStack = ItemStack.EMPTY;
+        if (wikiSearching()) applyWikiSearch(wikiQuery);
     }
     private void activateTab(ArchiveTab tab) {
+        hudBrowser.release();
+        hudBrowser.unfocus();
+        tarotBrowser.release();
+        journalBrowser.hide();
+        compassBrowser.hide();
+        if (wikiSearch != null) wikiSearch.setFocused(false);
+        if (contactsSearch != null) contactsSearch.setFocused(false);
         dragTarget = DragTarget.NONE;
         scrollbars.values().forEach(de.artemis.cyberneticenhancements.client.ui.UiScrollbar::release);
         schematicBrowser.release();
+        contractBrowser.release();
         schematicBrowser.unfocus();
+        contractBrowser.unfocus();
+        bankingBrowser.hide();
         activeTab = tab == null && !archiveTabs.isEmpty() ? archiveTabs.getFirst() : tab;
+        if (wikiSearching()) applyWikiSearch(wikiQuery);
         expandedTopics.clear();
         topicExpansion.clear();
         navScroll.reset();
@@ -2479,6 +2035,7 @@ private int renderContactFilterTabs(GuiGraphics g, List<ContactFilter> filters, 
             selectedEntry = null;
             requestContactsRefresh();
         } else if (isQuestsTab()) {
+            contractBrowser.reset();
             selectedSection = null;
             selectedEntry = null;
             requestQuestsRefresh();
@@ -2571,10 +2128,22 @@ private int renderContactFilterTabs(GuiGraphics g, List<ContactFilter> filters, 
         int rootHeight = height - OUTER_MARGIN * 2;
         int contentY = rootY + TOP_BAR_HEIGHT + PANEL_GAP;
         int contentHeight = rootHeight - TOP_BAR_HEIGHT - FOOTER_HEIGHT - PANEL_GAP * 2;
-        if (isSchematicsTab() || isBankingTab() || isContactsTab() || isQuestsTab()) {
+        if (isLoreTab() || isSchematicsTab() || isBankingTab() || isContactsTab() || isQuestsTab()
+                || isCompassTab() || isJournalTab() || isHudTab()) {
             Pane fullPane = new Pane(rootX + PANEL_GAP, contentY, rootWidth - PANEL_GAP * 2, contentHeight);
             Pane hiddenPane = new Pane(0, 0, 0, 0);
             return new RootLayout(rootX, rootY, rootWidth, rootHeight, hiddenPane, hiddenPane, fullPane, true);
+        }
+
+        if (isWikiTab()) {
+            contentY += 42 + PANEL_GAP;
+            contentHeight -= 42 + PANEL_GAP;
+        }
+        if (wikiSearching()) {
+            Pane listPane = new Pane(rootX + PANEL_GAP, contentY, LIST_WIDTH, contentHeight);
+            int articleX = listPane.x + listPane.width + PANEL_GAP;
+            Pane articlePane = new Pane(articleX, contentY, rootX + rootWidth - PANEL_GAP - articleX, contentHeight);
+            return new RootLayout(rootX, rootY, rootWidth, rootHeight, new Pane(0, 0, 0, 0), listPane, articlePane, false);
         }
 
         Pane navPane = new Pane(rootX + PANEL_GAP, contentY, NAV_WIDTH, contentHeight);
@@ -2588,6 +2157,7 @@ private int renderContactFilterTabs(GuiGraphics g, List<ContactFilter> filters, 
     }
 
     private boolean shouldCollapseListPane() {
+        if (wikiSearching()) return false;
         return selectedSection != null && selectedSection.entries().size() <= 1;
     }
 
@@ -2595,9 +2165,18 @@ private int renderContactFilterTabs(GuiGraphics g, List<ContactFilter> filters, 
         return activeTab != null && activeTab.id().equals("schematics");
     }
 
+    private boolean isLoreTab() { return activeTab != null && activeTab.id().equals("lore"); }
+
     private boolean isBankingTab() {
         return activeTab != null && BANKING_TAB_ID.equals(activeTab.id());
     }
+
+    private boolean isCompassTab() {
+        return activeTab != null && activeTab.id().equals("compass");
+    }
+
+    private boolean isJournalTab() { return activeTab != null && "journal".equals(activeTab.id()); }
+    public boolean isHudTab() { return activeTab != null && "hud".equals(activeTab.id()); }
 
     private boolean isContactsTab() {
         return activeTab != null && CONTACTS_TAB_ID.equals(activeTab.id());
@@ -2624,60 +2203,21 @@ private int renderContactFilterTabs(GuiGraphics g, List<ContactFilter> filters, 
     }
 
     private void renderBootPanel(GuiGraphics guiGraphics, int rootX, int rootY, int rootWidth, int rootHeight) {
-        float bootProgress = bootSequenceProgress();
-        int alphaMask = 0xFFFFFFFF;
-
-        int panelWidth = Math.min(rootWidth - 80, 440);
-        int panelHeight = 162;
+        float progress = bootSequenceProgress();
+        int panelWidth = Math.min(rootWidth - 80, 440), panelHeight = 162;
         int panelX = rootX + (rootWidth - panelWidth) / 2;
         int panelY = rootY + (rootHeight - panelHeight) / 2 - 10;
-
-        UiRenderer.panel(guiGraphics, panelX, panelY, panelWidth, panelHeight,
-                withAlpha(StationScreenStyle.PANEL_DEEP, alphaMask), withAlpha(StationScreenStyle.PANEL_EDGE, alphaMask));
-        guiGraphics.fill(panelX + 2, panelY + 2, panelX + panelWidth - 2, panelY + 20, withAlpha(StationScreenStyle.SECTION_SHADOW, alphaMask));
-        guiGraphics.fill(panelX + 2, panelY + 20, panelX + panelWidth - 2, panelY + 21, withAlpha(StationScreenStyle.ACCENT, 0.8F));
-
-        long now = System.currentTimeMillis();
-        int sweepY = panelY + 24 + (int) ((panelHeight - 44) * bootProgress);
-        guiGraphics.fill(panelX + 2, Math.max(panelY + 22, sweepY - 8), panelX + panelWidth - 2, Math.min(panelY + panelHeight - 2, sweepY + 2), withAlpha(StationScreenStyle.SLOT_ACTIVE, 0.12F));
-        for (int y = panelY + 24; y < panelY + panelHeight - 2; y += 3) {
-            float stripeAlpha = (((y + now / 24L) % 9) == 0) ? 0.08F : 0.04F;
-            guiGraphics.fill(panelX + 2, y, panelX + panelWidth - 2, y + 1, withAlpha(StationScreenStyle.FRAME_HIGHLIGHT_SOFT, stripeAlpha));
-        }
-
-        guiGraphics.drawString(font, Component.translatable("screen.cyberneticenhancements.archive.boot.header"), panelX + 10, panelY + 8, withAlpha(StationScreenStyle.ACCENT, alphaMask), false);
-        guiGraphics.drawString(font, Component.translatable("screen.cyberneticenhancements.archive.boot.title"), panelX + 10, panelY + 30, withAlpha(StationScreenStyle.TEXT_PRIMARY, alphaMask), false);
-        guiGraphics.drawString(font, trimStyled(Component.translatable("screen.cyberneticenhancements.archive.boot.subtitle"), panelWidth - 20), panelX + 10, panelY + 44, withAlpha(StationScreenStyle.TEXT_SECONDARY, alphaMask), false);
-
-        List<Component> statusLines = List.of(
-                Component.translatable("screen.cyberneticenhancements.archive.boot.phase.1"),
-                Component.translatable("screen.cyberneticenhancements.archive.boot.phase.2"),
-                Component.translatable("screen.cyberneticenhancements.archive.boot.phase.3"),
-                Component.translatable("screen.cyberneticenhancements.archive.boot.phase.4")
-        );
-        int completedLines = Math.min(statusLines.size(), Math.max(1, Mth.ceil(bootProgress * statusLines.size())));
-        int lineY = panelY + 66;
-        for (int index = 0; index < statusLines.size(); index++) {
-            boolean active = index < completedLines;
-            int lineColor = active ? withAlpha(StationScreenStyle.TEXT_PRIMARY, alphaMask) : withAlpha(StationScreenStyle.TEXT_SECONDARY, 0.45F);
-            String prefix = active ? "[OK]" : "[  ]";
-            guiGraphics.drawString(font, prefix, panelX + 10, lineY, active ? withAlpha(StationScreenStyle.ACCENT, alphaMask) : withAlpha(StationScreenStyle.FRAME_HIGHLIGHT_SOFT, 0.55F), false);
-            guiGraphics.drawString(font, trimStyled(statusLines.get(index), panelWidth - 72), panelX + 44, lineY, lineColor, false);
-            lineY += 14;
-        }
-
-        int barX = panelX + 10;
-        int barY = panelY + panelHeight - 30;
-        int barWidth = panelWidth - 20;
-        guiGraphics.fill(barX, barY, barX + barWidth, barY + 8, withAlpha(StationScreenStyle.SECTION_SHADOW, alphaMask));
-        guiGraphics.fill(barX + 1, barY + 1, barX + 1 + Math.max(0, Math.round((barWidth - 2) * bootProgress)), barY + 7, withAlpha(StationScreenStyle.ACCENT, alphaMask));
-        guiGraphics.fill(barX + 1, barY + 1, barX + 1 + Math.max(0, Math.round((barWidth - 2) * bootProgress * 0.45F)), barY + 3, withAlpha(StationScreenStyle.TEXT_PRIMARY, 0.35F));
-
-        String percent = String.format(Locale.ROOT, "%d%%", Mth.floor(bootProgress * 100.0F));
-        guiGraphics.drawString(font, Component.translatable("screen.cyberneticenhancements.archive.boot.status", percent), barX, barY - 11, withAlpha(StationScreenStyle.TEXT_SECONDARY, alphaMask), false);
-        if (bootProgress >= 0.995F) {
-            guiGraphics.drawString(font, Component.translatable("screen.cyberneticenhancements.archive.boot.ready"), panelX + panelWidth - 150, barY - 11, withAlpha(StationScreenStyle.ACCENT, alphaMask), false);
-        }
+        String percent = String.format(Locale.ROOT, "%d%%", Mth.floor(progress * 100.0F));
+        de.artemis.cyberneticenhancements.client.ui.UiConnectionPanel.render(guiGraphics, font, panelX, panelY, panelWidth, panelHeight, progress, openingFrame.bootLinearProgress(),
+                Component.translatable("screen.cyberneticenhancements.archive.boot.header"),
+                Component.translatable("screen.cyberneticenhancements.archive.boot.title"),
+                Component.translatable("screen.cyberneticenhancements.archive.boot.subtitle"),
+                List.of(Component.translatable("screen.cyberneticenhancements.archive.boot.phase.1"),
+                        Component.translatable("screen.cyberneticenhancements.archive.boot.phase.2"),
+                        Component.translatable("screen.cyberneticenhancements.archive.boot.phase.3"),
+                        Component.translatable("screen.cyberneticenhancements.archive.boot.phase.4")),
+                Component.translatable("screen.cyberneticenhancements.archive.boot.status", percent),
+                Component.translatable("screen.cyberneticenhancements.archive.boot.ready"));
     }
 
     private void drawPanelShell(GuiGraphics guiGraphics, Pane pane, Component title) {
@@ -2701,8 +2241,12 @@ private int renderContactFilterTabs(GuiGraphics g, List<ContactFilter> filters, 
 
     private void drawMiniChip(GuiGraphics g, int x, int y, int width, int height, Component text, int alphaMask) {
         UiRenderer.panel(g, x, y, width, height, withAlpha(UiRenderer.FIELD, alphaMask), withAlpha(UiRenderer.FIELD_EDGE, alphaMask));
-        var label = trimStyled(text, width - 12);
-        g.drawString(font, label, x + (width - font.width(label)) / 2, y + (height - font.lineHeight) / 2, withAlpha(UiRenderer.TEXT_SECONDARY, alphaMask), false);
+        var lines = font.split(text, Math.max(1, width - 12));
+        int lineY = y + (height - lines.size() * font.lineHeight) / 2;
+        for (var line : lines) {
+            g.drawString(font, line, x + (width - font.width(line)) / 2, lineY, withAlpha(UiRenderer.TEXT_SECONDARY, alphaMask), false);
+            lineY += font.lineHeight;
+        }
     }
 
     private void drawInteractiveFrame(GuiGraphics graphics, int x, int y, int width, int height, boolean selected, int alphaMask) {
@@ -2719,42 +2263,133 @@ private int renderContactFilterTabs(GuiGraphics g, List<ContactFilter> filters, 
         UiRenderer.button(graphics, font, x, y, width, height, label, true, selected, hovered, alphaMask);
     }
 
-    private void renderArchiveTabs(GuiGraphics guiGraphics, int rootX, int rootY, int rootWidth) {
+    private String draggedArchiveTab;
+    private double tabPressX, tabGrabX;
+    private boolean tabDragActive, tabDropValid;
+    private List<ArchiveTab> tabDragOriginal = List.of();
+    private final Map<String, Float> tabVisualX = new HashMap<>();
+    private long tabAnimationAt = System.nanoTime();
+
+    private void cancelArchiveTabDrag() {
+        if (draggedArchiveTab != null) {
+            archiveTabs.clear(); archiveTabs.addAll(tabDragOriginal);
+        }
+        draggedArchiveTab = null;
+        tabDragActive = false;
+        tabDragOriginal = List.of();
+    }
+
+    private Rect archiveTabVisualBounds(Rect bounds) {
+        return new Rect(bounds.id(), Math.round(tabVisualX.getOrDefault(bounds.id(), (float) bounds.x())),
+                bounds.y(), bounds.width(), bounds.height());
+    }
+    private void applySavedTabOrder() {
+        var ids = de.artemis.cyberneticenhancements.client.ui.ArchiveTabOrder.normalize(
+                archiveTabs.stream().map(ArchiveTab::id).toList(),
+                de.artemis.cyberneticenhancements.client.ClientConfig.ARCHIVE_TAB_ORDER.get());
+        archiveTabs.sort(java.util.Comparator.comparingInt(tab -> ids.indexOf(tab.id())));
+    }
+
+    private void renderArchiveTabs(GuiGraphics graphics, int rootX, int rootY, int rootWidth) {
+        long now = System.nanoTime();
+        float blend = (float) (1 - Math.exp(-Math.min(0.1, (now - tabAnimationAt) / 1_000_000_000.0) * 20));
+        tabAnimationAt = now;
+        Rect grabbed = null;
         for (Rect bounds : archiveTabBounds(rootX, rootY, rootWidth)) {
             ArchiveTab tab = archiveTabById(bounds.id());
             if (tab == null) continue;
-            boolean active = activeTab != null && activeTab.id().equals(tab.id());
-            drawActionButton(guiGraphics, bounds.x(), bounds.y(), bounds.width(), bounds.height(), tab.title(), 0xFFFFFFFF, active);
+            float visualX = tabVisualX.getOrDefault(tab.id(), (float) bounds.x());
+            visualX += (bounds.x() - visualX) * blend;
+            if (Math.abs(bounds.x() - visualX) < 0.5F) visualX = bounds.x();
+            tabVisualX.put(tab.id(), visualX);
+            if (tabDragActive && bounds.id().equals(draggedArchiveTab)) {
+                grabbed = bounds;
+                UiRenderer.outline(graphics, bounds.x(), bounds.y(), bounds.width(), bounds.height(), UiRenderer.FIELD_EDGE);
+                continue;
+            }
+            drawActionButton(graphics, Math.round(visualX), bounds.y(), bounds.width(), bounds.height(), tab.title(),
+                    0xFFFFFFFF, activeTab != null && activeTab.id().equals(tab.id()));
+        }
+        if (grabbed != null) {
+            int gx = Math.clamp((int) (currentMouseX - tabGrabX), rootX + 12,
+                    closeButtonBounds(rootX, rootY, rootWidth).x() - 12 - grabbed.width());
+            int gy = grabbed.y() - 3;
+            UiRenderer.panel(graphics, gx, gy, grabbed.width(), grabbed.height(), UiRenderer.ROW_SELECTED,
+                    tabDropValid ? UiRenderer.ACCENT : UiRenderer.WARNING);
+            ArchiveTab tab = archiveTabById(draggedArchiveTab);
+            graphics.drawCenteredString(font, tab.title(), gx + grabbed.width() / 2, gy + (grabbed.height() - font.lineHeight) / 2, UiRenderer.TEXT);
         }
     }
 
     private boolean handleArchiveTabClick(double mouseX, double mouseY, int rootX, int rootY, int rootWidth) {
         for (Rect bounds : archiveTabBounds(rootX, rootY, rootWidth)) {
-            if (!isInside(mouseX, mouseY, bounds)) {
-                continue;
-            }
-            ArchiveTab tab = archiveTabById(bounds.id());
-            if (tab == null) {
-                return false;
-            }
-            if (activeTab == null || !activeTab.id().equals(tab.id())) {
-                activateTab(tab);
-            }
-            playClick();
+            bounds = archiveTabVisualBounds(bounds);
+            if (!isInside(mouseX, mouseY, bounds)) continue;
+            draggedArchiveTab = bounds.id();
+            tabPressX = mouseX; tabGrabX = mouseX - bounds.x();
+            tabDragActive = false;
+            tabDragOriginal = List.copyOf(archiveTabs);
             return true;
         }
         return false;
     }
 
+    private void updateArchiveTabDrag(double mouseX, double mouseY) {
+        if (!tabDragActive && Math.abs(mouseX - tabPressX) < 6) return;
+        tabDragActive = true;
+        var layout = rootLayout();
+        Rect close = closeButtonBounds(layout.rootX(), layout.rootY(), layout.rootWidth());
+        tabDropValid = mouseX >= layout.rootX() + 12 && mouseX < close.x() - 12;
+        if (!tabDropValid) return;
+        var bounds = archiveTabBounds(layout.rootX(), layout.rootY(), layout.rootWidth());
+        int target = de.artemis.cyberneticenhancements.client.ui.ArchiveTabOrder.dropIndex(
+                bounds.stream().map(Rect::id).toList(), bounds.stream().map(rect -> rect.x() + rect.width() / 2).toList(),
+                draggedArchiveTab, mouseX);
+        var ids = de.artemis.cyberneticenhancements.client.ui.ArchiveTabOrder.move(
+                archiveTabs.stream().map(ArchiveTab::id).toList(), draggedArchiveTab, target);
+        archiveTabs.sort(java.util.Comparator.comparingInt(tab -> ids.indexOf(tab.id())));
+    }
+
+    private boolean finishArchiveTabDrag(double mouseX, double mouseY) {
+        updateArchiveTabDrag(mouseX, mouseY);
+        String id = draggedArchiveTab;
+        if (tabDragActive) {
+            if (tabDropValid) {
+                var order = de.artemis.cyberneticenhancements.client.ClientConfig.ARCHIVE_TAB_ORDER;
+                order.set(archiveTabs.stream().map(ArchiveTab::id).toList());
+                order.save();
+                playClick();
+            } else {
+                archiveTabs.clear(); archiveTabs.addAll(tabDragOriginal);
+            }
+        } else {
+            var layout = rootLayout();
+            for (Rect bounds : archiveTabBounds(layout.rootX(), layout.rootY(), layout.rootWidth())) {
+                if (bounds.id().equals(id) && isInside(mouseX, mouseY, archiveTabVisualBounds(bounds))) {
+                    ArchiveTab tab = archiveTabById(id);
+                    if (activeTab == null || !activeTab.id().equals(id)) activateTab(tab);
+                    playClick();
+                    break;
+                }
+            }
+        }
+        draggedArchiveTab = null;
+        tabDragActive = false;
+        tabDragOriginal = List.of();
+        return true;
+    }
     private List<Rect> archiveTabBounds(int rootX, int rootY, int rootWidth) {
         Rect closeBounds = closeButtonBounds(rootX, rootY, rootWidth);
         int startX = rootX + 12;
         int maxX = closeBounds.x() - 12;
         int y = closeBounds.y();
         List<Rect> bounds = new ArrayList<>(archiveTabs.size());
+        int tabSpace = maxX - startX - Math.max(0, archiveTabs.size() - 1) * TOP_TAB_GAP;
+        int naturalWidth = archiveTabs.stream().mapToInt(tab -> Math.max(64, font.width(tab.title()) + 18)).sum();
+        double widthScale = naturalWidth == 0 ? 1 : Math.min(1, tabSpace / (double) naturalWidth);
         int x = startX;
         for (ArchiveTab tab : archiveTabs) {
-            int tabWidth = Math.max(64, font.width(tab.title()) + 18);
+            int tabWidth = Math.max(1, (int) Math.floor(Math.max(64, font.width(tab.title()) + 18) * widthScale));
             if (x + tabWidth > maxX) {
                 break;
             }
@@ -2784,7 +2419,7 @@ private int renderContactFilterTabs(GuiGraphics g, List<ContactFilter> filters, 
 
         int ellipsisWidth = font.width("...");
         FormattedText base = font.substrByWidth(text, Math.max(0, maxWidth - ellipsisWidth));
-        FormattedText combined = FormattedText.composite(base, Component.literal("..."));
+        FormattedText combined = FormattedText.composite(base, Component.literal("...").setStyle(text.getStyle()));
         return Language.getInstance().getVisualOrder(combined);
     }
 
@@ -2824,6 +2459,7 @@ private int renderContactFilterTabs(GuiGraphics g, List<ContactFilter> filters, 
         for (ArchiveTab tab : tabs) {
             indexTopics(tab.id(), tab.topics());
         }
+        wikiSearchDocuments = WikiSearchIndex.build(tabs);
     }
 
     private void indexTopics(String tabId, List<WikiTopic> topics) {
@@ -2844,6 +2480,7 @@ private int renderContactFilterTabs(GuiGraphics g, List<ContactFilter> filters, 
     }
 
     private List<WikiTopic> displayTopics() {
+        if (wikiSearching() && wikiSearchResults != null) return List.of(new WikiTopic("wiki_search_results", wikiSearchResults.title(), List.of(), wikiSearchResults));
         List<WikiTopic> currentTopics = currentTabTopics();
         WikiTopic pinnedTopic = buildPinnedTopic();
         if (pinnedTopic == null) {
@@ -2897,16 +2534,10 @@ private int renderContactFilterTabs(GuiGraphics g, List<ContactFilter> filters, 
 
         PinButtonBounds bounds = pinButtonBounds(articlePane);
         boolean pinned = isPinned(selectedEntry.id());
-        drawActionButton(
-                guiGraphics,
-                bounds.x(),
-                bounds.y(),
-                bounds.width(),
-                bounds.height(),
-                Component.translatable(pinned ? "screen.cyberneticenhancements.archive.unpin" : "screen.cyberneticenhancements.archive.pin"),
-                0xFFFFFFFF,
-                pinned
-        );
+        boolean hovered = currentMouseX >= bounds.x() && currentMouseX < bounds.x() + bounds.width()
+                && currentMouseY >= bounds.y() && currentMouseY < bounds.y() + bounds.height();
+        UiRenderer.listPin(guiGraphics, font, bounds.x(), bounds.y(), pinned, hovered);
+        if (hovered) hoveredPinTooltip = pinLabel(selectedEntry.id());
     }
 
     private boolean handlePinButtonClick(double mouseX, double mouseY, Pane articlePane) {
@@ -2932,10 +2563,22 @@ private int renderContactFilterTabs(GuiGraphics g, List<ContactFilter> filters, 
         return PINNED_ENTRY_IDS.contains(entryId);
     }
 
+    private Component pinLabel(String entryId) {
+        return Component.translatable(isPinned(entryId) ? "screen.cyberneticenhancements.archive.unpin" : "screen.cyberneticenhancements.archive.pin");
+    }
+
+    private int topicEntryCount(WikiTopic topic) {
+        if (topic.section() != null) return topic.section().entries().size();
+        return topic.children().stream().mapToInt(this::topicEntryCount).sum();
+    }
+
     private void togglePinned(String entryId) {
         if (!PINNED_ENTRY_IDS.add(entryId)) {
             PINNED_ENTRY_IDS.remove(entryId);
         }
+        var setting = de.artemis.cyberneticenhancements.client.ClientConfig.WIKI_PINNED_ENTRIES;
+        setting.set(List.copyOf(PINNED_ENTRY_IDS));
+        setting.save();
         refreshPinnedSelectionState(entryId);
     }
 
@@ -3037,11 +2680,9 @@ private int renderContactFilterTabs(GuiGraphics g, List<ContactFilter> filters, 
     private record ArticleMetrics(int contentWidth, int contentHeight, double maxScroll) {
     }
 
-    private record ContactFilter(String id, Component label, String npcTypeId) {
+    private record ContactFilter(String id, Component label) {
     }
 
-    private record BankFilter(String id, Component label) {
-    }
 
     private record Rect(String id, int x, int y, int width, int height) {
     }
@@ -3103,6 +2744,7 @@ private int renderContactFilterTabs(GuiGraphics g, List<ContactFilter> filters, 
         entries.put(ModBlocks.TECH_STATION.asItem(), "station_tech");
         entries.put(ModBlocks.RECYCLER_STATION.asItem(), "station_recycler");
         entries.put(ModBlocks.CYBERWARE_FABRICATOR.asItem(), "station_fabricator");
+        entries.put(ModBlocks.DROPOFF_POINT.asItem(), "station_dropoff");
         entries.put(ModBlocks.RELIC_CACHE.asItem(), "station_relic_cache");
         entries.put(ModBlocks.UNCOMMON_RELIC_CACHE.asItem(), "station_relic_cache");
         entries.put(ModBlocks.RARE_RELIC_CACHE.asItem(), "station_relic_cache");
@@ -3118,6 +2760,7 @@ private int renderContactFilterTabs(GuiGraphics g, List<ContactFilter> filters, 
         entries.put(ModBlocks.TECH_STATION.get(), "station_tech");
         entries.put(ModBlocks.RECYCLER_STATION.get(), "station_recycler");
         entries.put(ModBlocks.CYBERWARE_FABRICATOR.get(), "station_fabricator");
+        entries.put(ModBlocks.DROPOFF_POINT.get(), "station_dropoff");
         entries.put(ModBlocks.RELIC_CACHE.get(), "station_relic_cache");
         entries.put(ModBlocks.UNCOMMON_RELIC_CACHE.get(), "station_relic_cache");
         entries.put(ModBlocks.RARE_RELIC_CACHE.get(), "station_relic_cache");

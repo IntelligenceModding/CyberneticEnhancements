@@ -32,24 +32,23 @@ public final class CyberpsychosisCommand {
     private static int trigger(CommandSourceStack source, int durationSeconds) throws com.mojang.brigadier.exceptions.CommandSyntaxException {
         ServerPlayer player = source.getPlayerOrException();
         CyberstrainManager.forcePsychosisEpisode(player, durationSeconds);
-        source.sendSuccess(() -> Component.translatable("command.cyberneticenhancements.cyberpsychosis.triggered", durationSeconds), false);
         return 1;
     }
 
     private static int clear(CommandSourceStack source) throws com.mojang.brigadier.exceptions.CommandSyntaxException {
         ServerPlayer player = source.getPlayerOrException();
-        CyberstrainManager.clearPsychosis(player);
-        source.sendSuccess(() -> Component.translatable("command.cyberneticenhancements.cyberpsychosis.cleared"), false);
+        boolean notified = CyberstrainManager.endPsychosisEpisode(player);
+        if (!notified) de.artemis.cyberneticenhancements.common.feedback.GameplayMessages.success(source, () -> Component.translatable("command.cyberneticenhancements.cyberpsychosis.cleared"), false);
         return 1;
     }
 
     private static int status(CommandSourceStack source) throws com.mojang.brigadier.exceptions.CommandSyntaxException {
         ServerPlayer player = source.getPlayerOrException();
         PlayerCyberwareInventory inventory = new PlayerCyberwareInventory(player);
-        source.sendSuccess(() -> Component.translatable("command.cyberneticenhancements.cyberpsychosis.state", CyberstrainManager.getPsychosisStateLabel(player, inventory)), false);
-        source.sendSuccess(() -> Component.translatable("command.cyberneticenhancements.cyberpsychosis.active", CyberstrainManager.isPsychosisActive(player)), false);
-        source.sendSuccess(() -> Component.translatable("command.cyberneticenhancements.cyberpsychosis.remaining", CyberstrainManager.getPsychosisSecondsRemaining(player)), false);
-        source.sendSuccess(() -> Component.translatable("command.cyberneticenhancements.cyberpsychosis.effective", CyberstrainManager.getEffectiveCyberstrain(player, inventory)), false);
+        de.artemis.cyberneticenhancements.common.feedback.GameplayMessages.success(source, () -> Component.translatable("command.cyberneticenhancements.cyberpsychosis.state", CyberstrainManager.getPsychosisStateLabel(player, inventory)), false);
+        de.artemis.cyberneticenhancements.common.feedback.GameplayMessages.success(source, () -> Component.translatable("command.cyberneticenhancements.cyberpsychosis.active", CyberstrainManager.isPsychosisActive(player)), false);
+        de.artemis.cyberneticenhancements.common.feedback.GameplayMessages.success(source, () -> Component.translatable("command.cyberneticenhancements.cyberpsychosis.remaining", CyberstrainManager.getPsychosisSecondsRemaining(player)), false);
+        de.artemis.cyberneticenhancements.common.feedback.GameplayMessages.success(source, () -> Component.translatable("command.cyberneticenhancements.cyberpsychosis.effective", CyberstrainManager.getEffectiveCyberstrain(player, inventory)), false);
         return 1;
     }
 }

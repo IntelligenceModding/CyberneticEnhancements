@@ -4,10 +4,13 @@ import de.artemis.cyberneticenhancements.common.cyberware.CyberstrainManager;
 import de.artemis.cyberneticenhancements.common.cyberware.PlayerCyberwareInventory;
 import de.artemis.cyberneticenhancements.common.menu.FixerDialogMenu;
 import de.artemis.cyberneticenhancements.common.network.FaceHazardHighlightPayload;
+import de.artemis.cyberneticenhancements.common.registry.ModSounds;
 import de.artemis.cyberneticenhancements.common.world.FixerIdentitySavedData;
 import de.artemis.cyberneticenhancements.common.world.NpcIdentityConfig.NpcCategory;
 import net.minecraft.ChatFormatting;
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.particles.DustParticleOptions;
+import net.minecraft.core.particles.ParticleTypes;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.Tag;
@@ -20,6 +23,7 @@ import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.sounds.SoundEvent;
+import net.minecraft.sounds.SoundSource;
 import net.minecraft.util.Mth;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResult;
@@ -47,6 +51,7 @@ import net.minecraft.world.level.ServerLevelAccessor;
 import net.minecraft.world.phys.AABB;
 import net.neoforged.neoforge.network.PacketDistributor;
 import org.jetbrains.annotations.Nullable;
+import org.joml.Vector3f;
 
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -55,6 +60,9 @@ import java.util.List;
 import java.util.UUID;
 
 public abstract class AbstractCityNpcEntity extends PathfinderMob {
+    private static final EntityDataAccessor<Long> COMBAT_MEDICINE = SynchedEntityData.defineId(AbstractCityNpcEntity.class, EntityDataSerializers.LONG);
+    private final NpcCombatHealing combatHealing = new NpcCombatHealing(this, COMBAT_MEDICINE);
+    public NpcCombatHealing combatHealing() { return combatHealing; }
     private static final String HOME_POS_X_TAG = "HomePosX";
     private static final String HOME_POS_Y_TAG = "HomePosY";
     private static final String HOME_POS_Z_TAG = "HomePosZ";
@@ -72,10 +80,12 @@ public abstract class AbstractCityNpcEntity extends PathfinderMob {
     private static final String PLAYER_NPC_RELATIONS_TAG = "cyberneticenhancements.npc_relations";
     private static final String LEGACY_PLAYER_FIXER_RELATIONS_TAG = "cyberneticenhancements.fixer_relations";
     private static final String PLAYER_RELATION_SEEN_TAG = "Seen";
+    private static final String PLAYER_RELATION_TEMPORARY_TAG = "Temporary";
     private static final String PLAYER_RELATION_TRUST_TAG = "Trust";
     private static final String PLAYER_RELATION_TRUST_SCALE_TAG = "TrustScale";
     private static final String PLAYER_RELATION_PINNED_TAG = "Pinned";
     private static final String PLAYER_RELATION_HIDDEN_TAG = "Hidden";
+    private static final String PLAYER_RELATION_DECEASED_ACKNOWLEDGED_TAG = "DeceasedAcknowledged";
     private static final String PLAYER_RELATION_LAST_NO_FUNDS_TICK_TAG = "LastNoFundsTick";
     private static final String PLAYER_RELATION_LAST_ASSAULT_TICK_TAG = "LastAssaultTick";
     private static final String PLAYER_RELATION_ANNOYANCE_TAG = "Annoyance";
@@ -106,6 +116,12 @@ public abstract class AbstractCityNpcEntity extends PathfinderMob {
     private static final int ANNOYANCE_REFUSAL_THRESHOLD = 7;
     private static final EntityDataAccessor<Integer> STATUS =
             SynchedEntityData.defineId(AbstractCityNpcEntity.class, EntityDataSerializers.INT);
+    private static final EntityDataAccessor<Boolean> ON_CALL =
+            SynchedEntityData.defineId(AbstractCityNpcEntity.class, EntityDataSerializers.BOOLEAN);
+    private static final EntityDataAccessor<Boolean> IN_CONVERSATION =
+            SynchedEntityData.defineId(AbstractCityNpcEntity.class, EntityDataSerializers.BOOLEAN);
+    private static final EntityDataAccessor<Long> CONVERSATION_SPOKE_AT =
+            SynchedEntityData.defineId(AbstractCityNpcEntity.class, EntityDataSerializers.LONG);
     private static final EntityDataAccessor<String> NPC_CATEGORY =
             SynchedEntityData.defineId(AbstractCityNpcEntity.class, EntityDataSerializers.STRING);
     private static final EntityDataAccessor<String> NPC_APPEARANCE =
@@ -114,12 +130,17 @@ public abstract class AbstractCityNpcEntity extends PathfinderMob {
             SynchedEntityData.defineId(AbstractCityNpcEntity.class, EntityDataSerializers.STRING);
     private static final EntityDataAccessor<String> NPC_BASE_NAME =
             SynchedEntityData.defineId(AbstractCityNpcEntity.class, EntityDataSerializers.STRING);
+    private static final EntityDataAccessor<java.util.Optional<UUID>> DEFENDING_AGAINST =
+            SynchedEntityData.defineId(AbstractCityNpcEntity.class, EntityDataSerializers.OPTIONAL_UUID);
+    private static final EntityDataAccessor<Long> SELF_DEFENSE_UNTIL =
+            SynchedEntityData.defineId(AbstractCityNpcEntity.class, EntityDataSerializers.LONG);
     private static final long MEETUP_WINDOW_TICKS = 30L * 20L;
     private static final long ANNOYANCE_WINDOW_TICKS = 2L * 60L * 20L;
     private static final long NO_FUNDS_PENALTY_COOLDOWN_TICKS = 30L * 20L;
     private static final long SURCHARGE_TICKS = 2L * 60L * 20L;
     private static final long REFUSAL_TICKS = 4L * 60L * 20L;
     private static final long ASSAULT_PENALTY_COOLDOWN_TICKS = 20L;
+    public static final long SELF_DEFENSE_TICKS = 5L * 20L;
     private static final float HEAT_SURCHARGE_MULTIPLIER = 3.0F;
     private static final int LOCATE_OUTLINE_TICKS = 10 * 20;
 
@@ -131,14 +152,21 @@ public abstract class AbstractCityNpcEntity extends PathfinderMob {
     private String savedNicknameOverride = "";
     private String savedAppearanceOverride = "";
     private String savedNameColorOverride = "aqua";
+    private @Nullable UUID selfDefenseAttacker;
+    private @Nullable BlockPos selfDefenseOrigin;
+    private long lastDamageAt;
 
     protected AbstractCityNpcEntity(EntityType<? extends AbstractCityNpcEntity> entityType, Level level) {
         super(entityType, level);
-        this.xpReward = 0;
+        this.xpReward = de.artemis.cyberneticenhancements.common.progression.ExperienceRewards.CITY_NPC;
         setPersistenceRequired();
     }
 
     public abstract NpcType npcType();
+
+    public boolean canInteract(Player player) {
+        return true;
+    }
 
     public String npcTypeId() {
         return npcType().id();
@@ -147,6 +175,7 @@ public abstract class AbstractCityNpcEntity extends PathfinderMob {
     public static AttributeSupplier.Builder createAttributes() {
         return Mob.createMobAttributes()
                 .add(Attributes.MAX_HEALTH, 24.0D)
+                .add(Attributes.ATTACK_DAMAGE, 4.0D)
                 .add(Attributes.MOVEMENT_SPEED, 0.34D)
                 .add(Attributes.FOLLOW_RANGE, 24.0D);
     }
@@ -162,27 +191,40 @@ public abstract class AbstractCityNpcEntity extends PathfinderMob {
 
     @Override
     protected void registerGoals() {
+        goalSelector.addGoal(0, NpcCombatHealing.goal(this));
         goalSelector.addGoal(0, new FloatGoal(this));
-        goalSelector.addGoal(1, new FixerPlayerFocusGoal(this));
-        goalSelector.addGoal(2, new MoveTowardsRestrictionGoal(this, 0.9D));
-        goalSelector.addGoal(3, new AvoidEntityGoal<>(this, Monster.class, 8.0F, 0.95D, 1.15D));
-        goalSelector.addGoal(4, new WaterAvoidingRandomStrollGoal(this, 0.7D));
-        goalSelector.addGoal(5, new LookAtPlayerGoal(this, Player.class, 8.0F));
-        goalSelector.addGoal(6, new RandomLookAroundGoal(this));
+        goalSelector.addGoal(1, new net.minecraft.world.entity.ai.goal.MeleeAttackGoal(this, 1.1, false));
+        goalSelector.addGoal(2, new FixerPlayerFocusGoal(this));
+        goalSelector.addGoal(3, new MoveTowardsRestrictionGoal(this, 0.9D));
+        goalSelector.addGoal(4, new AvoidEntityGoal<>(this, Monster.class, 8.0F, 0.95D, 1.15D));
+        goalSelector.addGoal(5, new WaterAvoidingRandomStrollGoal(this, 0.7D));
+        goalSelector.addGoal(6, new LookAtPlayerGoal(this, Player.class, 8.0F));
+        goalSelector.addGoal(7, new RandomLookAroundGoal(this));
     }
 
     @Override
     protected void defineSynchedData(SynchedEntityData.Builder builder) {
         super.defineSynchedData(builder);
+        builder.define(COMBAT_MEDICINE, -1L);
         builder.define(STATUS, STATUS_IDLE);
+        builder.define(ON_CALL, false);
+        builder.define(IN_CONVERSATION, false);
+        builder.define(CONVERSATION_SPOKE_AT, -1L);
         builder.define(NPC_CATEGORY, "");
         builder.define(NPC_APPEARANCE, "");
-        builder.define(NPC_NAME_COLOR, "aqua");
+        builder.define(NPC_NAME_COLOR, dispositionColor(false));
         builder.define(NPC_BASE_NAME, "");
+        builder.define(DEFENDING_AGAINST, java.util.Optional.empty());
+        builder.define(SELF_DEFENSE_UNTIL, 0L);
     }
 
     @Override
     public void aiStep() {
+        combatHealing.tick();
+        if (!level().isClientSide() && de.artemis.cyberneticenhancements.common.world.CityNpcMedicine.downed(this)) {
+            setTarget(null); getNavigation().stop(); setDeltaMovement(net.minecraft.world.phys.Vec3.ZERO); return;
+        }
+        if (!level().isClientSide()) updateSelfDefense();
         super.aiStep();
         if (!level().isClientSide() && tickCount == 1) {
             if (!hasRestriction()) {
@@ -192,6 +234,9 @@ public abstract class AbstractCityNpcEntity extends PathfinderMob {
         }
         if (!level().isClientSide()) {
             tickMeetupState();
+            entityData.set(IN_CONVERSATION, currentCustomer != null);
+            if (isAlive() && !combatHealing.usingItem() && getTarget() == null && getHealth() < getMaxHealth()
+                    && gameTime() - lastDamageAt >= 20L * 20L && tickCount % 100 == 0) heal(1);
         }
         if (!level().isClientSide() && tickCount % 10 == 0) {
             updateStatus();
@@ -200,14 +245,22 @@ public abstract class AbstractCityNpcEntity extends PathfinderMob {
 
     @Override
     public InteractionResult mobInteract(Player player, InteractionHand hand) {
-        if (!(player instanceof ServerPlayer serverPlayer) || hand != InteractionHand.MAIN_HAND) {
+        if (!canInteract(player)) return InteractionResult.FAIL;
+        if (de.artemis.cyberneticenhancements.common.world.CityNpcMedicine.downed(this)) return InteractionResult.PASS;
+        if (hand != InteractionHand.MAIN_HAND) {
             return super.mobInteract(player, hand);
         }
+        if (level().isClientSide()) {
+            player.stopUsingItem();
+            return InteractionResult.SUCCESS;
+        }
+        if (!(player instanceof ServerPlayer serverPlayer)) return super.mobInteract(player, hand);
         if (isRefusing(serverPlayer)) {
             player.displayClientMessage(Component.translatable("message.cyberneticenhancements.fixer.cool_off").withStyle(ChatFormatting.GRAY), true);
             return InteractionResult.CONSUME;
         }
-        if (currentCustomer != null && !currentCustomer.equals(player.getUUID())) {
+        if ((currentCustomer != null && !currentCustomer.equals(player.getUUID()))
+                || de.artemis.cyberneticenhancements.common.dialogue.NpcCallManager.isOccupiedByOther(serverPlayer, this)) {
             player.displayClientMessage(Component.translatable("message.cyberneticenhancements.fixer.busy").withStyle(ChatFormatting.GRAY), true);
             return InteractionResult.CONSUME;
         }
@@ -215,7 +268,11 @@ public abstract class AbstractCityNpcEntity extends PathfinderMob {
         if (!hasMet(serverPlayer)) {
             markMet(serverPlayer);
         }
-        currentCustomer = player.getUUID();
+        if (de.artemis.cyberneticenhancements.common.quest.PlayerQuestManager.tryHandInHeldItem(serverPlayer, this, player.getItemInHand(hand))) {
+            serverPlayer.stopUsingItem();
+            return InteractionResult.CONSUME;
+        }
+        setCurrentCustomer(player.getUUID());
         if (meetupCustomer != null && meetupCustomer.equals(player.getUUID())) {
             meetupReturnAt = 0L;
             meetupExpiresAt = gameTime() + MEETUP_WINDOW_TICKS;
@@ -225,7 +282,10 @@ public abstract class AbstractCityNpcEntity extends PathfinderMob {
                 (containerId, inventory, menuPlayer) -> new FixerDialogMenu(containerId, inventory, this),
                 getDisplayName()
         );
+        serverPlayer.stopUsingItem();
+        de.artemis.cyberneticenhancements.common.dialogue.NpcCallManager.endForInteraction(serverPlayer, this);
         serverPlayer.openMenu(provider, buffer -> buffer.writeVarInt(getId()));
+        de.artemis.cyberneticenhancements.common.journal.PlayerJournal.recordAt(serverPlayer, blockPosition(), "contacts", "talked", getDisplayName());
         return InteractionResult.CONSUME;
     }
 
@@ -256,6 +316,8 @@ public abstract class AbstractCityNpcEntity extends PathfinderMob {
         }
 
         FixerIdentitySavedData identities = FixerIdentitySavedData.get(serverLevel);
+        savedNameColorOverride = dispositionColor(false);
+        if (de.artemis.cyberneticenhancements.common.world.NpcAppearanceRules.reserved(savedAppearanceOverride)) savedAppearanceOverride = "";
         if (!savedNicknameOverride.isBlank() || !savedAppearanceOverride.isBlank() || !savedNameColorOverride.isBlank()) {
             identities.getOrAssignIdentity(getUUID(), npcTypeId(), serverLevel.random);
             identities.renameIdentity(getUUID(), savedNicknameOverride);
@@ -264,15 +326,25 @@ public abstract class AbstractCityNpcEntity extends PathfinderMob {
         }
 
         FixerIdentitySavedData.IdentityAssignment identity = identities.getOrAssignIdentity(getUUID(), npcTypeId(), serverLevel.random);
-        setCustomName(styledName(identity.displayName(), identity.nameColorId()));
+        String color = dispositionColor(false);
+        setCustomName(styledName(identity.displayName(), color));
         entityData.set(NPC_CATEGORY, identity.category().id());
         entityData.set(NPC_APPEARANCE, identity.appearance());
-        entityData.set(NPC_NAME_COLOR, identity.nameColorId());
+        entityData.set(NPC_NAME_COLOR, color);
         entityData.set(NPC_BASE_NAME, identity.name());
-        setCustomNameVisible(nameVisibleFor(identity.nameColorId()));
+        setCustomNameVisible(nameVisibleFor(color));
         if (hasRestriction()) {
             identities.updateHome(getUUID(), serverLevel.dimension().location().toString(), getRestrictCenter());
         }
+    }
+
+    /** Gives the NPC a look and name without saving an identity for it, for NPCs that are never contacts. */
+    protected void setTransientIdentity(Component name, NpcCategory category) {
+        entityData.set(NPC_CATEGORY, category.id());
+        entityData.set(NPC_NAME_COLOR, dispositionColor(false));
+        entityData.set(NPC_BASE_NAME, name.getString());
+        setCustomName(name);
+        setCustomNameVisible(true);
     }
 
     public NpcCategory npcCategory() {
@@ -285,6 +357,40 @@ public abstract class AbstractCityNpcEntity extends PathfinderMob {
 
     public String nameColorId() {
         return entityData.get(NPC_NAME_COLOR);
+    }
+
+    public String nameColorId(ServerPlayer viewer) {
+        if (isDefendingAgainst(viewer)) return "red";
+        return dispositionColor(de.artemis.cyberneticenhancements.common.world.NpcDisposition.angry(viewer, getUUID()));
+    }
+
+    public boolean isDefendingAgainst(Player player) {
+        return isAlive() && entityData.get(DEFENDING_AGAINST).filter(player.getUUID()::equals).isPresent();
+    }
+
+    public float aggressionRemaining(float partialTick) {
+        if (!isAlive() || entityData.get(DEFENDING_AGAINST).isEmpty()) return 0;
+        return Math.clamp((entityData.get(SELF_DEFENSE_UNTIL) - gameTime() - partialTick) / selfDefenseTicks(), 0, 1);
+    }
+
+    /** How long an NPC stays hostile after the last provocation before it settles back to yellow. */
+    protected long selfDefenseTicks() {
+        return SELF_DEFENSE_TICKS;
+    }
+
+    protected String dispositionColor(boolean angry) {
+        return angry ? "yellow" : "aqua";
+    }
+
+    public void applyClientDisposition(boolean angry, Player viewer) {
+        if (!level().isClientSide() || !hasCustomName()) return;
+        String color = isDefendingAgainst(viewer) ? "red" : dispositionColor(angry);
+        if (!color.equals(entityData.get(NPC_NAME_COLOR)) || !java.util.Objects.equals(getName().getStyle().getColor(),
+                net.minecraft.network.chat.TextColor.fromLegacyFormat(resolveNameColor(color)))) {
+            entityData.set(NPC_NAME_COLOR, color);
+            setCustomName(styledName(getName().getString(), color));
+            setCustomNameVisible(true);
+        }
     }
 
     public String baseName() {
@@ -321,12 +427,13 @@ public abstract class AbstractCityNpcEntity extends PathfinderMob {
             return false;
         }
         savedNicknameOverride = sanitized;
-        setCustomName(styledName(updated.displayName(), updated.nameColorId()));
-        setCustomNameVisible(nameVisibleFor(updated.nameColorId()));
+        setCustomName(styledName(updated.displayName(), dispositionColor(false)));
+        setCustomNameVisible(nameVisibleFor(dispositionColor(false)));
         return true;
     }
 
     public boolean applyNameColor(ServerPlayer player, String nameColorId) {
+        if (!"aqua".equals(nameColorId)) return false;
         if (!hasMaxTrust(player) || !(level() instanceof ServerLevel serverLevel)) {
             return false;
         }
@@ -336,9 +443,9 @@ public abstract class AbstractCityNpcEntity extends PathfinderMob {
             return false;
         }
         savedNameColorOverride = updated.nameColorId();
-        entityData.set(NPC_NAME_COLOR, updated.nameColorId());
-        setCustomName(styledName(updated.displayName(), updated.nameColorId()));
-        setCustomNameVisible(nameVisibleFor(updated.nameColorId()));
+        entityData.set(NPC_NAME_COLOR, dispositionColor(false));
+        setCustomName(styledName(updated.displayName(), dispositionColor(false)));
+        setCustomNameVisible(nameVisibleFor(dispositionColor(false)));
         return true;
     }
 
@@ -347,6 +454,7 @@ public abstract class AbstractCityNpcEntity extends PathfinderMob {
             return false;
         }
         String sanitized = appearanceId == null ? "" : appearanceId.trim();
+        if (de.artemis.cyberneticenhancements.common.world.NpcAppearanceRules.reserved(sanitized)) return false;
         FixerIdentitySavedData.IdentityAssignment updated = FixerIdentitySavedData.get(serverLevel).setAppearance(getUUID(), sanitized);
         if (updated == null) {
             return false;
@@ -358,11 +466,12 @@ public abstract class AbstractCityNpcEntity extends PathfinderMob {
 
     public void setCurrentCustomer(@Nullable UUID customerId) {
         this.currentCustomer = customerId;
+        if (!level().isClientSide()) entityData.set(IN_CONVERSATION, customerId != null);
     }
 
     public void clearCustomer(Player player) {
         if (currentCustomer != null && currentCustomer.equals(player.getUUID())) {
-            currentCustomer = null;
+            setCurrentCustomer(null);
             if (meetupCustomer != null && meetupCustomer.equals(player.getUUID())) {
                 meetupReturnAt = gameTime() + MEETUP_WINDOW_TICKS;
             }
@@ -385,7 +494,10 @@ public abstract class AbstractCityNpcEntity extends PathfinderMob {
     }
 
     public int trustLevel(Player player) {
-        int trustPoints = trustPoints(player);
+        return trustLevelForPoints(trustPoints(player));
+    }
+
+    public static int trustLevelForPoints(int trustPoints) {
         if (trustPoints >= TRUST_HOUSE_NAME) {
             return 4;
         }
@@ -412,6 +524,12 @@ public abstract class AbstractCityNpcEntity extends PathfinderMob {
         return trust;
     }
 
+    /** Their trust points as far as the player has earned any, or -1 if they never met; reads only, so looking at someone creates no record. */
+    public int knownTrustPoints(Player player) {
+        CompoundTag relation = relationTag(player, false);
+        return relation.getBoolean(PLAYER_RELATION_SEEN_TAG) ? decodedTrustPoints(relation) : -1;
+    }
+
     public boolean hasMet(Player player) {
         return relationTag(player, true).getBoolean(PLAYER_RELATION_SEEN_TAG);
     }
@@ -423,11 +541,23 @@ public abstract class AbstractCityNpcEntity extends PathfinderMob {
     }
 
     public void raiseTrust(Player player, int amount) {
-        int trust = Mth.clamp(trustPoints(player) + Math.max(0, amount), 0, TRUST_MAX);
+        int previous = trustPoints(player);
+        int trust = previous + Mth.clamp(amount, 0, TRUST_MAX - previous);
         CompoundTag relation = relationTag(player, true);
         relation.putInt(PLAYER_RELATION_TRUST_TAG, trust);
         relation.putInt(PLAYER_RELATION_TRUST_SCALE_TAG, TRUST_MAX);
         storeRelation(player, relation);
+        if (player instanceof ServerPlayer serverPlayer && trustLevelForPoints(trust) > trustLevelForPoints(previous)) {
+            serverPlayer.playNotifySound(ModSounds.SKILL_ADVANCE.get(), SoundSource.PLAYERS, 0.35F, 1.0F);
+            if (level() == serverPlayer.level() && isAlive() && !isInvisibleTo(serverPlayer)) {
+                var level = serverPlayer.serverLevel();
+                double y = getY() + getBbHeight() + 0.25;
+                var dust = new DustParticleOptions(new Vector3f(0.34F, 0.88F, 1.0F), 0.7F);
+                level.sendParticles(serverPlayer, dust, false, getX(), y, getZ(), 6, 0.23, 0.13, 0.23, 0.01);
+                level.sendParticles(serverPlayer, ParticleTypes.ELECTRIC_SPARK, false,
+                        getX(), y, getZ(), 3, 0.19, 0.10, 0.19, 0.025);
+            }
+        }
     }
 
     public void lowerTrust(Player player, int amount) {
@@ -447,6 +577,25 @@ public abstract class AbstractCityNpcEntity extends PathfinderMob {
         }
     }
 
+    public void rewardCommerceTrust(Player player, int amount) {
+        CompoundTag relation = relationTag(player, true);
+        long day = level().getDayTime() / 24000L;
+        int used = relation.getLong("CommerceTrustDay") == day ? relation.getInt("CommerceTrustEarned") : 0;
+        int gain = Math.min(Math.max(0, amount), Math.max(0,
+                de.artemis.cyberneticenhancements.common.economy.EconomyBalance.value("trust.commerce_daily_cap") - used));
+        relation.putLong("CommerceTrustDay", day);
+        relation.putInt("CommerceTrustEarned", used + gain);
+        storeRelation(player, relation);
+        if (gain > 0) raiseTrust(player, gain);
+    }
+
+    public static void copyRelations(Player original, Player clone) {
+        for (String key : java.util.List.of(PLAYER_NPC_RELATIONS_TAG, LEGACY_PLAYER_FIXER_RELATIONS_TAG,
+                LEGACY_PLAYER_SEEN_TAG, LEGACY_PLAYER_TRUST_TAG, LEGACY_PLAYER_PURGE_DAY_TAG)) {
+            if (original.getPersistentData().contains(key)) clone.getPersistentData().put(key, original.getPersistentData().get(key).copy());
+        }
+    }
+
     public void penalizeNoFundsAttempt(Player player) {
         applyTrustLossWithCooldown(player, PLAYER_RELATION_LAST_NO_FUNDS_TICK_TAG, NO_FUNDS_PENALTY_COOLDOWN_TICKS, TRUST_LOSS_NO_FUNDS);
         registerAnnoyance(player, ANNOYANCE_NO_FUNDS);
@@ -457,7 +606,25 @@ public abstract class AbstractCityNpcEntity extends PathfinderMob {
     }
 
     public boolean isRefusing(Player player) {
-        return relationTag(player, false).getLong(PLAYER_RELATION_REFUSAL_UNTIL_TAG) > gameTime();
+        return isDefendingAgainst(player) || relationTag(player, false).getLong(PLAYER_RELATION_REFUSAL_UNTIL_TAG) > gameTime();
+    }
+
+    public boolean isAnnoyed(Player player) {
+        CompoundTag relation = relationTag(player, false);
+        return isRefusing(player) || hasHeatSurcharge(player) || (relation.getInt(PLAYER_RELATION_ANNOYANCE_TAG) > 0
+                && gameTime() - relation.getLong(PLAYER_RELATION_LAST_ANNOYANCE_TICK_TAG) <= ANNOYANCE_WINDOW_TICKS);
+    }
+
+    public boolean isOnCall() { return entityData.get(ON_CALL); }
+
+    public void setOnCall(boolean onCall) { entityData.set(ON_CALL, onCall); }
+
+    public boolean isInConversation() { return entityData.get(IN_CONVERSATION); }
+
+    public long conversationSpokeAt() { return entityData.get(CONVERSATION_SPOKE_AT); }
+
+    public void noteConversationReply() {
+        if (!level().isClientSide()) entityData.set(CONVERSATION_SPOKE_AT, level().getGameTime());
     }
 
     public float priceMultiplier(Player player) {
@@ -485,7 +652,8 @@ public abstract class AbstractCityNpcEntity extends PathfinderMob {
     }
 
     public long lastPurgeDay(Player player) {
-        return relationTag(player, true).getLong(PLAYER_RELATION_PURGE_DAY_TAG);
+        CompoundTag relation = relationTag(player, true);
+        return relation.contains(PLAYER_RELATION_PURGE_DAY_TAG) ? relation.getLong(PLAYER_RELATION_PURGE_DAY_TAG) : -1L;
     }
 
     public boolean isPinned(Player player) {
@@ -564,11 +732,97 @@ public abstract class AbstractCityNpcEntity extends PathfinderMob {
         if (!hurt || level().isClientSide()) {
             return hurt;
         }
+        lastDamageAt = gameTime();
+        combatHealing.damaged(damageSource);
+        de.artemis.cyberneticenhancements.common.dialogue.NpcCallManager.interruptForNpc(this, !isAlive());
         if (damageSource.getEntity() instanceof Player player) {
             applyTrustLossWithCooldown(player, PLAYER_RELATION_LAST_ASSAULT_TICK_TAG, ASSAULT_PENALTY_COOLDOWN_TICKS, TRUST_LOSS_ASSAULT);
             registerAnnoyance(player, ANNOYANCE_ASSAULT);
+            if (player instanceof ServerPlayer attacker) {
+                de.artemis.cyberneticenhancements.common.world.NpcDisposition.anger(attacker, getUUID());
+                if (isAlive() && (angersOnFirstHit() || getHealth() < getMaxHealth() * 0.25F)) defendAgainst(attacker);
+            }
         }
         return hurt;
+    }
+
+    /** True for NPCs that fight back from the very first blow instead of waiting until they are nearly dead. */
+    protected boolean angersOnFirstHit() {
+        return false;
+    }
+
+    protected void defendAgainst(ServerPlayer attacker) {
+        defendAgainst(attacker, true);
+    }
+
+    /** {@code sound} is whether turning hostile is announced; a group set on someone announces it once, not per member. */
+    protected void defendAgainst(ServerPlayer attacker, boolean sound) {
+        if (attacker.isCreative() || attacker.isSpectator()) return;
+        UUID previous = selfDefenseAttacker;
+        boolean turningHostile = "yellow".equals(nameColorId(attacker));
+        setTarget(attacker);
+        if (getTarget() == attacker) {
+            selfDefenseAttacker = attacker.getUUID();
+            selfDefenseOrigin = blockPosition();
+            entityData.set(SELF_DEFENSE_UNTIL, gameTime() + selfDefenseTicks());
+            entityData.set(DEFENDING_AGAINST, java.util.Optional.of(attacker.getUUID()));
+            if (turningHostile && sound) attacker.playNotifySound(
+                    de.artemis.cyberneticenhancements.common.registry.ModSounds.NPC_AGGRESSION.get(),
+                    net.minecraft.sounds.SoundSource.HOSTILE, 0.08F, 1.0F);
+            if (attacker.containerMenu instanceof FixerDialogMenu menu && menu.entityId() == getId()) attacker.closeContainer();
+            syncDefenseContact(previous);
+            syncDefenseContact(attacker.getUUID());
+        }
+    }
+
+    protected void updateSelfDefense() {
+        var target = getTarget();
+        if (target == null && selfDefenseAttacker == null) return;
+        if (target != null && isAlive() && (angersOnFirstHit() || getHealth() < getMaxHealth() * 0.25F) && gameTime() < entityData.get(SELF_DEFENSE_UNTIL)
+                && target.isAlive() && target.level() == level() && target.getUUID().equals(selfDefenseAttacker)
+                && selfDefenseOrigin != null && target.blockPosition().closerThan(selfDefenseOrigin, 16)
+                && !(target instanceof Player player && (player.isCreative() || player.isSpectator()))) return;
+        UUID previous = selfDefenseAttacker;
+        setTarget(null);
+        setAggressive(false);
+        getNavigation().stop();
+        selfDefenseAttacker = null;
+        selfDefenseOrigin = null;
+        entityData.set(SELF_DEFENSE_UNTIL, 0L);
+        entityData.set(DEFENDING_AGAINST, java.util.Optional.empty());
+        syncDefenseContact(previous);
+        // Calming down is announced the way turning hostile is, quietly and only to the one it concerned.
+        if (previous != null && level() instanceof ServerLevel serverLevel) {
+            var player = serverLevel.getServer().getPlayerList().getPlayer(previous);
+            if (player != null && player.isAlive() && "yellow".equals(nameColorId(player))) player.playNotifySound(
+                    de.artemis.cyberneticenhancements.common.registry.ModSounds.NPC_AGGRESSION_LOST.get(),
+                    net.minecraft.sounds.SoundSource.HOSTILE, 0.08F, 1.0F);
+        }
+    }
+
+    private void syncDefenseContact(@Nullable UUID playerId) {
+        if (playerId == null || !(level() instanceof ServerLevel serverLevel)) return;
+        var player = serverLevel.getServer().getPlayerList().getPlayer(playerId);
+        if (player != null) PacketDistributor.sendToPlayer(player, de.artemis.cyberneticenhancements.common.network.ArchiveContactsPayload.capture(player));
+    }
+
+    @Override
+    public void die(net.minecraft.world.damagesource.DamageSource source) {
+        boolean wasDead = dead;
+        super.die(source);
+        if (!wasDead && dead && !level().isClientSide()) {
+            // Passing street NPCs are fair game: no MaxTec response, and no identity record to mark.
+            if (keepsContactRecord()) {
+                de.artemis.cyberneticenhancements.common.world.MaxTacResponse.onNpcKilled(this, source);
+                FixerIdentitySavedData.get((ServerLevel) level()).markDeceased(getUUID());
+            }
+            de.artemis.cyberneticenhancements.common.dialogue.NpcCallManager.interruptForNpc(this, true);
+            for (var player : ((ServerLevel) level()).getServer().getPlayerList().getPlayers()) {
+                if (archiveContacts(player).stream().anyMatch(contact -> contact.npcId().equals(getUUID()))) {
+                    PacketDistributor.sendToPlayer(player, de.artemis.cyberneticenhancements.common.network.ArchiveContactsPayload.capture(player));
+                }
+            }
+        }
     }
 
     @Nullable
@@ -580,7 +834,7 @@ public abstract class AbstractCityNpcEntity extends PathfinderMob {
         Player best = null;
         int bestScore = Integer.MIN_VALUE;
         for (Player candidate : players) {
-            if (isRefusing(candidate)) {
+            if (isAnnoyed(candidate)) {
                 continue;
             }
             PlayerCyberwareInventory inventory = new PlayerCyberwareInventory(candidate);
@@ -614,7 +868,7 @@ public abstract class AbstractCityNpcEntity extends PathfinderMob {
         List<Player> players = level().getEntitiesOfClass(
                 Player.class,
                 getBoundingBox().inflate(12.0D, 4.0D, 12.0D),
-                candidate -> candidate.isAlive() && !candidate.isSpectator() && !isRefusing(candidate)
+                candidate -> candidate.isAlive() && !candidate.isSpectator() && !isAnnoyed(candidate)
         );
         Player best = null;
         int bestScore = Integer.MIN_VALUE;
@@ -631,6 +885,7 @@ public abstract class AbstractCityNpcEntity extends PathfinderMob {
     @Override
     public void addAdditionalSaveData(CompoundTag tag) {
         super.addAdditionalSaveData(tag);
+        combatHealing.save(tag);
         if (hasRestriction()) {
             BlockPos center = getRestrictCenter();
             tag.putBoolean(HAS_HOME_TAG, true);
@@ -659,6 +914,13 @@ public abstract class AbstractCityNpcEntity extends PathfinderMob {
     @Override
     public void readAdditionalSaveData(CompoundTag tag) {
         super.readAdditionalSaveData(tag);
+        combatHealing.load(tag);
+        selfDefenseAttacker = null;
+        selfDefenseOrigin = null;
+        entityData.set(SELF_DEFENSE_UNTIL, 0L);
+        lastDamageAt = gameTime();
+        entityData.set(DEFENDING_AGAINST, java.util.Optional.empty());
+        setTarget(null);
         if (tag.getBoolean(HAS_HOME_TAG)) {
             restrictTo(new BlockPos(tag.getInt(HOME_POS_X_TAG), tag.getInt(HOME_POS_Y_TAG), tag.getInt(HOME_POS_Z_TAG)), 12);
         }
@@ -669,7 +931,8 @@ public abstract class AbstractCityNpcEntity extends PathfinderMob {
         meetupSpent = tag.getBoolean(MEETUP_SPENT_TAG);
         entityData.set(NPC_CATEGORY, NpcCategory.fromId(tag.getString(NPC_CATEGORY_TAG)).id());
         entityData.set(NPC_APPEARANCE, tag.getString(NPC_APPEARANCE_TAG));
-        entityData.set(NPC_NAME_COLOR, normalizeNameColorId(tag.getString(NPC_NAME_COLOR_TAG)));
+        entityData.set(NPC_NAME_COLOR, dispositionColor(false));
+        if (hasCustomName()) setCustomName(styledName(getName().getString(), dispositionColor(false)));
         entityData.set(NPC_BASE_NAME, tag.getString(NPC_BASE_NAME_TAG));
         savedNicknameOverride = tag.contains(NPC_NICKNAME_TAG, Tag.TAG_STRING) ? tag.getString(NPC_NICKNAME_TAG) : "";
         savedAppearanceOverride = entityData.get(NPC_APPEARANCE);
@@ -710,10 +973,12 @@ public abstract class AbstractCityNpcEntity extends PathfinderMob {
 
     private static ChatFormatting resolveNameColor(String nameColorId) {
         return switch (normalizeNameColorId(nameColorId)) {
+            case "yellow" -> ChatFormatting.YELLOW;
             case "blue" -> ChatFormatting.BLUE;
             case "gold" -> ChatFormatting.GOLD;
             case "green" -> ChatFormatting.GREEN;
             case "red" -> ChatFormatting.RED;
+            case "gray" -> ChatFormatting.GRAY;
             case "white" -> ChatFormatting.WHITE;
             case "light_purple" -> ChatFormatting.LIGHT_PURPLE;
             case "hidden" -> ChatFormatting.WHITE;
@@ -723,7 +988,7 @@ public abstract class AbstractCityNpcEntity extends PathfinderMob {
 
     private static String normalizeNameColorId(String nameColorId) {
         return switch (nameColorId == null ? "" : nameColorId.trim().toLowerCase()) {
-            case "blue", "gold", "green", "red", "white", "light_purple", "hidden" -> nameColorId.trim().toLowerCase();
+            case "blue", "gold", "green", "red", "yellow", "white", "light_purple", "gray", "hidden" -> nameColorId.trim().toLowerCase();
             default -> "aqua";
         };
     }
@@ -876,7 +1141,18 @@ public abstract class AbstractCityNpcEntity extends PathfinderMob {
         lowerTrust(player, amount);
     }
 
+    /** Temporary NPCs return false: nothing about them (met, trust, purge day) is written to the player, so they never become contacts. */
+    protected boolean keepsContactRecord() {
+        return true;
+    }
+
+    /** Whether this NPC is a real contact the player builds trust with, rather than a passing or encounter NPC. */
+    public boolean isContact() {
+        return keepsContactRecord() && npcType() != NpcType.MAXTEC;
+    }
+
     private CompoundTag relationTag(Player player, boolean create) {
+        if (!keepsContactRecord()) return new CompoundTag();
         CompoundTag persistentData = player.getPersistentData();
         CompoundTag allRelations = persistentData.contains(PLAYER_NPC_RELATIONS_TAG, Tag.TAG_COMPOUND)
                 ? persistentData.getCompound(PLAYER_NPC_RELATIONS_TAG)
@@ -904,6 +1180,7 @@ public abstract class AbstractCityNpcEntity extends PathfinderMob {
     }
 
     private void storeRelation(Player player, CompoundTag relation) {
+        if (!keepsContactRecord()) return;
         CompoundTag persistentData = player.getPersistentData();
         CompoundTag allRelations = persistentData.contains(PLAYER_NPC_RELATIONS_TAG, Tag.TAG_COMPOUND)
                 ? persistentData.getCompound(PLAYER_NPC_RELATIONS_TAG)
@@ -965,11 +1242,12 @@ public abstract class AbstractCityNpcEntity extends PathfinderMob {
                     Mth.clamp(new TrustAdapter(relation).trustLevel(), 0, 4),
                     relation.getBoolean(PLAYER_RELATION_PINNED_TAG),
                     relation.getBoolean(PLAYER_RELATION_HIDDEN_TAG),
-                    relation.getLong(PLAYER_RELATION_PURGE_DAY_TAG) < currentDay,
+                    (!relation.contains(PLAYER_RELATION_PURGE_DAY_TAG) || relation.getLong(PLAYER_RELATION_PURGE_DAY_TAG) < currentDay),
                     relation.getLong(PLAYER_RELATION_SURCHARGE_UNTIL_TAG) > now,
                     relation.getLong(PLAYER_RELATION_REFUSAL_UNTIL_TAG) > now,
                     identity.dimensionId(),
-                    identity.homePos()
+                    identity.homePos(),
+                    identityData.isDeceased(fixerId)
             ));
         }
 
@@ -988,12 +1266,52 @@ public abstract class AbstractCityNpcEntity extends PathfinderMob {
         return new ArchiveContactLocation(fallbackDimensionId == null ? "" : fallbackDimensionId, fallbackHomePos);
     }
 
+    /** Puts an NPC in the player's contacts only for as long as a quest needs them to be reachable. */
+    public static void openTemporaryContact(ServerPlayer player, AbstractCityNpcEntity npc, String name) {
+        var identities = FixerIdentitySavedData.get(player.serverLevel());
+        identities.getOrAssignIdentity(npc.getUUID(), npc.npcTypeId(), player.serverLevel().random);
+        identities.updateHome(npc.getUUID(), npc.level().dimension().location().toString(), npc.blockPosition());
+        identities.renameIdentity(npc.getUUID(), name);
+        CompoundTag relation = archiveRelationTag(player, npc.getUUID(), true);
+        relation.putBoolean(PLAYER_RELATION_SEEN_TAG, true);
+        relation.putBoolean(PLAYER_RELATION_TEMPORARY_TAG, true);
+        storeArchiveRelation(player, npc.getUUID(), relation);
+        PacketDistributor.sendToPlayer(player, de.artemis.cyberneticenhancements.common.network.ArchiveContactsPayload.capture(player));
+    }
+
+    /** Takes a temporary contact away again; a contact the player has otherwise made is never touched. */
+    public static void closeTemporaryContact(ServerPlayer player, UUID npcId) {
+        CompoundTag relation = archiveRelationTag(player, npcId, false);
+        if (relation == null || !relation.getBoolean(PLAYER_RELATION_TEMPORARY_TAG)) return;
+        CompoundTag all = player.getPersistentData().getCompound(PLAYER_NPC_RELATIONS_TAG);
+        all.remove(npcId.toString());
+        player.getPersistentData().put(PLAYER_NPC_RELATIONS_TAG, all);
+        PacketDistributor.sendToPlayer(player, de.artemis.cyberneticenhancements.common.network.ArchiveContactsPayload.capture(player));
+    }
+
+    public static AbstractCityNpcEntity resolveCallContact(ServerPlayer player, UUID npcId) {
+        if (FixerIdentitySavedData.get(player.serverLevel()).isDeceased(npcId)) return null;
+        CompoundTag relation = archiveRelationTag(player, npcId, false);
+        if (relation == null || !relation.getBoolean(PLAYER_RELATION_SEEN_TAG)) return null;
+        AbstractCityNpcEntity npc = resolveArchiveNpc(player, npcId);
+        if (npc == null || npc.isRemoved() || !npc.isAlive() || !npc.canInteract(player)) return null;
+        npc.ensureIdentity();
+        return npc;
+    }
+
+    public boolean canTakeCall(Player player) {
+        if (de.artemis.cyberneticenhancements.common.world.CityNpcMedicine.downed(this)) return false;
+        return canInteract(player) && isAlive() && !isRemoved() && !isRefusing(player)
+                && (currentCustomer == null || currentCustomer.equals(player.getUUID()))
+                && (meetupCustomer == null || meetupCustomer.equals(player.getUUID()));
+    }
+
     public static boolean locateFromArchive(ServerPlayer player, UUID npcId) {
         AbstractCityNpcEntity npc = resolveArchiveNpc(player, npcId);
         if (npc == null || npc.level() != player.level()) {
             return false;
         }
-        PacketDistributor.sendToPlayer(player, new FaceHazardHighlightPayload(List.of(), List.of(npc.getUUID()), LOCATE_OUTLINE_TICKS));
+        PacketDistributor.sendToPlayer(player, new FaceHazardHighlightPayload(List.of(), List.of(npc.getUUID()), LOCATE_OUTLINE_TICKS, true));
         return true;
     }
 
@@ -1028,11 +1346,26 @@ public abstract class AbstractCityNpcEntity extends PathfinderMob {
             return false;
         }
         boolean hidden = !relation.getBoolean(PLAYER_RELATION_HIDDEN_TAG);
+        if (FixerIdentitySavedData.get(player.serverLevel()).isDeceased(fixerId)) {
+            relation.putBoolean(PLAYER_RELATION_DECEASED_ACKNOWLEDGED_TAG, true);
+        }
         relation.putBoolean(PLAYER_RELATION_HIDDEN_TAG, hidden);
         if (hidden) {
             relation.putBoolean(PLAYER_RELATION_PINNED_TAG, false);
         }
         storeArchiveRelation(player, fixerId, relation);
+        return true;
+    }
+
+    public static boolean acknowledgeDeceasedFromArchive(ServerPlayer player, UUID npcId) {
+        CompoundTag relation = archiveRelationTag(player, npcId, false);
+        if (relation == null || !relation.getBoolean(PLAYER_RELATION_SEEN_TAG)
+                || relation.getBoolean(PLAYER_RELATION_DECEASED_ACKNOWLEDGED_TAG)
+                || !FixerIdentitySavedData.get(player.serverLevel()).isDeceased(npcId)) return false;
+        relation.putBoolean(PLAYER_RELATION_DECEASED_ACKNOWLEDGED_TAG, true);
+        relation.putBoolean(PLAYER_RELATION_HIDDEN_TAG, true);
+        relation.putBoolean(PLAYER_RELATION_PINNED_TAG, false);
+        storeArchiveRelation(player, npcId, relation);
         return true;
     }
 
@@ -1129,11 +1462,11 @@ public abstract class AbstractCityNpcEntity extends PathfinderMob {
         return score;
     }
 
-    private static final class FixerPlayerFocusGoal extends Goal {
+    protected static final class FixerPlayerFocusGoal extends Goal {
         private final AbstractCityNpcEntity fixer;
         private @Nullable Player target;
 
-        private FixerPlayerFocusGoal(AbstractCityNpcEntity fixer) {
+        protected FixerPlayerFocusGoal(AbstractCityNpcEntity fixer) {
             this.fixer = fixer;
             this.setFlags(EnumSet.of(Flag.MOVE, Flag.LOOK));
         }
@@ -1186,7 +1519,8 @@ public abstract class AbstractCityNpcEntity extends PathfinderMob {
             boolean surchargeActive,
             boolean refusing,
             String dimensionId,
-            BlockPos homePos
+            BlockPos homePos,
+            boolean deceased
     ) {
     }
 
@@ -1199,20 +1533,7 @@ public abstract class AbstractCityNpcEntity extends PathfinderMob {
         }
 
         private int trustLevel() {
-            int trustPoints = trustPoints();
-            if (trustPoints >= TRUST_HOUSE_NAME) {
-                return 4;
-            }
-            if (trustPoints >= TRUST_INNER_CIRCLE) {
-                return 3;
-            }
-            if (trustPoints >= TRUST_TRUSTED) {
-                return 2;
-            }
-            if (trustPoints >= TRUST_RECOGNIZED) {
-                return 1;
-            }
-            return 0;
+            return trustLevelForPoints(trustPoints());
         }
     }
 }

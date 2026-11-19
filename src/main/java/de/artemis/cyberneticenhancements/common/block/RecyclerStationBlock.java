@@ -30,6 +30,26 @@ public class RecyclerStationBlock extends Block implements EntityBlock {
     }
 
     @Override
+    public <T extends BlockEntity> net.minecraft.world.level.block.entity.BlockEntityTicker<T> getTicker(
+            Level level, BlockState state, net.minecraft.world.level.block.entity.BlockEntityType<T> type) {
+        return !level.isClientSide && type == de.artemis.cyberneticenhancements.common.registry.ModBlockEntities.RECYCLER_STATION.get()
+                ? (l, p, s, e) -> RecyclerStationBlockEntity.tick(l, p, s, (RecyclerStationBlockEntity) e) : null;
+    }
+
+    @Override
+    protected void neighborChanged(BlockState state, Level level, BlockPos pos, Block block, BlockPos fromPos, boolean moving) {
+        if (level.getBlockEntity(pos) instanceof RecyclerStationBlockEntity station) station.updateRedstone();
+        super.neighborChanged(state, level, pos, block, fromPos, moving);
+    }
+
+    @Override
+    protected void onRemove(BlockState state, Level level, BlockPos pos, BlockState next, boolean moving) {
+        if (!state.is(next.getBlock()) && level.getBlockEntity(pos) instanceof RecyclerStationBlockEntity station)
+            net.minecraft.world.Containers.dropContents(level, pos, station);
+        super.onRemove(state, level, pos, next, moving);
+    }
+
+    @Override
     protected InteractionResult useWithoutItem(@NotNull BlockState state, @NotNull Level level, BlockPos pos, Player player, BlockHitResult hitResult) {
         if (player instanceof ServerPlayer serverPlayer) {
             MenuProvider provider = new SimpleMenuProvider(

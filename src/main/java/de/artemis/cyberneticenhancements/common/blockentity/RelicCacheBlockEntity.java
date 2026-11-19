@@ -80,6 +80,37 @@ public final class RelicCacheBlockEntity extends BlockEntity {
     private final int[] puzzleTargetTokens = new int[RelicCacheHackPuzzle.MAX_TARGET_COUNT * RelicCacheHackPuzzle.MAX_SEQUENCE_LENGTH];
 
     private UUID hackingPlayer;
+    private UUID questOwner;
+    private String questId = "";
+    private boolean relocated;
+    public void markRelocated() { relocated = true; setChanged(); }
+    private boolean questAttemptFailed;
+    private boolean removeAfterAnimation;
+
+    public boolean bindQuest(UUID owner, String id) {
+        if (isBoundToQuest(owner, id) || questOwner != null) return false;
+        questOwner = owner;
+        questId = id;
+        setChanged();
+        return true;
+    }
+
+    public boolean isBoundToQuest(UUID owner, String id) { return owner.equals(questOwner) && id.equals(questId); }
+    public boolean isBoundToQuest(String id) { return questOwner != null && id.equals(questId); }
+    public String questId() { return questId; }
+    public boolean questAttemptFailed() { return questAttemptFailed; }
+    public boolean isQuestCache() { return questOwner != null; }
+
+    public void onHackMenuClosed(ServerPlayer player) {
+        if (questOwner != null && player.getUUID().equals(hackingPlayer) && hackSelectedCount > 0) {
+            questAttemptFailed = true;
+            clearHackSessionState();
+            setChanged();
+            PlayerQuestManager.onQuestCacheFailed(player, worldPosition);
+            if (level instanceof ServerLevel serverLevel && serverLevel.getBlockEntity(worldPosition) == this)
+                serverLevel.removeBlock(worldPosition, false);
+        }
+    }
     private int hackDifficulty;
     private int hackGridSize;
     private int hackTimeLimitTicks;
@@ -99,6 +130,8 @@ public final class RelicCacheBlockEntity extends BlockEntity {
     }
 
     public static void tick(ServerLevel level, BlockPos pos, BlockState state, RelicCacheBlockEntity blockEntity) {
+        if (!blockEntity.isAnimating() && blockEntity.isQuestCache() && level.getGameTime() % 20 == 0
+                && de.artemis.cyberneticenhancements.common.quest.QuestRecovery.cleanupRetiredSite(level, pos)) return;
         if (blockEntity.isAnimating()) {
             blockEntity.tickAnimation(level, pos, state);
             return;
@@ -156,6 +189,15 @@ public final class RelicCacheBlockEntity extends BlockEntity {
     }
 
     public boolean ensureHackSession(ServerPlayer player) {
+        if (relocated && !player.isCreative()) {
+            player.displayClientMessage(Component.translatable("message.cyberneticenhancements.relic_cache.relocated"), true);
+            return false;
+        }
+        if (questAttemptFailed || removeAfterAnimation) return false;
+        if (questOwner != null && !questOwner.equals(player.getUUID())) {
+            player.displayClientMessage(Component.translatable("message.cyberneticenhancements.quest.cache_reserved").withStyle(ChatFormatting.RED), true);
+            return false;
+        }
         if (isAnimating()) {
             return false;
         }
@@ -183,6 +225,7 @@ public final class RelicCacheBlockEntity extends BlockEntity {
             return;
         }
 
+        if (hackSelectedCount == 0 && questOwner != null) PlayerQuestManager.onQuestCacheAttemptStarted(player, worldPosition);
         hackSelectedCells[hackSelectedCount++] = cellIndex;
         updateCompletedMask();
         setChanged();
@@ -215,6 +258,7 @@ public final class RelicCacheBlockEntity extends BlockEntity {
     }
 
     private void completeHack(ServerPlayer player, ServerLevel level) {
+        if (questOwner != null && PlayerQuestManager.urgentDeadlineExpired(player, questId)) return;
         RelicCacheBlock cacheBlock = currentCacheBlock();
         if (cacheBlock == null) {
             failHack(player, Component.translatable("message.cyberneticenhancements.relic_cache.unavailable"));
@@ -234,18 +278,28 @@ public final class RelicCacheBlockEntity extends BlockEntity {
         }
 
         clearHackSessionState();
+        boolean firstClear = !RelicCacheBlock.hasPlayerOpened(player, level, worldPosition);
+        de.artemis.cyberneticenhancements.common.journal.PlayerJournal.recordAt(player, worldPosition, "world", "cache_cleared", cacheBlock.tier());
         RelicCacheBlock.markPlayerOpened(player, level, worldPosition);
-        PlayerQuestManager.onRelicCacheBreached(player, worldPosition);
+        if (firstClear) player.giveExperiencePoints(de.artemis.cyberneticenhancements.common.progression.ExperienceRewards.relicCache(cacheBlock.tier()));
+        removeAfterAnimation = questOwner != null;
+        boolean questFeedback = PlayerQuestManager.onRelicCacheBreached(player, worldPosition);
+        de.artemis.cyberneticenhancements.common.world.WorldEncounterOffenses.alarm(player, level, worldPosition);
         startAnimation(player.getUUID(), previews, rewards);
         syncToClient(level, worldPosition, getBlockState());
         setChanged();
-        player.displayClientMessage(Component.translatable("message.cyberneticenhancements.relic_cache.breach_success").withStyle(ChatFormatting.AQUA), true);
+        if (!questFeedback)
+            player.displayClientMessage(Component.translatable("message.cyberneticenhancements.relic_cache.breach_success").withStyle(ChatFormatting.AQUA), true);
         level.playSound(null, worldPosition, SoundEvents.BEACON_POWER_SELECT, SoundSource.BLOCKS, 0.65F, 1.25F);
         level.playSound(null, worldPosition, SoundEvents.ENCHANTMENT_TABLE_USE, SoundSource.BLOCKS, 0.55F, 0.8F);
         player.closeContainer();
     }
 
     private void failHack(@Nullable ServerPlayer player, Component message) {
+        if (player != null) de.artemis.cyberneticenhancements.common.journal.PlayerJournal.recordAt(player, worldPosition, "world", "cache_failed", message);
+        if (player != null && level instanceof ServerLevel alarmLevel)
+            de.artemis.cyberneticenhancements.common.world.WorldEncounterOffenses.alarm(player, alarmLevel, worldPosition);
+        if (questOwner != null) questAttemptFailed = true;
         clearHackSessionState();
         if (level instanceof ServerLevel serverLevel) {
             syncToClient(serverLevel, worldPosition, getBlockState());
@@ -253,8 +307,15 @@ public final class RelicCacheBlockEntity extends BlockEntity {
             serverLevel.playSound(null, worldPosition, SoundEvents.NOTE_BLOCK_DIDGERIDOO.value(), SoundSource.BLOCKS, 0.25F, 0.6F);
         }
         setChanged();
+        if (questOwner != null && level instanceof ServerLevel serverLevel) {
+            var owner = serverLevel.getServer().getPlayerList().getPlayer(questOwner);
+            if (owner != null) {
+                PlayerQuestManager.onQuestCacheFailed(owner, worldPosition);
+                if (serverLevel.getBlockEntity(worldPosition) == this) serverLevel.removeBlock(worldPosition, false);
+            }
+        }
         if (player != null) {
-            player.displayClientMessage(message.copy().withStyle(ChatFormatting.RED), true);
+            if (questOwner == null) player.displayClientMessage(message.copy().withStyle(ChatFormatting.RED), true);
             if (player.level() == level && player.containerMenu instanceof RelicCacheHackMenu menu && menu.isForBlock(worldPosition)) {
                 player.closeContainer();
             }
@@ -556,13 +617,18 @@ public final class RelicCacheBlockEntity extends BlockEntity {
         }
     }
 
+    public void releasePendingRewards(ServerLevel level, BlockPos pos) {
+        if (!isAnimating()) return;
+        removeAfterAnimation = false;
+        finishAnimation(level, pos);
+    }
+
     private void finishAnimation(ServerLevel level, BlockPos pos) {
         ServerPlayer player = openingPlayer == null ? null : level.getServer().getPlayerList().getPlayer(openingPlayer);
         if (player != null) {
             for (ItemStack reward : rewardItems) {
-                if (!player.addItem(reward.copy())) {
-                    player.drop(reward.copy(), false);
-                }
+                var remaining = reward.copy();
+                if (!player.addItem(remaining) && !remaining.isEmpty()) player.drop(remaining, false);
             }
             player.displayClientMessage(Component.translatable("message.cyberneticenhancements.relic_cache.unpacked").withStyle(ChatFormatting.AQUA), true);
         } else {
@@ -582,6 +648,7 @@ public final class RelicCacheBlockEntity extends BlockEntity {
         rewardItems.clear();
         syncToClient(level, pos, getBlockState());
         setChanged();
+        if (removeAfterAnimation) level.removeBlock(pos, false);
     }
 
     public void syncToClient(ServerLevel level, BlockPos pos, BlockState state) {
@@ -614,6 +681,11 @@ public final class RelicCacheBlockEntity extends BlockEntity {
     @Override
     protected void loadAdditional(CompoundTag tag, HolderLookup.Provider registries) {
         super.loadAdditional(tag, registries);
+        relocated = tag.getBoolean("Relocated");
+        questOwner = tag.hasUUID("QuestOwner") ? tag.getUUID("QuestOwner") : null;
+        questId = tag.getString("QuestId");
+        questAttemptFailed = tag.getBoolean("QuestAttemptFailed");
+        removeAfterAnimation = tag.getBoolean("RemoveAfterAnimation");
         animationTicksRemaining = tag.getInt(ANIMATION_TICKS_TAG);
         previewIndex = tag.getInt(PREVIEW_INDEX_TAG);
         openingPlayer = tag.hasUUID(OPENING_PLAYER_TAG) ? tag.getUUID(OPENING_PLAYER_TAG) : null;
@@ -649,6 +721,11 @@ public final class RelicCacheBlockEntity extends BlockEntity {
     @Override
     protected void saveAdditional(CompoundTag tag, HolderLookup.Provider registries) {
         super.saveAdditional(tag, registries);
+        tag.putBoolean("Relocated", relocated);
+        if (questOwner != null) tag.putUUID("QuestOwner", questOwner);
+        tag.putString("QuestId", questId);
+        tag.putBoolean("QuestAttemptFailed", questAttemptFailed);
+        tag.putBoolean("RemoveAfterAnimation", removeAfterAnimation);
         tag.putInt(ANIMATION_TICKS_TAG, animationTicksRemaining);
         tag.putInt(PREVIEW_INDEX_TAG, previewIndex);
         if (openingPlayer != null) {

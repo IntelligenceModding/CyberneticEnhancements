@@ -1,0 +1,25 @@
+{
+  "type": "minecraft:chest",
+  "pools": [
+    {
+      "entries": [
+        {
+          "type": "minecraft:item",
+          "name": "cyberneticenhancements:proprietary_neural_core",
+          "weight": 4
+        },
+        {
+          "type": "minecraft:item",
+          "name": "cyberneticenhancements:military_actuator_core",
+          "weight": 4
+        },
+        {
+          "type": "minecraft:item",
+          "name": "cyberneticenhancements:experimental_control_core",
+          "weight": 2
+        }
+      ],
+      "rolls": 1
+    }
+  ]
+}

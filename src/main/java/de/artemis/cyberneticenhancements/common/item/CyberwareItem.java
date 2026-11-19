@@ -60,7 +60,7 @@ public class CyberwareItem extends Item {
     }
 
     public int getCapacityBonus(ItemStack stack) {
-        return CyberwareUpgradeHelper.getCapacityBonus(stack, definition);
+        return CyberwareConditionHelper.hasNeuralFault(stack) ? 0 : CyberwareUpgradeHelper.getCapacityBonus(stack, definition);
     }
 
     public List<CyberwareEffect> getEffects() {
@@ -92,6 +92,10 @@ public class CyberwareItem extends Item {
                         CyberwareConditionHelper.getIntegrity(stack, definition),
                         CyberwareConditionHelper.getMaxIntegrity(definition))
                 .withStyle(ChatFormatting.YELLOW));
+        if (CyberwareConditionHelper.hasNeuralFault(stack)) {
+            tooltipComponents.add(Component.translatable("tooltip.cyberneticenhancements.neural_fault").withStyle(ChatFormatting.RED));
+            tooltipComponents.add(Component.translatable("tooltip.cyberneticenhancements.neural_fault.repair").withStyle(ChatFormatting.GRAY));
+        }
         tooltipComponents.add(CyberwareUpgradeHelper.getUpgradeStatusComponent(stack, definition)
                 .copy()
                 .withStyle(ChatFormatting.DARK_AQUA));

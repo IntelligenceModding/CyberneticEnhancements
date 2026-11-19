@@ -18,15 +18,25 @@ public final class CyberwareServiceHelper {
 
     private CyberwareServiceHelper() {}
 
+    public static int repairAmount(CyberwareDefinition definition) {
+        return CyberwareConditionHelper.getMaxIntegrity(definition) / 4;
+    }
+
     public static CyberwareServicePlan getRepairPlan(ItemStack input) {
         if (!(input.getItem() instanceof CyberwareItem implant)) return CyberwareServicePlan.empty();
         var definition = implant.getDefinition();
-        if (!CyberwareConditionHelper.isDamaged(input, definition)) return CyberwareServicePlan.empty();
+        int restored = repairAmount(definition);
+        int missing = CyberwareConditionHelper.getMaxIntegrity(definition) - CyberwareConditionHelper.getIntegrity(input, definition);
+        if (restored <= 0 || missing < restored && !CyberwareConditionHelper.hasNeuralFault(input)) return CyberwareServicePlan.empty();
         var costs = CyberwareUpgradeRegistry.get(definition.id()).repairMaterials();
         if (costs.isEmpty()) return CyberwareServicePlan.empty();
-        double missing = 1 - CyberwareConditionHelper.getIntegrityRatio(input, definition);
-        return new CyberwareServicePlan(CyberwareConditionHelper.createServiceCopy(input, definition, true),
-                costs.stream().map(m -> requirement(m, Math.max(1, (int) Math.ceil(m.count() * missing)))).toList());
+        ItemStack repaired = CyberwareConditionHelper.createServiceCopy(input, definition, false);
+        if (!CyberwareConditionHelper.hasNeuralFault(input)) {
+            CyberwareConditionHelper.repair(repaired, definition, Math.min(restored, missing));
+        }
+        CyberwareConditionHelper.clearNeuralFault(repaired);
+        return new CyberwareServicePlan(repaired,
+                costs.stream().map(m -> requirement(m, Math.max(1, (m.count() + 3) / 4))).toList());
     }
 
     public static CyberwareServicePlan getUpgradePlan(ItemStack input) {

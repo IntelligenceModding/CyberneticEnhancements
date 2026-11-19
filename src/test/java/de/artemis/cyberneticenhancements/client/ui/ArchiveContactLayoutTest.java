@@ -5,6 +5,23 @@ import static org.junit.Assert.*;
 
 public class ArchiveContactLayoutTest {
     @Test
+    public void allColumnsHaveExactlyEqualDimensionsEvenWithAnOddAvailableWidth() {
+        for (int width = 320; width <= 1600; width++) {
+            int columns = ArchiveContactLayout.columns(width);
+            var first = ArchiveContactLayout.card(0, width);
+            var last = ArchiveContactLayout.card(columns - 1, width);
+            assertEquals(0, first.x());
+            assertEquals(width, last.x() + last.width());
+            assertEquals(first.width(), last.width());
+            assertEquals(first.height(), last.height());
+            if (columns > 1) {
+                int gap = last.x() - first.x() - first.width();
+                assertTrue(gap >= ArchiveContactLayout.GAP && gap <= ArchiveContactLayout.GAP + 1);
+            }
+        }
+    }
+
+    @Test
     public void wideViewportUsesTwoColumnsWithoutStretchingSparseCollections() {
         var first = ArchiveContactLayout.card(0, 886);
         var second = ArchiveContactLayout.card(1, 886);
@@ -27,7 +44,7 @@ public class ArchiveContactLayoutTest {
             var previous = ArchiveContactLayout.action(0, card.width());
             assertEquals(ArchiveContactLayout.PADDING, previous.x());
             int smallest = previous.width(), largest = previous.width();
-            for (int i = 1; i < 4; i++) {
+            for (int i = 1; i < 3; i++) {
                 var action = ArchiveContactLayout.action(i, card.width());
                 assertEquals(ArchiveContactLayout.GAP, action.x() - previous.x() - previous.width());
                 assertEquals(previous.y(), action.y());

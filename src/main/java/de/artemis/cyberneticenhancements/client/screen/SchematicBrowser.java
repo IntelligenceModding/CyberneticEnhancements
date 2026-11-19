@@ -1,4 +1,5 @@
 package de.artemis.cyberneticenhancements.client.screen;
+import de.artemis.cyberneticenhancements.client.ui.ArchiveContentLayout;
 
 import de.artemis.cyberneticenhancements.client.render.SchematicIconRenderer;
 import de.artemis.cyberneticenhancements.client.ui.UiRenderer;
@@ -15,6 +16,7 @@ import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.crafting.RecipeHolder;
+import net.neoforged.neoforge.network.PacketDistributor;
 
 import java.time.*;
 import java.time.format.DateTimeFormatter;
@@ -22,7 +24,9 @@ import java.util.*;
 
 final class SchematicBrowser {
     private static final int TILE_WIDTH = 136, TILE_HEIGHT = 104, GAP = 10, HEADER = 62, GRID_HEADER = 62;
+    private static final int EXTRACT_WIDTH = 158;
     private String query = "", selected = "";
+    private boolean confirmExtraction;
     private int filter, category, maxScroll;
     private final UiScrollState gridScroll = new UiScrollState(), detailScroll = new UiScrollState();
     private final UiScrollbar scrollbar = new UiScrollbar();
@@ -77,6 +81,7 @@ final class SchematicBrowser {
         UiRenderer.panel(g, x, y, width, height, UiRenderer.PANEL);
         if (!selected.isEmpty() && !SchematicKnowledge.clientKnows(selected)) {
             selected = "";
+            confirmExtraction = false;
             detailScroll.reset();
         }
         if (!selected.isEmpty()) {
@@ -108,9 +113,14 @@ final class SchematicBrowser {
         int viewport = Math.max(1, height - GRID_HEADER - GAP * 2);
         int pageRows = Math.max(1, (viewport + GAP) / (TILE_HEIGHT + GAP));
 
-        int gridWidth = width - UiScrollbar.WIDTH - GAP;
+        int gridWidth = ArchiveContentLayout.contentWidth(width) + GAP * 2;
         int columns = Math.max(1, (gridWidth - GAP) / (TILE_WIDTH + GAP));
         int rows = (ids.size() + columns - 1) / columns;
+        if (rows > pageRows) {
+            gridWidth = ArchiveContentLayout.contentWidth(width, true) + GAP * 2;
+            columns = Math.max(1, (gridWidth - GAP) / (TILE_WIDTH + GAP));
+            rows = (ids.size() + columns - 1) / columns;
+        }
         double tileHeight = (viewport - (pageRows - 1) * GAP) / (double) pageRows;
         double tileWidth = (gridWidth - (columns + 1) * GAP) / (double) columns;
         gridTop = y + GRID_HEADER + GAP;
@@ -118,11 +128,11 @@ final class SchematicBrowser {
         maxScroll = Math.max(0, (int) Math.round(rows * tileHeight + Math.max(0, rows - 1) * GAP) - viewport);
         gridScroll.clamp(maxScroll);
         gridScroll.tick();
-        g.enableScissor(x + GAP, gridTop, x + gridWidth - GAP, gridBottom);
+        g.enableScissor(ArchiveContentLayout.contentX(x), gridTop, ArchiveContentLayout.contentX(x) + gridWidth - GAP * 2 + 3, gridBottom);
         for (int i = 0; i < ids.size(); i++) {
             double columnStart = i % columns * (tileWidth + GAP);
             double rowStart = i / columns * (tileHeight + GAP);
-            int tx = x + GAP + (int) Math.round(columnStart);
+            int tx = ArchiveContentLayout.contentX(x) + (int) Math.round(columnStart);
             int ty = gridTop + (int) Math.round(rowStart) - (int) Math.round(gridScroll.current);
             int cardWidth = (int) Math.round(columnStart + tileWidth) - (int) Math.round(columnStart);
             int cardHeight = (int) Math.round(rowStart + tileHeight) - (int) Math.round(rowStart);
@@ -160,7 +170,15 @@ final class SchematicBrowser {
         box(g, font, x + 10, y + 8, 90, 20, "< Collection", false);
         SchematicIconRenderer.drawWithShadow(g, new ItemStack(de.artemis.cyberneticenhancements.common.registry.ModItems.cyberware(selected).get()), x + 112, y + 10, owned);
         Component title = Component.literal(name(selected));
-        if (owned) g.drawString(font, title, x + 138, y + 11, UiRenderer.TEXT, false);
+        if (owned) {
+            var label = Component.translatable(confirmExtraction ? "screen.cyberneticenhancements.archive.schematic.confirm_extract"
+                    : "screen.cyberneticenhancements.archive.schematic.extract", SchematicKnowledge.EXTRACTION_COST);
+            boolean hover = inside(mx, my, extractX(), y + 8, EXTRACT_WIDTH, 20);
+            UiRenderer.button(g, font, extractX(), y + 8, EXTRACT_WIDTH, 20, label, true, confirmExtraction, hover, -1);
+            if (hover) g.renderTooltip(font, Component.translatable("screen.cyberneticenhancements.archive.schematic.extract_tooltip"), mx, my);
+            g.drawString(font, font.plainSubstrByWidth(title.getString(), Math.max(1, extractX() - (x + 146))),
+                    x + 138, y + 11, UiRenderer.TEXT, false);
+        }
         else
             UiEncryptedText.draw(g, font, title.getVisualOrderText(), x + 138, y + 11, selected.hashCode(), UiRenderer.TEXT_SECONDARY);
         g.drawString(font, owned ? "Learned design / recipes and discovery record" : "Not obtained / data encrypted", x + 112, y + 34, UiRenderer.TEXT_SECONDARY, false);
@@ -232,6 +250,8 @@ final class SchematicBrowser {
         if (!hovered.isEmpty()) g.renderTooltip(font, hovered, mx, my);
     }
 
+    private int extractX() { return x + width - GAP - EXTRACT_WIDTH; }
+
     private List<String> bill(FabricationRecipe recipe) {
         Map<String, Integer> totals = new LinkedHashMap<>();
         for (var part : recipe.parts()) {
@@ -255,10 +275,10 @@ final class SchematicBrowser {
     private UiScrollbar.Track scrollTrack() {
         if (selected.isEmpty()) {
             int viewport = Math.max(0, height - GRID_HEADER - GAP * 2);
-            return UiScrollbar.layout(x + width - UiScrollbar.WIDTH - GAP, y + GRID_HEADER + GAP, UiScrollbar.WIDTH, viewport, false, viewport, maxScroll, gridScroll.current);
+            return UiScrollbar.layout(ArchiveContentLayout.scrollbarX(x, width), y + GRID_HEADER + GAP, UiScrollbar.WIDTH, viewport, false, viewport, maxScroll, gridScroll.current);
         }
         int viewport = Math.max(0, height - HEADER - 10);
-        return UiScrollbar.layout(x + width - UiScrollbar.WIDTH - 6, y + HEADER, UiScrollbar.WIDTH, viewport, false, viewport, maxScroll, detailScroll.current);
+        return UiScrollbar.layout(ArchiveContentLayout.scrollbarX(x, width), y + HEADER, UiScrollbar.WIDTH, viewport, false, viewport, maxScroll, detailScroll.current);
     }
 
     private UiScrollState activeScroll() {
@@ -281,7 +301,12 @@ final class SchematicBrowser {
             if (inside(mx, my, x + 10, y + 8, 90, 20)) {
                 playClick();
                 selected = "";
+                confirmExtraction = false;
                 detailScroll.reset();
+            } else if (SchematicKnowledge.clientKnows(selected) && inside(mx, my, extractX(), y + 8, EXTRACT_WIDTH, 20)) {
+                playClick();
+                if (confirmExtraction) PacketDistributor.sendToServer(new SchematicExtractionPayload(selected));
+                confirmExtraction = !confirmExtraction;
             }
             return true;
         }
@@ -334,6 +359,7 @@ final class SchematicBrowser {
     }
 
     void unfocus() {
+        confirmExtraction = false;
         if (searchField != null) searchField.setFocused(false);
     }
 

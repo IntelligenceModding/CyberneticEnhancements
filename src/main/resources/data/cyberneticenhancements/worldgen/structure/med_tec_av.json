@@ -1,0 +1,8 @@
+{
+  "type": "cyberneticenhancements:med_tec_av",
+  "biomes": "#cyberneticenhancements:has_structure/med_tec_av",
+  "spawn_overrides": {},
+  "start_pool": "cyberneticenhancements:med_tec_av",
+  "step": "top_layer_modification",
+  "terrain_adaptation": "none"
+}

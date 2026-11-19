@@ -1,0 +1,45 @@
+{
+  "type": "minecraft:chest",
+  "pools": [
+    {
+      "entries": [
+        {
+          "type": "minecraft:item",
+          "name": "cyberneticenhancements:chromium_scrap",
+          "weight": 5
+        },
+        {
+          "type": "minecraft:item",
+          "name": "cyberneticenhancements:neural_processor",
+          "weight": 8
+        },
+        {
+          "type": "minecraft:item",
+          "name": "cyberneticenhancements:high_torque_servo",
+          "weight": 8
+        },
+        {
+          "type": "minecraft:item",
+          "name": "cyberneticenhancements:optical_array",
+          "weight": 8
+        },
+        {
+          "type": "minecraft:item",
+          "name": "cyberneticenhancements:reinforced_alloy",
+          "weight": 6
+        },
+        {
+          "type": "minecraft:item",
+          "name": "cyberneticenhancements:rare_item_components",
+          "weight": 6
+        },
+        {
+          "type": "minecraft:item",
+          "name": "cyberneticenhancements:epic_item_components",
+          "weight": 4
+        }
+      ],
+      "rolls": 1
+    }
+  ]
+}

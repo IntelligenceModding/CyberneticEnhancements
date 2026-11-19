@@ -294,7 +294,7 @@ public final class LegCyberwareManager {
         if (inventory.getInstalledCyberwareBySlotType(CyberwareSlotType.LEGS) != null) {
             return true;
         }
-        return inventory.getInstalledModuleItems().stream().anyMatch(module -> module.getDefinition().category() == CyberwareModuleCategory.LEGS);
+        return inventory.getOperationalModuleItems().stream().anyMatch(module -> module.getDefinition().category() == CyberwareModuleCategory.LEGS);
     }
 
     public static void clearCooldowns(Player player) {
@@ -766,7 +766,7 @@ public final class LegCyberwareManager {
 
     private static int countInstalledLegModules(PlayerCyberwareInventory inventory, String moduleId) {
         int count = 0;
-        for (var moduleItem : inventory.getInstalledModuleItems()) {
+        for (var moduleItem : inventory.getOperationalModuleItems()) {
             if (moduleItem.getDefinition().category() == CyberwareModuleCategory.LEGS
                     && moduleItem.getDefinition().id().equals(moduleId)) {
                 count++;

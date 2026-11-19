@@ -26,14 +26,20 @@ public final class SchematicItem extends Item {
             boolean exists = level.getRecipeManager().getAllRecipesFor(de.artemis.cyberneticenhancements.common.registry.ModRecipeTypes.FABRICATION.get())
                     .stream().anyMatch(r -> r.value().schematic().equals(design));
             if (!exists) return InteractionResultHolder.fail(stack);
-            if (!SchematicKnowledge.learn(server, design))
+            if (!SchematicKnowledge.learn(server, design)) {
                 server.displayClientMessage(Component.literal("Schematic already learned."), true);
+            } else {
+                stack.shrink(1);
+                server.getInventory().setChanged();
+                server.inventoryMenu.broadcastChanges();
+                if (server.containerMenu != server.inventoryMenu) server.containerMenu.broadcastChanges();
+            }
         }
         return InteractionResultHolder.sidedSuccess(stack, level.isClientSide);
     }
 
     public void appendHoverText(ItemStack stack, TooltipContext context, List<Component> lines, TooltipFlag flag) {
-        lines.add(Component.literal("Use to permanently learn this design. Not consumed."));
+        lines.add(Component.literal("Right-click to learn this design. Consumed when learned."));
         lines.add(Component.literal("View learned designs in the archive's Schematics tab."));
     }
 }

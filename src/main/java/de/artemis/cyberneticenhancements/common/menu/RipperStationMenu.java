@@ -179,6 +179,8 @@ public final class RipperStationMenu extends AbstractBaseMenu implements NamedBl
         }
     }
 
+    public int playerInventoryStart() { return playerInventoryStart; }
+
     private void addRipperPlayerInventorySlots(Inventory inventory) {
         for (int row = 0; row < 3; row++) {
             for (int column = 0; column < 9; column++) {
@@ -598,13 +600,13 @@ public final class RipperStationMenu extends AbstractBaseMenu implements NamedBl
                 continue;
             }
 
-            double integrityScale = CyberwareConditionHelper.getIntegrityRatio(stack, cyberwareItem.getDefinition());
+            double integrityScale = CyberwareConditionHelper.getPerformanceRatio(stack, cyberwareItem.getDefinition());
             mergeEffects(totals, cyberwareItem.getEffects(stack), integrityScale);
         }
-        for (CyberwareModuleItem moduleItem : cyberwareInventory.getInstalledModuleItems()) {
+        for (CyberwareModuleItem moduleItem : cyberwareInventory.getOperationalModuleItems()) {
             mergeEffects(totals, moduleItem.getDefinition().effects(), 1.0D);
         }
-        for (ChipwareItem chipwareItem : cyberwareInventory.getInstalledChipwareItems()) {
+        for (ChipwareItem chipwareItem : cyberwareInventory.getOperationalChipwareItems()) {
             mergeEffects(totals, chipwareItem.getDefinition().effects(), 1.0D);
         }
         return totals;
@@ -638,7 +640,7 @@ public final class RipperStationMenu extends AbstractBaseMenu implements NamedBl
 
     public boolean hasRequiredUpgradeComponent(CyberwareSlot slot) {
         ItemStack required = getRequiredUpgradeComponentStack(slot);
-        return !required.isEmpty() && (hasCreativeUpgradeBypass() || countAccessiblePlayerItems(required) > 0);
+        return !required.isEmpty() && (hasCreativeUpgradeBypass() || countAccessiblePlayerItems(required) >= required.getCount());
     }
 
     public ItemStack getRequiredUpgradeComponentStack(CyberwareSlot slot) {
@@ -690,7 +692,7 @@ public final class RipperStationMenu extends AbstractBaseMenu implements NamedBl
 
     public boolean hasRequiredChipUpgradeComponent(int handlerIndex, int slot) {
         ItemStack required = getRequiredChipUpgradeComponentStack(handlerIndex, slot);
-        return !required.isEmpty() && (hasCreativeUpgradeBypass() || countAccessiblePlayerItems(required) > 0);
+        return !required.isEmpty() && (hasCreativeUpgradeBypass() || countAccessiblePlayerItems(required) >= required.getCount());
     }
 
     public ItemStack getRequiredChipUpgradeComponentStack(int handlerIndex, int slot) {
@@ -726,7 +728,7 @@ public final class RipperStationMenu extends AbstractBaseMenu implements NamedBl
 
     public boolean hasRequiredArmModuleUpgradeComponent(int slot) {
         ItemStack required = getRequiredArmModuleUpgradeComponentStack(slot);
-        return !required.isEmpty() && (hasCreativeUpgradeBypass() || countAccessiblePlayerItems(required) > 0);
+        return !required.isEmpty() && (hasCreativeUpgradeBypass() || countAccessiblePlayerItems(required) >= required.getCount());
     }
 
     public ItemStack getRequiredArmModuleUpgradeComponentStack(int slot) {
@@ -762,7 +764,7 @@ public final class RipperStationMenu extends AbstractBaseMenu implements NamedBl
 
     public boolean hasRequiredLegModuleUpgradeComponent(int slot) {
         ItemStack required = getRequiredLegModuleUpgradeComponentStack(slot);
-        return !required.isEmpty() && (hasCreativeUpgradeBypass() || countAccessiblePlayerItems(required) > 0);
+        return !required.isEmpty() && (hasCreativeUpgradeBypass() || countAccessiblePlayerItems(required) >= required.getCount());
     }
 
     public ItemStack getRequiredLegModuleUpgradeComponentStack(int slot) {
@@ -778,13 +780,7 @@ public final class RipperStationMenu extends AbstractBaseMenu implements NamedBl
     }
 
     private ItemStack getRequiredUpgradeComponentStack(CyberwareTier currentTier) {
-        return switch (currentTier) {
-            case TIER_1 -> ModItems.UNCOMMON_ITEM_COMPONENTS.get().getDefaultInstance();
-            case TIER_2 -> ModItems.RARE_ITEM_COMPONENTS.get().getDefaultInstance();
-            case TIER_3 -> ModItems.EPIC_ITEM_COMPONENTS.get().getDefaultInstance();
-            case TIER_4 -> ModItems.LEGENDARY_ITEM_COMPONENTS.get().getDefaultInstance();
-            case TIER_5 -> ItemStack.EMPTY;
-        };
+        return PlayerCyberwareInventory.getRequiredUpgradeComponentStack(currentTier);
     }
 
     private int countAccessiblePlayerItems(ItemStack required) {

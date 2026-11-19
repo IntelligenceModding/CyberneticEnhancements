@@ -42,13 +42,25 @@
       "ingredient": {
         "item": "cyberneticenhancements:replacement_joint"
       },
+      "slot": 16
+    },
+    {
+      "ingredient": {
+        "item": "cyberneticenhancements:uncommon_item_components"
+      },
       "slot": 17
+    },
+    {
+      "ingredient": {
+        "item": "cyberneticenhancements:replacement_joint"
+      },
+      "slot": 18
     }
   ],
   "result": {
     "count": 1,
     "id": "cyberneticenhancements:combat_actuator"
   },
-  "ticks": 160,
+  "ticks": 200,
   "tier": 2
 }

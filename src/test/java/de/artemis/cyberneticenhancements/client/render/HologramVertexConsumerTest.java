@@ -52,6 +52,15 @@ public class HologramVertexConsumerTest {
         assertEquals(0, target.overlayV);
     }
 
+    @Test
+    public void animationPhaseNeverRoundsPastTheLastPixelRow() {
+        RecordingConsumer target = new RecordingConsumer();
+        var consumer = new HologramVertexConsumer(target, new Matrix4f(), 79.999F);
+        consumer.addVertex(0, 1, 0).setUv1(0, 0);
+        assertTrue(target.overlayV < 80 * 256);
+        assertEquals(31, HologramPixels.sweepRow(target.overlayV / 256F, 32));
+    }
+
     private static final class RecordingConsumer implements VertexConsumer {
         private final Vector3f position = new Vector3f();
         private int overlayU;

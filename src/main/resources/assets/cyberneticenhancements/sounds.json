@@ -1,0 +1,110 @@
+{
+  "contracts.new_contract": {
+    "sounds": [{ "name": "cyberneticenhancements:contracts/new_contract", "preload": true }]
+  },
+  "contracts.cyberpsycho_neutralized": {
+    "sounds": [{ "name": "cyberneticenhancements:contracts/cyberpsycho_neutralized", "preload": true }]
+  },
+  "npc.npc_aggression": {
+    "sounds": [{ "name": "cyberneticenhancements:npc/npc_aggression", "preload": true }]
+  },
+  "npc.npc_aggression_lost": {
+    "sounds": [{ "name": "cyberneticenhancements:npc/npc_aggression_lost", "preload": true }]
+  },
+  "contracts.complete_contract": {
+    "sounds": [
+      { "name": "cyberneticenhancements:contracts/complete_contract_01", "preload": true },
+      { "name": "cyberneticenhancements:contracts/complete_contract_02", "preload": true }
+    ]
+  },
+  "calls.outgoing_call": {
+    "sounds": [{ "name": "cyberneticenhancements:calls/outgoing_call", "preload": true }]
+  },
+  "calls.incoming_call": {
+    "sounds": [{ "name": "cyberneticenhancements:calls/incoming_call", "preload": true }]
+  },
+  "menu.screen_sound_01": {
+    "sounds": [{ "name": "cyberneticenhancements:menu/screen_sound_01", "preload": true }]
+  },
+  "menu.screen_sound_02": {
+    "sounds": [{ "name": "cyberneticenhancements:menu/screen_sound_02", "preload": true }]
+  },
+  "menu.screen_sound_03": {
+    "sounds": [{ "name": "cyberneticenhancements:menu/screen_sound_03", "preload": true }]
+  },
+  "menu.screen_sound_04": {
+    "sounds": [{ "name": "cyberneticenhancements:menu/screen_sound_04", "preload": true }]
+  },
+  "menu.screen_sound_05": {
+    "sounds": [{ "name": "cyberneticenhancements:menu/screen_sound_05", "preload": true }]
+  },
+  "menu.screen_sound_06": {
+    "sounds": [{ "name": "cyberneticenhancements:menu/screen_sound_06", "preload": true }]
+  },
+  "menu.screen_sound_07": {
+    "sounds": [{ "name": "cyberneticenhancements:menu/screen_sound_07", "preload": true }]
+  },
+  "menu.screen_sound_08": {
+    "sounds": [{ "name": "cyberneticenhancements:menu/screen_sound_08", "preload": true }]
+  },
+  "menu.screen_sound_09": {
+    "sounds": [{ "name": "cyberneticenhancements:menu/screen_sound_09", "preload": true }]
+  },
+  "menu.screen_sound_10": {
+    "sounds": [{ "name": "cyberneticenhancements:menu/screen_sound_10", "preload": true }]
+  },
+  "menu.screen_sound_11": {
+    "sounds": [{ "name": "cyberneticenhancements:menu/screen_sound_11", "preload": true }]
+  },
+  "npc.maxtec_spawn": {
+    "sounds": [{ "name": "cyberneticenhancements:npc/maxtec_spawn", "preload": true }]
+  },
+  "player.hacking_access": {
+    "sounds": [{ "name": "cyberneticenhancements:player/hacking_access", "preload": true }]
+  },
+  "menu.launch_intro": {
+    "sounds": [{ "name": "cyberneticenhancements:menu/launch_intro", "preload": true }]
+  },
+  "calls.join_link": {
+    "sounds": [{ "name": "cyberneticenhancements:calls/join_link", "preload": true }]
+  },
+  "player.cyberware_malfunction": {
+    "sounds": [{ "name": "cyberneticenhancements:player/cyberware_malfunction", "preload": true }]
+  },
+  "calls.open_contacts": {
+    "sounds": [{ "name": "cyberneticenhancements:calls/open_contacts", "preload": true }]
+  },
+  "calls.close_contacts": {
+    "sounds": [{ "name": "cyberneticenhancements:calls/close_contacts", "preload": true }]
+  },
+  "player.skill_advance": {
+    "sounds": [{ "name": "cyberneticenhancements:player/skill_advance", "preload": true }]
+  },
+  "menu.pause": {
+    "sounds": [{ "name": "cyberneticenhancements:menu/pause", "preload": true }]
+  },
+  "menu.resume": {
+    "sounds": [{ "name": "cyberneticenhancements:menu/resume", "preload": true }]
+  },
+  "player.cash_transfer": {
+    "sounds": [{ "name": "cyberneticenhancements:player/cash_transfer", "preload": true }]
+  },
+  "world.barrier_scan": {
+    "sounds": [{ "name": "cyberneticenhancements:world/barrier_scan", "preload": true }]
+  },
+  "menu.title_screen_music": {
+    "sounds": [{ "name": "cyberneticenhancements:menu/title_screen_music", "stream": true }]
+  },
+  "player.healing": {
+    "sounds": ["cyberneticenhancements:player/healing"]
+  },
+  "player.flatlined": {
+    "subtitle": "subtitles.cyberneticenhancements.flatlined",
+    "sounds": [
+      {
+        "name": "cyberneticenhancements:player/flatlined",
+        "stream": true
+      }
+    ]
+  }
+}

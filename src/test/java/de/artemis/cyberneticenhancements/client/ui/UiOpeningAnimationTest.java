@@ -10,6 +10,7 @@ public class UiOpeningAnimationTest {
         UiOpeningAnimation animation = new UiOpeningAnimation(nanos(1000), 2400, 650, false);
         var immediate = animation.sample(nanos(1000));
         assertTrue(immediate.complete());
+        assertEquals(1, immediate.bootLinearProgress(), 0);
         assertEquals(0, immediate.bootOpacity(), 0);
         assertEquals(1, immediate.wikiOpacity(), 0);
         assertEquals(1, immediate.wikiScale(), 0);
@@ -22,7 +23,7 @@ public class UiOpeningAnimationTest {
     public void loadingPanelLeavesBeforeTheWikiFinishesEntering() {
         UiOpeningAnimation animation = new UiOpeningAnimation(0, 2400, 650);
         var loading = animation.sample(nanos(1200));
-        assertEquals(0.5F, loading.bootProgress(), 0);
+        assertTrue(loading.bootProgress() > 0 && loading.bootProgress() < 1);
         assertEquals(1, loading.bootOpacity(), 0);
         assertEquals(0, loading.wikiOpacity(), 0);
         var entering = animation.sample(nanos(2700));
@@ -74,6 +75,30 @@ public class UiOpeningAnimationTest {
         }
         assertEquals(1, previousOpacity, 0);
         assertEquals(0, previousOffset, 0);
+    }
+
+    @Test
+    public void loadingPausesAndCatchesUpWithoutMovingBackwardsOrChangingTheDuration() {
+        var animation = new UiOpeningAnimation(0, 2400, 650);
+        var before = animation.sample(nanos(300));
+        var after = animation.sample(nanos(500));
+        float beforePause = before.bootProgress();
+        float afterPause = after.bootProgress();
+        assertEquals(300 / 2400.0F, before.bootLinearProgress(), 0.000001F);
+        assertEquals(500 / 2400.0F, after.bootLinearProgress(), 0.000001F);
+        assertTrue(beforePause > 0);
+        assertEquals(beforePause, afterPause, 0);
+        float afterBurst = animation.sample(nanos(900)).bootProgress();
+        assertTrue(afterBurst - afterPause > 400 / 2400.0F);
+        float previous = afterBurst;
+        for (int elapsed = 905; elapsed < 2400; elapsed += 5) {
+            var frame = animation.sample(nanos(elapsed));
+            assertTrue(frame.bootProgress() >= previous && frame.bootProgress() < 1);
+            assertFalse(frame.complete());
+            previous = frame.bootProgress();
+        }
+        assertEquals(1, animation.sample(nanos(2400)).bootProgress(), 0);
+        assertTrue(animation.sample(nanos(3050)).complete());
     }
 
     private static long nanos(long millis) {

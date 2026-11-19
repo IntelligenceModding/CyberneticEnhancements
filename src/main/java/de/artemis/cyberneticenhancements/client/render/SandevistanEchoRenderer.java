@@ -46,7 +46,7 @@ public final class SandevistanEchoRenderer {
 
     public static void tick(Collection<SandevistanSnapshotPayload.User> users) {
         Minecraft minecraft = Minecraft.getInstance();
-        if (minecraft.level == null || !SandevistanClientOptions.afterimages) {
+        if (minecraft.level == null || !SandevistanClientOptions.afterimages()) {
             clear();
             return;
         }
@@ -56,7 +56,7 @@ public final class SandevistanEchoRenderer {
 
     public static void receive(de.artemis.cyberneticenhancements.common.network.SandevistanEchoPayload sample) {
         Minecraft minecraft = Minecraft.getInstance();
-        if (minecraft.level == null || wideModel == null || !SandevistanClientOptions.afterimages
+        if (minecraft.level == null || wideModel == null || !SandevistanClientOptions.afterimages()
                 || !minecraft.level.dimension().location().equals(sample.dimension())
                 || minecraft.level.getGameTime() - sample.tick() >= LIFETIME
                 || !(minecraft.level.getEntity(sample.entityId()) instanceof AbstractClientPlayer player)
@@ -93,15 +93,16 @@ public final class SandevistanEchoRenderer {
     }
 
     public static void render(RenderLevelStageEvent event) {
-        if (event.getStage() != RenderLevelStageEvent.Stage.AFTER_BLOCK_ENTITIES) return;
+        if (event.getStage() != RenderLevelStageEvent.Stage.AFTER_ENTITIES) return;
         Minecraft minecraft = Minecraft.getInstance();
         if (minecraft.level == null || minecraft.player == null || ECHOES.isEmpty() || wideModel == null
-                || ShaderPackCompatibility.isRenderingShadowPass() || !SandevistanClientOptions.afterimages) return;
+                || ShaderPackCompatibility.isRenderingShadowPass() || !SandevistanClientOptions.afterimages()) return;
         Vec3 camera = event.getCamera().getPosition();
         float partialTick = event.getPartialTick().getGameTimeDeltaPartialTick(false);
         double tick = minecraft.level.getGameTime() + partialTick;
         List<Echo> ordered = ECHOES.stream().sorted(Comparator.comparingDouble((Echo echo) -> echo.position.distanceToSqr(camera)).reversed()).toList();
         var buffers = minecraft.renderBuffers().bufferSource();
+        buffers.endBatch();
         Set<RenderType> usedTypes = new HashSet<>();
 
         PoseStack poseStack = new PoseStack();

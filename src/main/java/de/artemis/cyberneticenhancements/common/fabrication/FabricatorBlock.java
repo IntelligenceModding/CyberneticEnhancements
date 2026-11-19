@@ -7,6 +7,7 @@ import net.minecraft.world.*;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
+import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.*;
 import net.minecraft.world.level.block.entity.*;
 import net.minecraft.world.level.block.state.*;
@@ -31,24 +32,15 @@ public final class FabricatorBlock extends Block implements EntityBlock {
         return InteractionResult.SUCCESS;
     }
 
-    protected ItemInteractionResult useItemOn(ItemStack stack, BlockState state, Level level, BlockPos pos, Player player, InteractionHand hand, BlockHitResult hit) {
-        if (stack.is(FabricationContent.part("precision_assembly_module")) || stack.is(FabricationContent.part("high_spec_fabrication_module"))) {
-            if (!level.isClientSide && level.getBlockEntity(pos) instanceof FabricatorBlockEntity station) {
-                boolean upgraded = station.upgrade(stack);
-                player.displayClientMessage(net.minecraft.network.chat.Component.literal(upgraded ? "Fabricator upgraded" : "Apply upgrades in order; finish fabrication first."), true);
-            }
-            return ItemInteractionResult.sidedSuccess(level.isClientSide);
-        }
-        return ItemInteractionResult.PASS_TO_DEFAULT_BLOCK_INTERACTION;
+    @Override
+    protected void neighborChanged(BlockState state, Level level, BlockPos pos, Block block, BlockPos fromPos, boolean moving) {
+        if (level.getBlockEntity(pos) instanceof FabricatorBlockEntity station) station.updateRedstone();
+        super.neighborChanged(state, level, pos, block, fromPos, moving);
     }
 
     protected void onRemove(BlockState state, Level level, BlockPos pos, BlockState next, boolean moving) {
         if (!state.is(next.getBlock()) && level.getBlockEntity(pos) instanceof FabricatorBlockEntity station) {
             Containers.dropContents(level, pos, station);
-            if (station.capability >= 2)
-                Containers.dropItemStack(level, pos.getX(), pos.getY(), pos.getZ(), new ItemStack(FabricationContent.part("precision_assembly_module")));
-            if (station.capability >= 3)
-                Containers.dropItemStack(level, pos.getX(), pos.getY(), pos.getZ(), new ItemStack(FabricationContent.part("high_spec_fabrication_module")));
         }
         super.onRemove(state, level, pos, next, moving);
     }

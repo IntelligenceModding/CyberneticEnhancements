@@ -28,6 +28,6 @@ public final class UiButton extends Button {
     protected void renderWidget(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
         var font = Minecraft.getInstance().font;
         UiRenderer.button(graphics, font, getX(), getY(), getWidth(), getHeight(),
-                getMessage(), active, selected, isHoveredOrFocused(), 0xFFFFFFFF);
+                getMessage(), active, selected, UiRenderer.highlighted(this), 0xFFFFFFFF);
     }
 }
