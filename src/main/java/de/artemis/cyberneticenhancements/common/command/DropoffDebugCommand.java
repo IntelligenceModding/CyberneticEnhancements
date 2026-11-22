@@ -51,7 +51,7 @@ public final class DropoffDebugCommand {
             }
             case "deliver" -> {
                 deliveries.deliverNow(player);
-                result = "Pending rewards made due now. Remaining parcels: " + deliveries.pendingParcels(player.getUUID()) + ". Missing, unloaded or full barrels retain their deliveries.";
+                result = "Pending rewards made due now. Remaining cargo: " + deliveries.pendingCargos(player.getUUID()) + ". Missing, unloaded or full barrels retain their deliveries.";
             }
             case "reset" -> {
                 deliveries.resetSetup(player.getUUID());
@@ -76,7 +76,7 @@ public final class DropoffDebugCommand {
                         ? "loaded, unread=" + barrel.hasUnreadDelivery() : "missing or owner mismatch";
                 long next = deliveries.nextDeliveryIn(player.getUUID(), player.server.overworld().getGameTime());
                 result = "Setup placed=" + deliveries.hasPlacedDropoff(player.getUUID()) + ", starter claimed=" + deliveries.setupItemGiven(player.getUUID())
-                        + ", parcels=" + deliveries.pendingParcels(player.getUUID()) + ", next=" + (next < 0 ? "none" : (next + 19) / 20 + "s")
+                        + ", cargo=" + deliveries.pendingCargos(player.getUUID()) + ", next=" + (next < 0 ? "none" : (next + 19) / 20 + "s")
                         + ", barrel=" + state + (point == null ? "" : " at " + point.dimension().location() + " " + point.pos().toShortString());
             }
         }

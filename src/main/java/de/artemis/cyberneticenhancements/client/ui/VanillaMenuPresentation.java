@@ -12,6 +12,16 @@ public final class VanillaMenuPresentation {
     public static final int EDGE = 0xFF73394A, HIGHLIGHT = 0xFFD38A9A;
     public static final int PANEL_EDGE = 0xFF43252F, ENTRY_EDGE = 0xFF4F2B37;
     public static final int ENTRY_HOVER = 0xFF82505F, ENTRY_SELECTED = 0xFFAC6779;
+    /** The red scrollbar of the title-screen menus. */
+    public static void scrollbar(GuiGraphics g, UiScrollbar.Track track, boolean highlighted) {
+        g.fill(track.x(), track.y(), track.x() + track.width(), track.y() + track.height(), 0xFF200B13);
+        UiRenderer.outline(g, track.x(), track.y(), track.width(), track.height(), SCROLL_EDGE);
+        g.fill(track.x(), track.thumbStart(), track.x() + track.width(), track.thumbStart() + track.thumbLength(),
+                highlighted ? 0xFFB94A63 : 0xFF803047);
+        UiRenderer.outline(g, track.x(), track.thumbStart(), track.width(), track.thumbLength(),
+                highlighted ? HIGHLIGHT : SCROLL_THUMB_EDGE);
+    }
+
     public static final int SCROLL_EDGE = 0xFF51313F, SCROLL_THUMB_EDGE = 0xFFA56576;
     public static final int FIELD = 0xFF200B13;
 

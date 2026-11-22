@@ -12,21 +12,6 @@ public final class DevTestEntity extends AbstractCityNpcEntity {
         setInvulnerable(true);
     }
 
-    public static de.artemis.cyberneticenhancements.common.dialogue.NpcDialogueTree dialogueTree() {
-        return new de.artemis.cyberneticenhancements.common.dialogue.NpcDialogueTree(300, java.util.Map.of(300,
-                new de.artemis.cyberneticenhancements.common.dialogue.NpcDialogueNode(300, "screen.cyberneticenhancements.dev_test.greeting", java.util.List.of(
-                        choice(1310, "contracts", de.artemis.cyberneticenhancements.common.dialogue.NpcDialogueView.CONTRACTS),
-                        choice(1302, "shop", de.artemis.cyberneticenhancements.common.dialogue.NpcDialogueView.SHOP),
-                        choice(1321, "services", de.artemis.cyberneticenhancements.common.dialogue.NpcDialogueView.SERVICES),
-                        choice(1301, "cache", de.artemis.cyberneticenhancements.common.dialogue.NpcDialogueView.CACHE_INTEL)))));
-    }
-
-    private static de.artemis.cyberneticenhancements.common.dialogue.NpcDialogueChoice choice(int id, String key,
-            de.artemis.cyberneticenhancements.common.dialogue.NpcDialogueView view) {
-        String label = "screen.cyberneticenhancements.npc.dialogue.choice." + key;
-        return new de.artemis.cyberneticenhancements.common.dialogue.NpcDialogueChoice(id, label, label, 300, view, 0, 0, false, "");
-    }
-
     @Override
     public NpcType npcType() {
         return NpcType.NETRUNNER;

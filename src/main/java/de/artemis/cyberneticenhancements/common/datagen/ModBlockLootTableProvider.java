@@ -14,6 +14,7 @@ public final class ModBlockLootTableProvider extends BlockLootSubProvider {
     private static final Set<Block> DIRECT_BLOCKS = Set.of(
             ModBlocks.IRON_QUEST_CRATE.get(),
             ModBlocks.DROPOFF_POINT.get(),
+            ModBlocks.FAST_TRAVEL.get(),
             ModBlocks.CYBERWARE_FABRICATOR.get(),
             ModBlocks.RELIC_CACHE.get(),
             ModBlocks.UNCOMMON_RELIC_CACHE.get(),
@@ -34,6 +35,10 @@ public final class ModBlockLootTableProvider extends BlockLootSubProvider {
     protected void generate() {
         add(ModBlocks.CHROMIUM_ORE.get(), createOreDrop(ModBlocks.CHROMIUM_ORE.get(), de.artemis.cyberneticenhancements.common.registry.ModItems.RAW_CHROMIUM.get()));
         add(ModBlocks.DEEPSLATE_CHROMIUM_ORE.get(), createOreDrop(ModBlocks.DEEPSLATE_CHROMIUM_ORE.get(), de.artemis.cyberneticenhancements.common.registry.ModItems.RAW_CHROMIUM.get()));
+        add(ModBlocks.COPPER_CABLE.get(), copperCableDrops());
+        dropSelf(ModBlocks.WATER_PIPE.get());
+        dropSelf(ModBlocks.HVAC_DUCT.get());
+        dropSelf(ModBlocks.HVAC_VENT.get());
         DIRECT_BLOCKS.forEach(block -> {
             if (block instanceof de.artemis.cyberneticenhancements.common.block.RelicCacheBlock)
                 add(block, net.minecraft.world.level.storage.loot.LootTable.lootTable());
@@ -41,10 +46,23 @@ public final class ModBlockLootTableProvider extends BlockLootSubProvider {
         });
     }
 
+    /** One cable for every side that holds a wire, like glow lichen. */
+    private net.minecraft.world.level.storage.loot.LootTable.Builder copperCableDrops() {
+        var block = ModBlocks.COPPER_CABLE.get();
+        var entry = net.minecraft.world.level.storage.loot.entries.LootItem.lootTableItem(block);
+        for (var side : net.minecraft.core.Direction.values())
+            entry.apply(net.minecraft.world.level.storage.loot.functions.SetItemCountFunction.setCount(net.minecraft.world.level.storage.loot.providers.number.ConstantValue.exactly(1), true)
+                    .when(net.minecraft.world.level.storage.loot.predicates.LootItemBlockStatePropertyCondition.hasBlockStateProperties(block)
+                            .setProperties(net.minecraft.advancements.critereon.StatePropertiesPredicate.Builder.properties()
+                                    .hasProperty(net.minecraft.world.level.block.MultifaceBlock.getFaceProperty(side), true))));
+        return net.minecraft.world.level.storage.loot.LootTable.lootTable().withPool(applyExplosionCondition(block,
+                net.minecraft.world.level.storage.loot.LootPool.lootPool().setRolls(net.minecraft.world.level.storage.loot.providers.number.ConstantValue.exactly(1)).add(entry)));
+    }
+
     @Override
     protected @NotNull Iterable<Block> getKnownBlocks() {
         var blocks = new java.util.ArrayList<>(DIRECT_BLOCKS);
-        blocks.addAll(List.of(ModBlocks.CHROMIUM_ORE.get(), ModBlocks.DEEPSLATE_CHROMIUM_ORE.get()));
+        blocks.addAll(List.of(ModBlocks.CHROMIUM_ORE.get(), ModBlocks.DEEPSLATE_CHROMIUM_ORE.get(), ModBlocks.COPPER_CABLE.get(), ModBlocks.WATER_PIPE.get(), ModBlocks.HVAC_DUCT.get(), ModBlocks.HVAC_VENT.get()));
         return blocks;
     }
 }

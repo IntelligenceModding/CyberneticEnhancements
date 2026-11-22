@@ -16,10 +16,16 @@ public final class ModBlockEntities {
             DeferredRegister.create(BuiltInRegistries.BLOCK_ENTITY_TYPE, CyberneticEnhancements.MOD_ID);
     public static final DeferredHolder<BlockEntityType<?>, BlockEntityType<de.artemis.cyberneticenhancements.common.blockentity.DropoffPointBlockEntity>> DROPOFF_POINT =
             BLOCK_ENTITIES.register("dropoff_point", () -> BlockEntityType.Builder.of(de.artemis.cyberneticenhancements.common.blockentity.DropoffPointBlockEntity::new, ModBlocks.DROPOFF_POINT.get()).build(null));
+    public static final DeferredHolder<BlockEntityType<?>, BlockEntityType<de.artemis.cyberneticenhancements.common.blockentity.FastTravelBlockEntity>> FAST_TRAVEL =
+            BLOCK_ENTITIES.register("fast_travel", () -> BlockEntityType.Builder.of(de.artemis.cyberneticenhancements.common.blockentity.FastTravelBlockEntity::new, ModBlocks.FAST_TRAVEL.get()).build(null));
     public static final DeferredHolder<BlockEntityType<?>, BlockEntityType<de.artemis.cyberneticenhancements.common.blockentity.HoloBarrierBlockEntity>> HOLO_BARRIER =
             BLOCK_ENTITIES.register("holo_barrier", () -> BlockEntityType.Builder.of(de.artemis.cyberneticenhancements.common.blockentity.HoloBarrierBlockEntity::new, ModBlocks.HOLO_BARRIER.get()).build(null));
     public static final DeferredHolder<BlockEntityType<?>, BlockEntityType<de.artemis.cyberneticenhancements.common.blockentity.IronQuestCrateBlockEntity>> IRON_QUEST_CRATE =
             BLOCK_ENTITIES.register("iron_quest_crate", () -> BlockEntityType.Builder.of(de.artemis.cyberneticenhancements.common.blockentity.IronQuestCrateBlockEntity::new, ModBlocks.IRON_QUEST_CRATE.get()).build(null));
+    public static final DeferredHolder<BlockEntityType<?>, BlockEntityType<de.artemis.cyberneticenhancements.common.blockentity.CopperCableBlockEntity>> COPPER_CABLE =
+            BLOCK_ENTITIES.register("copper_cable", () -> BlockEntityType.Builder.of(de.artemis.cyberneticenhancements.common.blockentity.CopperCableBlockEntity::new, ModBlocks.COPPER_CABLE.get()).build(null));
+    public static final DeferredHolder<BlockEntityType<?>, BlockEntityType<de.artemis.cyberneticenhancements.common.blockentity.CrateBlockEntity>> CRATE =
+            BLOCK_ENTITIES.register("crate", () -> BlockEntityType.Builder.of(de.artemis.cyberneticenhancements.common.blockentity.CrateBlockEntity::new, ModBlocks.CRATE.get()).build(null));
     public static final DeferredHolder<BlockEntityType<?>, BlockEntityType<de.artemis.cyberneticenhancements.common.fabrication.FabricatorBlockEntity>> FABRICATOR =
             BLOCK_ENTITIES.register("cyberware_fabricator", () -> BlockEntityType.Builder.of(de.artemis.cyberneticenhancements.common.fabrication.FabricatorBlockEntity::new, ModBlocks.CYBERWARE_FABRICATOR.get()).build(null));
 

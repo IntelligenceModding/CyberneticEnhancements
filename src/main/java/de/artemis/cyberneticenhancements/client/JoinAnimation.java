@@ -34,6 +34,9 @@ public final class JoinAnimation {
         return ClientConfig.SPEC.isLoaded() && ClientConfig.SHOW_JOIN_ANIMATION.get() && !TutorialClient.inTutorialWorld();
     }
 
+    /** Whether the join is still being dressed: loading screens to wait out, or the opening animation playing. */
+    public static boolean busy() { return pending || running; }
+
     public static void onLogin(ClientPlayerNetworkEvent.LoggingIn event) {
         clear();
         pending = enabled();
@@ -60,6 +63,8 @@ public final class JoinAnimation {
             pending = false;
             return;
         }
+        // Choosing a lifepath replaces the opening: after it there is only the game, with no animation or sound.
+        if (OriginClient.hidesHud()) { pending = false; return; }
         if (mc.player == null || mc.level == null || mc.screen != null || mc.getOverlay() != null) return;
         pending = false;
         running = true;

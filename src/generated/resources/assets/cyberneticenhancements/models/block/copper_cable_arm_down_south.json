@@ -1,0 +1,41 @@
+{
+  "parent": "minecraft:block/block",
+  "elements": [
+    {
+      "faces": {
+        "down": {
+          "texture": "#wire"
+        },
+        "east": {
+          "texture": "#wire"
+        },
+        "north": {
+          "texture": "#wire"
+        },
+        "south": {
+          "texture": "#wire"
+        },
+        "up": {
+          "texture": "#wire"
+        },
+        "west": {
+          "texture": "#wire"
+        }
+      },
+      "from": [
+        6.0,
+        0.0,
+        10.0
+      ],
+      "to": [
+        10.0,
+        2.0,
+        16.0
+      ]
+    }
+  ],
+  "textures": {
+    "particle": "minecraft:block/copper_block",
+    "wire": "minecraft:block/copper_block"
+  }
+}

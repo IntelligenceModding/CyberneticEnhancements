@@ -1,0 +1,65 @@
+{
+  "multipart": [
+    {
+      "apply": {
+        "model": "cyberneticenhancements:block/hvac_duct_core"
+      }
+    },
+    {
+      "apply": {
+        "model": "cyberneticenhancements:block/hvac_duct_arm"
+      },
+      "when": {
+        "up": "true"
+      }
+    },
+    {
+      "apply": {
+        "model": "cyberneticenhancements:block/hvac_duct_arm",
+        "x": 180
+      },
+      "when": {
+        "down": "true"
+      }
+    },
+    {
+      "apply": {
+        "model": "cyberneticenhancements:block/hvac_duct_arm",
+        "x": 90
+      },
+      "when": {
+        "north": "true"
+      }
+    },
+    {
+      "apply": {
+        "model": "cyberneticenhancements:block/hvac_duct_arm",
+        "x": 90,
+        "y": 180
+      },
+      "when": {
+        "south": "true"
+      }
+    },
+    {
+      "apply": {
+        "model": "cyberneticenhancements:block/hvac_duct_arm",
+        "x": 90,
+        "y": 90
+      },
+      "when": {
+        "east": "true"
+      }
+    },
+    {
+      "apply": {
+        "model": "cyberneticenhancements:block/hvac_duct_arm",
+        "x": 90,
+        "y": 270
+      },
+      "when": {
+        "west": "true"
+      }
+    }
+  ]
+}

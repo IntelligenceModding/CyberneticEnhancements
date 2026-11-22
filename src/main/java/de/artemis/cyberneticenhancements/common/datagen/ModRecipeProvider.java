@@ -26,6 +26,50 @@ public final class ModRecipeProvider extends RecipeProvider {
         net.minecraft.data.recipes.ShapelessRecipeBuilder.shapeless(RecipeCategory.DECORATIONS, ModBlocks.DROPOFF_POINT.get())
                 .requires(Items.BARREL).requires(Items.PAPER).requires(Items.IRON_INGOT)
                 .unlockedBy("has_barrel", has(Items.BARREL)).save(recipeOutput);
+        ShapedRecipeBuilder.shaped(RecipeCategory.DECORATIONS, ModBlocks.FAST_TRAVEL.get())
+                .pattern(" P ")
+                .pattern("RTR")
+                .pattern("III")
+                .define('P', Items.ENDER_PEARL)
+                .define('R', Items.REDSTONE)
+                .define('T', Items.ENCHANTING_TABLE)
+                .define('I', Items.IRON_INGOT)
+                .unlockedBy("has_enchanting_table", has(Items.ENCHANTING_TABLE)).save(recipeOutput);
+        net.minecraft.data.recipes.ShapelessRecipeBuilder.shapeless(RecipeCategory.DECORATIONS, ModBlocks.COPPER_CABLE.get(), 6)
+                .requires(Items.COPPER_INGOT)
+                .unlockedBy("has_copper_ingot", has(Items.COPPER_INGOT)).save(recipeOutput);
+        ShapedRecipeBuilder.shaped(RecipeCategory.DECORATIONS, ModBlocks.WATER_PIPE.get(), 6)
+                .pattern("III")
+                .pattern("   ")
+                .pattern("III")
+                .define('I', Items.IRON_INGOT)
+                .unlockedBy("has_iron_ingot", has(Items.IRON_INGOT)).save(recipeOutput);
+        net.minecraft.data.recipes.ShapelessRecipeBuilder.shapeless(RecipeCategory.DECORATIONS, ModItems.SHUTOFF_VALVE.get())
+                .requires(ModBlocks.WATER_PIPE.get()).requires(Items.RED_DYE).requires(Items.IRON_NUGGET)
+                .unlockedBy("has_water_pipe", has(ModBlocks.WATER_PIPE.get())).save(recipeOutput);
+        ShapedRecipeBuilder.shaped(RecipeCategory.DECORATIONS, ModBlocks.HVAC_DUCT.get(), 6)
+                .pattern("II")
+                .pattern("II")
+                .define('I', Items.IRON_INGOT)
+                .unlockedBy("has_iron_ingot", has(Items.IRON_INGOT)).save(recipeOutput);
+        ShapedRecipeBuilder.shaped(RecipeCategory.DECORATIONS, ModBlocks.HVAC_VENT.get(), 2)
+                .pattern("I")
+                .pattern("B")
+                .pattern("I")
+                .define('I', Items.IRON_INGOT)
+                .define('B', Items.IRON_BARS)
+                .unlockedBy("has_iron_ingot", has(Items.IRON_INGOT)).save(recipeOutput);
+        ShapedRecipeBuilder.shaped(RecipeCategory.TOOLS, ModItems.BUILDING_GADGET.get())
+                .pattern(" CC")
+                .pattern(" SC")
+                .pattern("S  ")
+                .define('C', Items.COPPER_INGOT)
+                .define('S', Items.STICK)
+                .unlockedBy("has_copper_ingot", has(Items.COPPER_INGOT))
+                .save(recipeOutput);
+        net.minecraft.data.recipes.ShapelessRecipeBuilder.shapeless(RecipeCategory.DECORATIONS, ModItems.HANGING_WIRE.get(), 3)
+                .requires(Items.IRON_INGOT).requires(Items.STRING)
+                .unlockedBy("has_iron_ingot", has(Items.IRON_INGOT)).save(recipeOutput);
         buildMaterialRecipes(recipeOutput);
         buildConsumableRecipes(recipeOutput);
 

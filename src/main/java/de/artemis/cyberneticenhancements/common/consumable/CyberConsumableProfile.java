@@ -1,5 +1,6 @@
 package de.artemis.cyberneticenhancements.common.consumable;
 
+import de.artemis.cyberneticenhancements.common.skills.SkillEffects;
 import de.artemis.cyberneticenhancements.common.cyberware.CyberwareBalance;
 import de.artemis.cyberneticenhancements.common.cyberware.CyberwareEffect;
 import de.artemis.cyberneticenhancements.common.cyberware.CyberstrainManager;
@@ -28,19 +29,19 @@ public enum CyberConsumableProfile {
 
     public void apply(Player player) {
         switch (this) {
-            case MAXDOC_MK1 -> player.heal((float) value("maxdoc_mk1.heal"));
-            case MAXDOC_MK2 -> player.heal((float) value("maxdoc_mk2.heal"));
-            case MAXDOC_MK3 -> player.heal((float) value("maxdoc_mk3.heal"));
+            case MAXDOC_MK1 -> player.heal(SkillEffects.healing(player, (float) value("maxdoc_mk1.heal")));
+            case MAXDOC_MK2 -> player.heal(SkillEffects.healing(player, (float) value("maxdoc_mk2.heal")));
+            case MAXDOC_MK3 -> player.heal(SkillEffects.healing(player, (float) value("maxdoc_mk3.heal")));
             case BOUNCE_BACK_MK1 -> {
-                player.heal((float) value("bounce_back_mk1.heal"));
+                player.heal(SkillEffects.healing(player, (float) value("bounce_back_mk1.heal")));
                 TemporaryCyberwareEffectManager.addEffect(player, CyberwareEffect.healthRegen(value("bounce_back_mk1.regen")), ticks("bounce_back_mk1.duration_ticks"));
             }
             case BOUNCE_BACK_MK2 -> {
-                player.heal((float) value("bounce_back_mk2.heal"));
+                player.heal(SkillEffects.healing(player, (float) value("bounce_back_mk2.heal")));
                 TemporaryCyberwareEffectManager.addEffect(player, CyberwareEffect.healthRegen(value("bounce_back_mk2.regen")), ticks("bounce_back_mk2.duration_ticks"));
             }
             case BOUNCE_BACK_MK3 -> {
-                player.heal((float) value("bounce_back_mk3.heal"));
+                player.heal(SkillEffects.healing(player, (float) value("bounce_back_mk3.heal")));
                 TemporaryCyberwareEffectManager.addEffect(player, CyberwareEffect.healthRegen(value("bounce_back_mk3.regen")), ticks("bounce_back_mk3.duration_ticks"));
             }
             case HEALTH_BOOSTER -> TemporaryCyberwareEffectManager.addEffect(player, CyberwareEffect.hearts(value("health_booster.hearts")), ticks("health_booster.duration_ticks"));

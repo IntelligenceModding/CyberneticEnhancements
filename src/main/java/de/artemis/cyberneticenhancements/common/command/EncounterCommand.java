@@ -18,6 +18,13 @@ public final class EncounterCommand {
                 .executes(context -> answer(context.getSource(), true)));
         encounter.then(Commands.literal("refuse").requires(source -> source.hasPermission(Commands.LEVEL_ALL))
                 .executes(context -> answer(context.getSource(), false)));
+        encounter.then(Commands.literal("name").requires(source -> source.hasPermission(Commands.LEVEL_ALL))
+                .executes(context -> {
+                    var player = context.getSource().getPlayerOrException();
+                    if (StreetEncounters.nameDrop(player)) return 1;
+                    GameplayMessages.failure(context.getSource(), Component.translatable("message.cyberneticenhancements.encounter.none"));
+                    return 0;
+                }));
         encounter.then(Commands.literal("trigger").requires(source -> source.hasPermission(Commands.LEVEL_GAMEMASTERS))
                 .then(Commands.literal("ripperdoc").executes(context -> trigger(context.getSource(), true)))
                 .then(Commands.literal("shakedown").executes(context -> trigger(context.getSource(), false))));

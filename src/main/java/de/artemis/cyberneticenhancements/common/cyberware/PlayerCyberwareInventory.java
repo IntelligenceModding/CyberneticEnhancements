@@ -474,7 +474,7 @@ public final class PlayerCyberwareInventory extends ItemStackHandler {
                 capacity += cyberwareItem.getCapacityBonus(stack);
             }
         }
-        return capacity + (int) Math.round(getChromeCapacityEffectBonus());
+        return de.artemis.cyberneticenhancements.common.skills.SkillEffects.capacity(player, capacity) + (int) Math.round(getChromeCapacityEffectBonus());
     }
 
     public int getCyberstrain() {

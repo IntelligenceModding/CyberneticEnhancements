@@ -80,6 +80,9 @@ public final class MedTecAvStructure extends Structure {
         return footprintHeights(context, box)[12] + LIFT - 1 - box.minY();
     }
 
+    /** The pool this site's build is picked from; the locate command tells its templates apart. */
+    public Holder<StructureTemplatePool> startPool() { return startPool; }
+
     @Override
     public StructureType<?> type() {
         return ModStructures.MED_TEC_AV.get();

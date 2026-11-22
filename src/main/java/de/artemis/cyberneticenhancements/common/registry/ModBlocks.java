@@ -31,12 +31,43 @@ public final class ModBlocks {
     public static final DeferredBlock<de.artemis.cyberneticenhancements.common.block.DropoffPointBlock> DROPOFF_POINT = register(
             "dropoff_point", de.artemis.cyberneticenhancements.common.block.DropoffPointBlock::new,
             properties -> BlockBehaviour.Properties.ofFullCopy(Blocks.BARREL));
+    /** A fast travel terminal: an enchanting table that projects a hologram. */
+    public static final DeferredBlock<de.artemis.cyberneticenhancements.common.block.FastTravelBlock> FAST_TRAVEL = register(
+            "fast_travel", de.artemis.cyberneticenhancements.common.block.FastTravelBlock::new,
+            properties -> BlockBehaviour.Properties.ofFullCopy(Blocks.ENCHANTING_TABLE).lightLevel(state -> 9));
     public static final DeferredBlock<de.artemis.cyberneticenhancements.common.block.HoloBarrierBlock> HOLO_BARRIER = register(
             "holo_barrier", de.artemis.cyberneticenhancements.common.block.HoloBarrierBlock::new,
             properties -> properties.noCollission().noOcclusion().strength(-1F, 3600000F).noLootTable());
     public static final DeferredBlock<de.artemis.cyberneticenhancements.common.block.IronQuestCrateBlock> IRON_QUEST_CRATE = register(
             "iron_quest_crate", de.artemis.cyberneticenhancements.common.block.IronQuestCrateBlock::new,
             properties -> BlockBehaviour.Properties.ofFullCopy(Blocks.IRON_BLOCK).strength(3.5F).sound(SoundType.METAL));
+    /** The loot crate of generated structures: breaks at once, has no item and is never obtainable. */
+    public static final DeferredBlock<de.artemis.cyberneticenhancements.common.block.CrateBlock> CRATE = BLOCKS.registerBlock(
+            "crate", de.artemis.cyberneticenhancements.common.block.CrateBlock::new,
+            BlockBehaviour.Properties.of().strength(0F).sound(SoundType.WOOD).noOcclusion().noLootTable()
+                    .pushReaction(net.minecraft.world.level.material.PushReaction.DESTROY));
+    /** The invisible source of the bubbles that rise from a broken container. */
+    public static final DeferredBlock<de.artemis.cyberneticenhancements.common.block.BubbleVentBlock> BUBBLE_VENT = BLOCKS.registerBlock(
+            "bubble_vent", de.artemis.cyberneticenhancements.common.block.BubbleVentBlock::new,
+            BlockBehaviour.Properties.of().noCollission().noOcclusion().instabreak().replaceable().noLootTable()
+                    .pushReaction(net.minecraft.world.level.material.PushReaction.DESTROY));
+    /** A bare copper wire laid on any surface, for decoration only. */
+    public static final DeferredBlock<de.artemis.cyberneticenhancements.common.block.CopperCableBlock> COPPER_CABLE = register(
+            "copper_cable", de.artemis.cyberneticenhancements.common.block.CopperCableBlock::new,
+            properties -> properties.strength(0.2F).sound(SoundType.COPPER).noCollission().noOcclusion()
+                    .pushReaction(net.minecraft.world.level.material.PushReaction.DESTROY));
+    /** An iron water pipe that joins its neighbours, for decoration. */
+    public static final DeferredBlock<de.artemis.cyberneticenhancements.common.block.WaterPipeBlock> WATER_PIPE = register(
+            "water_pipe", de.artemis.cyberneticenhancements.common.block.WaterPipeBlock::new,
+            properties -> properties.strength(1.5F, 6F).sound(SoundType.METAL).noOcclusion().requiresCorrectToolForDrops());
+    /** A square sheet-metal HVAC duct that joins its neighbours, for decoration. */
+    public static final DeferredBlock<de.artemis.cyberneticenhancements.common.block.DuctBlock> HVAC_DUCT = register(
+            "hvac_duct", de.artemis.cyberneticenhancements.common.block.DuctBlock::new,
+            properties -> properties.strength(1.0F, 4F).sound(SoundType.METAL).noOcclusion().requiresCorrectToolForDrops());
+    /** A slatted vent for the end of a duct or the side of a block. */
+    public static final DeferredBlock<de.artemis.cyberneticenhancements.common.block.VentBlock> HVAC_VENT = register(
+            "hvac_vent", de.artemis.cyberneticenhancements.common.block.VentBlock::new,
+            properties -> properties.strength(1.0F, 4F).sound(SoundType.METAL).noOcclusion().requiresCorrectToolForDrops());
     public static final DeferredBlock<de.artemis.cyberneticenhancements.common.fabrication.FabricatorBlock> CYBERWARE_FABRICATOR = register(
             "cyberware_fabricator", de.artemis.cyberneticenhancements.common.fabrication.FabricatorBlock::new,
             properties -> properties.strength(3.5F).sound(SoundType.METAL));

@@ -29,7 +29,7 @@ public final class WorldEncounterOffenses {
     /** Pairs of (site position, game time the lockout ends) for a failed quest: the leader refuses for a while, then deals again. */
     private static final String LOCKOUT_KEY = "WorldEncounterLockouts";
     /** How long a failed quest keeps the leader from dealing with that player: fifteen minutes. */
-    public static final int LOCKOUT_TICKS = 10 * 20; // TEMPORARY, for testing: meant to be 15 * 60 * 20
+    public static final int LOCKOUT_TICKS = 15 * 60 * 20;
     /** Offences this close to a leader are held against that site; sites are far further apart than this. */
     private static final int SITE_RADIUS = 64;
     private static final ResourceLocation LOOT = ResourceLocation.fromNamespaceAndPath(CyberneticEnhancements.MOD_ID, "chests/med_tec_av");
@@ -122,9 +122,34 @@ public final class WorldEncounterOffenses {
         return false;
     }
 
+    /** Every kind of block the prefab is made of; the ground it stands on is not among them. */
+    private static java.util.Set<net.minecraft.world.level.block.Block> buildBlocks;
+
+    private static synchronized java.util.Set<net.minecraft.world.level.block.Block> buildBlocks(ServerLevel level) {
+        if (buildBlocks != null) return buildBlocks;
+        var blocks = new java.util.HashSet<net.minecraft.world.level.block.Block>();
+        var template = level.getServer().getStructureManager().get(MED_TEC_AV);
+        if (template.isEmpty()) return blocks; // Not cached, so a later try can still find it.
+        var saved = template.get().save(new net.minecraft.nbt.CompoundTag());
+        var palettes = saved.contains("palettes", Tag.TAG_LIST) ? saved.getList("palettes", Tag.TAG_LIST) : new net.minecraft.nbt.ListTag();
+        if (saved.contains("palette", Tag.TAG_LIST)) palettes.add(saved.getList("palette", Tag.TAG_COMPOUND));
+        for (int i = 0; i < palettes.size(); i++) {
+            var palette = palettes.getList(i);
+            for (int j = 0; j < palette.size(); j++) {
+                var name = ResourceLocation.tryParse(((net.minecraft.nbt.CompoundTag) palette.get(j)).getString("Name"));
+                if (name != null) level.registryAccess().registryOrThrow(Registries.BLOCK).getOptional(name).ifPresent(blocks::add);
+            }
+        }
+        return buildBlocks = blocks;
+    }
+
+    /**
+     * Breaking a block the prefab is made of earns the same fifteen-minute lockout as any other trouble there. The ground
+     * around and under it lies inside the same bounds, but is not what they would defend, so it does not count.
+     */
     public static void onBlockBreak(BlockEvent.BreakEvent event) {
-        if (!event.isCanceled() && event.getPlayer() instanceof ServerPlayer player && event.getLevel() instanceof ServerLevel level
-                && isPartOfBuild(level, event.getPos())) record(player, event.getPos());
+        if (!event.isCanceled() && event.getPlayer() instanceof ServerPlayer player && !player.isSpectator() && event.getLevel() instanceof ServerLevel level
+                && isPartOfBuild(level, event.getPos()) && buildBlocks(level).contains(event.getState().getBlock())) lockOut(player, event.getPos());
     }
 
     public static void onClone(PlayerEvent.Clone event) {

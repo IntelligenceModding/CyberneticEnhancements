@@ -1,0 +1,27 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "key": {
+    "I": {
+      "item": "minecraft:iron_ingot"
+    },
+    "P": {
+      "item": "minecraft:ender_pearl"
+    },
+    "R": {
+      "item": "minecraft:redstone"
+    },
+    "T": {
+      "item": "minecraft:enchanting_table"
+    }
+  },
+  "pattern": [
+    " P ",
+    "RTR",
+    "III"
+  ],
+  "result": {
+    "count": 1,
+    "id": "cyberneticenhancements:fast_travel"
+  }
+}

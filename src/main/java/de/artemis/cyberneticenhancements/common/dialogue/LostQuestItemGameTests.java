@@ -145,7 +145,7 @@ public final class LostQuestItemGameTests {
 
     @GameTest(template = "sandevistan_test", batch = "courier_replacement_call", timeoutTicks = 100)
     public static void replacementRequiresCallingAndHalvesTheActualCompletionRewards(GameTestHelper h) {
-        var owner = player(h, "lost-parcel");
+        var owner = player(h, "lost-cargo");
         var player = owner.player();
         var npc = issuer(h, player);
         var target = h.absolutePos(new BlockPos(6, 2, 6));
@@ -167,8 +167,8 @@ public final class LostQuestItemGameTests {
             ticks(player, 1);
             player.getInventory().clearContent();
             ticks(player, 221);
-            h.assertTrue(player.getInventory().countItem(ModItems.COURIER_PACKAGE.get()) == 0, "Delivery parcel was automatically restored");
-            h.assertTrue(!NpcCallManager.hasCall(player.getUUID()), "Missing outbound parcel incorrectly triggered an angry call");
+            h.assertTrue(player.getInventory().countItem(ModItems.COURIER_PACKAGE.get()) == 0, "Delivery cargo was automatically restored");
+            h.assertTrue(!NpcCallManager.hasCall(player.getUUID()), "Missing outbound cargo incorrectly triggered an angry call");
             var token = UUID.randomUUID();
             drain(owner);
             NpcCallManager.handle(player, new NpcCallRequestPayload(token, npc.getUUID(), START));
@@ -181,17 +181,17 @@ public final class LostQuestItemGameTests {
             h.assertTrue(active.rewardMoney() == 50 && active.rewardTrust() == 2 && active.rewardItemCount() == 2
                     && active.rewardExperience() == offer.rewardExperience() / 2, "Replacement did not halve all numeric rewards");
             h.assertTrue(QuestContract.fromTag(active.toTag()).replacementPenalty(), "Replacement penalty did not survive serialization");
-            h.assertTrue(!PlayerQuestManager.requestDeliveryReplacement(player, npc), "Another replacement was issued while a parcel was present");
+            h.assertTrue(!PlayerQuestManager.requestDeliveryReplacement(player, npc), "Another replacement was issued while a cargo was present");
             player.getInventory().add(old);
             ticks(player, 1);
-            h.assertTrue(player.getInventory().countItem(ModItems.COURIER_PACKAGE.get()) == 1, "Old parcel remained valid after replacement");
-            var replacement = parcel(player).copy();
+            h.assertTrue(player.getInventory().countItem(ModItems.COURIER_PACKAGE.get()) == 1, "Old cargo remained valid after replacement");
+            var replacement = cargo(player).copy();
             player.getInventory().clearContent();
             ((net.minecraft.world.Container) h.getLevel().getBlockEntity(target)).setItem(0, replacement);
             ticks(player, 1);
             int balance = de.artemis.cyberneticenhancements.common.economy.PlayerEurodollarManager.balance(player);
             int trust = npc.trustPoints(player), xp = player.totalExperience;
-            h.assertTrue(PlayerQuestManager.turnInIssuerActive(player, npc) == PlayerQuestManager.TurnInResult.OK, "Replacement parcel could not finish delivery");
+            h.assertTrue(PlayerQuestManager.turnInIssuerActive(player, npc) == PlayerQuestManager.TurnInResult.OK, "Replacement cargo could not finish delivery");
             h.assertTrue(de.artemis.cyberneticenhancements.common.economy.PlayerEurodollarManager.balance(player) == balance + 50
                     && npc.trustPoints(player) == trust + 2 && player.totalExperience == xp + offer.rewardExperience() / 2,
                     "Actual payout ignored the replacement penalty");
@@ -200,7 +200,7 @@ public final class LostQuestItemGameTests {
         h.succeed();
     }
 
-    private static ItemStack parcel(ServerPlayer player) {
+    private static ItemStack cargo(ServerPlayer player) {
         return player.getInventory().items.stream().filter(stack -> stack.is(ModItems.COURIER_PACKAGE.get())).findFirst().orElseThrow();
     }
 

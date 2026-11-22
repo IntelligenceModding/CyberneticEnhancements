@@ -21,6 +21,7 @@ public final class TutorialKeyRules {
             Map.entry("key.inventory", "inventory"),
             Map.entry("key.chat", "chat"), Map.entry("key.command", "chat"),
             Map.entry("key.cyberneticenhancements.open_archive", "archive"),
+            Map.entry("key.cyberneticenhancements.open_map", "archive"),
             Map.entry("key.cyberneticenhancements.open_contacts", "contacts"),
             Map.entry("key.cyberneticenhancements.add_compass_marker", "markers"),
             Map.entry("key.cyberneticenhancements.toggle_hud", "cyberware"),

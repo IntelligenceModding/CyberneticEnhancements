@@ -318,7 +318,6 @@ public final class DeathBodies {
                         entity instanceof TraumaTeamEntity ? 0x66FFC1 : 0x55CEFF, (float) (level.getGameTime() + partial), pose, buffers);
                 EntityRenderer<LivingEntity> renderer = (EntityRenderer<LivingEntity>) mc.getEntityRenderDispatcher().getRenderer(entity);
                 renderer.render(entity, body.yaw, partial, pose, target, LevelRenderer.getLightColor(level, BlockPos.containing(body.position.add(0, 0.3, 0))));
-                buffers.endBatch();
             } finally {
                 if (restoreModel != null) { restoreModel.run(); restoreModel = null; }
                 for (int i = 0; i < DeathBodyPayload.SLOTS.size(); i++) entity.setItemSlot(DeathBodyPayload.SLOTS.get(i), originalEquipment.get(i));
@@ -326,6 +325,8 @@ public final class DeathBodies {
                 pose.popPose(); rendering = null;
             }
         }
+        // One flush for every body: each flush is a round of draw calls and state changes, which shader packs make expensive.
+        buffers.endBatch();
     }
 
     public static void logout(ClientPlayerNetworkEvent.LoggingOut event) {

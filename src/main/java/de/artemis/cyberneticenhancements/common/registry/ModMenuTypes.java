@@ -27,6 +27,8 @@ public final class ModMenuTypes {
             MENU_TYPES.register("upgrade_station", () -> IMenuTypeExtension.create(TechStationMenu::new));
     public static final DeferredHolder<MenuType<?>, MenuType<RecyclerStationMenu>> RECYCLER_STATION =
             MENU_TYPES.register("recycler_station", () -> IMenuTypeExtension.create(RecyclerStationMenu::new));
+    public static final DeferredHolder<MenuType<?>, MenuType<de.artemis.cyberneticenhancements.common.menu.CrateMenu>> CRATE =
+            MENU_TYPES.register("crate", () -> IMenuTypeExtension.create(de.artemis.cyberneticenhancements.common.menu.CrateMenu::new));
     public static final DeferredHolder<MenuType<?>, MenuType<FixerDialogMenu>> FIXER_DIALOG =
             MENU_TYPES.register("fixer_dialog", () -> IMenuTypeExtension.create(FixerDialogMenu::new));
     public static final DeferredHolder<MenuType<?>, MenuType<RelicCacheHackMenu>> RELIC_CACHE_HACK =

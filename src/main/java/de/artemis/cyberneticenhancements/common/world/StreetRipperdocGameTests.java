@@ -97,7 +97,7 @@ public final class StreetRipperdocGameTests {
             var gang = level.getEntitiesOfClass(de.artemis.cyberneticenhancements.common.entity.GangMemberEntity.class, near, thug -> player.getUUID().equals(thug.victim()));
             count[1] = gang.size();
             h.assertTrue(count[0] == 1, "Expected one street ripperdoc, found " + count[0]);
-            h.assertTrue(count[1] == StreetEncounters.GANG_SIZE, "Expected a full gang, found " + count[1]);
+            h.assertTrue(count[1] == ShakedownStance.of(player).size(), "Expected a full gang, found " + count[1]);
             gang.forEach(de.artemis.cyberneticenhancements.common.entity.GangMemberEntity::withdraw);
         });
         h.runAfterDelay(100, () -> {

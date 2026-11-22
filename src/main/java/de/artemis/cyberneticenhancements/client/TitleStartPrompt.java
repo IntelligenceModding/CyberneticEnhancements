@@ -46,6 +46,11 @@ public final class TitleStartPrompt {
         leavingAt = enteredAt = menuAt = -1;
     }
 
+    /** Fades the menu's widgets in, for a title screen that is shown again after something else covered it. */
+    public static void fadeMenuIn() {
+        if (stage() == MENU && menuAt < 0) menuAt = Util.getMillis();
+    }
+
     /** Starts fading out the offer; the title switches to the menu once it is gone. */
     public static void leave() {
         if (leavingAt >= 0 || stage() == MENU) return;

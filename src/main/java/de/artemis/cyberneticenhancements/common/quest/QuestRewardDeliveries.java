@@ -29,7 +29,7 @@ import java.util.UUID;
 public final class QuestRewardDeliveries extends SavedData {
     private static final Factory<QuestRewardDeliveries> FACTORY = new Factory<>(QuestRewardDeliveries::new, QuestRewardDeliveries::load, null);
     private final Map<UUID, GlobalPos> points = new HashMap<>();
-    private final List<Parcel> parcels = new ArrayList<>();
+    private final List<Cargo> cargos = new ArrayList<>();
     private final java.util.Set<UUID> setupPlaced = new java.util.HashSet<>();
     private final java.util.Set<UUID> setupItemsGiven = new java.util.HashSet<>();
 
@@ -71,7 +71,7 @@ public final class QuestRewardDeliveries extends SavedData {
     public void dispatch(ServerPlayer player, String questId, List<ItemStack> rewards) {
         if (rewards.stream().allMatch(ItemStack::isEmpty)) return;
         queue(player.getUUID(), questId, player.server.overworld().getGameTime() + 6000 + player.getRandom().nextInt(12001), rewards);
-        de.artemis.cyberneticenhancements.common.journal.PlayerJournal.record(player, "quests", "parcel_dispatched");
+        de.artemis.cyberneticenhancements.common.journal.PlayerJournal.record(player, "quests", "cargo_dispatched");
         de.artemis.cyberneticenhancements.common.feedback.GameplayMessages.chat(player, Component.translatable(points.containsKey(player.getUUID())
                 ? "message.cyberneticenhancements.dropoff.dispatched" : "message.cyberneticenhancements.dropoff.needs_barrel").withStyle(net.minecraft.ChatFormatting.AQUA));
     }
@@ -83,7 +83,7 @@ public final class QuestRewardDeliveries extends SavedData {
     void queue(UUID owner, String questId, long due, List<ItemStack> rewards) {
         var items = rewards.stream().filter(stack -> !stack.isEmpty()).map(ItemStack::copy).collect(java.util.stream.Collectors.toCollection(ArrayList::new));
         if (items.isEmpty()) return;
-        parcels.add(new Parcel(owner, questId, due, items));
+        cargos.add(new Cargo(owner, questId, due, items));
         setDirty();
     }
 
@@ -100,35 +100,35 @@ public final class QuestRewardDeliveries extends SavedData {
     private void deliver(MinecraftServer server, long now, UUID onlyOwner) {
         var notified = new java.util.HashSet<UUID>();
         var completed = new java.util.HashSet<UUID>();
-        var iterator = parcels.iterator();
+        var iterator = cargos.iterator();
         while (iterator.hasNext()) {
-            var parcel = iterator.next();
-            if (onlyOwner != null && !onlyOwner.equals(parcel.owner)) continue;
-            if (parcel.due > now) continue;
-            var point = points.get(parcel.owner);
+            var cargo = iterator.next();
+            if (onlyOwner != null && !onlyOwner.equals(cargo.owner)) continue;
+            if (cargo.due > now) continue;
+            var point = points.get(cargo.owner);
             if (point == null) continue;
             var level = server.getLevel(point.dimension());
             if (level == null || !level.hasChunkAt(point.pos())) continue;
-            if (!(level.getBlockEntity(point.pos()) instanceof DropoffPointBlockEntity barrel) || !parcel.owner.equals(barrel.owner())) continue;
+            if (!(level.getBlockEntity(point.pos()) instanceof DropoffPointBlockEntity barrel) || !cargo.owner.equals(barrel.owner())) continue;
             boolean delivered = false;
-            for (var stack : parcel.items) {
+            for (var stack : cargo.items) {
                 int before = stack.getCount();
                 insert(barrel, stack);
                 if (before != stack.getCount()) { setDirty(); delivered = true; }
             }
             if (delivered) {
-                de.artemis.cyberneticenhancements.common.journal.PlayerJournal.recordFor(server, parcel.owner, point.dimension().location().toString(), point.pos(), "quests", "parcel_delivered");
+                de.artemis.cyberneticenhancements.common.journal.PlayerJournal.recordFor(server, cargo.owner, point.dimension().location().toString(), point.pos(), "quests", "cargo_delivered");
                 barrel.markDeliveryArrived();
-                var player = server.getPlayerList().getPlayer(parcel.owner);
-                if (player != null && notified.add(parcel.owner)) {
+                var player = server.getPlayerList().getPlayer(cargo.owner);
+                if (player != null && notified.add(cargo.owner)) {
                     net.neoforged.neoforge.network.PacketDistributor.sendToPlayer(player, new de.artemis.cyberneticenhancements.common.network.DropoffDeliveryNoticePayload());
                     player.playNotifySound(SoundEvents.EXPERIENCE_ORB_PICKUP, SoundSource.PLAYERS, 0.45F, 1.1F);
                 }
             }
-            parcel.items.removeIf(ItemStack::isEmpty);
-            if (!parcel.items.isEmpty()) continue;
+            cargo.items.removeIf(ItemStack::isEmpty);
+            if (!cargo.items.isEmpty()) continue;
             iterator.remove();
-            completed.add(parcel.owner);
+            completed.add(cargo.owner);
             setDirty();
         }
         for (var owner : completed) {
@@ -140,20 +140,20 @@ public final class QuestRewardDeliveries extends SavedData {
 
     public GlobalPos registeredPoint(UUID owner) { return points.get(owner); }
 
-    public int pendingParcels(UUID owner) { return (int) parcels.stream().filter(parcel -> parcel.owner.equals(owner)).count(); }
+    public int pendingCargos(UUID owner) { return (int) cargos.stream().filter(cargo -> cargo.owner.equals(owner)).count(); }
 
     public java.util.Set<String> pendingContractIds(UUID owner) {
-        return parcels.stream().filter(parcel -> parcel.owner.equals(owner) && !parcel.questId.isBlank())
-                .map(Parcel::questId).collect(java.util.stream.Collectors.toUnmodifiableSet());
+        return cargos.stream().filter(cargo -> cargo.owner.equals(owner) && !cargo.questId.isBlank())
+                .map(Cargo::questId).collect(java.util.stream.Collectors.toUnmodifiableSet());
     }
 
     public List<List<ItemStack>> unlinkedPendingRewards(UUID owner) {
-        return parcels.stream().filter(parcel -> parcel.owner.equals(owner) && parcel.questId.isBlank())
-                .map(parcel -> parcel.items.stream().map(ItemStack::copy).toList()).toList();
+        return cargos.stream().filter(cargo -> cargo.owner.equals(owner) && cargo.questId.isBlank())
+                .map(cargo -> cargo.items.stream().map(ItemStack::copy).toList()).toList();
     }
 
     public long nextDeliveryIn(UUID owner, long now) {
-        return parcels.stream().filter(parcel -> parcel.owner.equals(owner)).mapToLong(parcel -> Math.max(0, parcel.due - now)).min().orElse(-1);
+        return cargos.stream().filter(cargo -> cargo.owner.equals(owner)).mapToLong(cargo -> Math.max(0, cargo.due - now)).min().orElse(-1);
     }
 
     public void queueDebugDelivery(ServerPlayer player, int seconds) {
@@ -162,9 +162,9 @@ public final class QuestRewardDeliveries extends SavedData {
 
     public void deliverNow(ServerPlayer player) {
         long now = player.server.overworld().getGameTime();
-        for (int index = 0; index < parcels.size(); index++) {
-            var parcel = parcels.get(index);
-            if (parcel.owner.equals(player.getUUID())) parcels.set(index, new Parcel(parcel.owner, parcel.questId, now, parcel.items));
+        for (int index = 0; index < cargos.size(); index++) {
+            var cargo = cargos.get(index);
+            if (cargo.owner.equals(player.getUUID())) cargos.set(index, new Cargo(cargo.owner, cargo.questId, now, cargo.items));
         }
         setDirty();
         deliver(player.server, now, player.getUUID());
@@ -208,15 +208,15 @@ public final class QuestRewardDeliveries extends SavedData {
             if (owner.getBoolean("Placed")) result.setupPlaced.add(owner.getUUID("Owner"));
             if (owner.getBoolean("Given")) result.setupItemsGiven.add(owner.getUUID("Owner"));
         }
-        for (var entry : tag.getList("Parcels", Tag.TAG_COMPOUND)) {
-            var parcel = (CompoundTag) entry;
-            if (!parcel.hasUUID("Owner")) continue;
+        for (var entry : tag.getList("Cargos", Tag.TAG_COMPOUND)) {
+            var cargo = (CompoundTag) entry;
+            if (!cargo.hasUUID("Owner")) continue;
             var items = new ArrayList<ItemStack>();
-            for (var item : parcel.getList("Items", Tag.TAG_COMPOUND)) {
+            for (var item : cargo.getList("Items", Tag.TAG_COMPOUND)) {
                 var stack = ItemStack.parseOptional(registries, (CompoundTag) item);
                 if (!stack.isEmpty()) items.add(stack);
             }
-            if (!items.isEmpty()) result.parcels.add(new Parcel(parcel.getUUID("Owner"), parcel.getString("QuestId"), parcel.getLong("Due"), items));
+            if (!items.isEmpty()) result.cargos.add(new Cargo(cargo.getUUID("Owner"), cargo.getString("QuestId"), cargo.getLong("Due"), items));
         }
         return result;
     }
@@ -243,20 +243,20 @@ public final class QuestRewardDeliveries extends SavedData {
             setupTags.add(entry);
         }
         tag.put("SetupOwners", setupTags);
-        var parcelTags = new ListTag();
-        for (var parcel : parcels) {
+        var cargoTags = new ListTag();
+        for (var cargo : cargos) {
             var entry = new CompoundTag();
-            entry.putUUID("Owner", parcel.owner);
-            entry.putString("QuestId", parcel.questId);
-            entry.putLong("Due", parcel.due);
+            entry.putUUID("Owner", cargo.owner);
+            entry.putString("QuestId", cargo.questId);
+            entry.putLong("Due", cargo.due);
             var items = new ListTag();
-            for (var stack : parcel.items) if (!stack.isEmpty()) items.add(stack.save(registries));
+            for (var stack : cargo.items) if (!stack.isEmpty()) items.add(stack.save(registries));
             entry.put("Items", items);
-            parcelTags.add(entry);
+            cargoTags.add(entry);
         }
-        tag.put("Parcels", parcelTags);
+        tag.put("Cargos", cargoTags);
         return tag;
     }
 
-    private record Parcel(UUID owner, String questId, long due, List<ItemStack> items) {}
+    private record Cargo(UUID owner, String questId, long due, List<ItemStack> items) {}
 }

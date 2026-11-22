@@ -12,6 +12,8 @@ public final class ClientConfig {
     public static final ModConfigSpec.ConfigValue<java.util.List<? extends String>> WIKI_PINNED_ENTRIES;
     public static final ModConfigSpec.BooleanValue SHOW_BETA_WELCOME_MESSAGE;
     public static final ModConfigSpec.BooleanValue CHECK_FOR_UPDATES;
+    public static final ModConfigSpec.BooleanValue SHOW_CHANGELOG_POPUP;
+    public static final ModConfigSpec.ConfigValue<String> LAST_SEEN_CHANGELOG;
     public static final ModConfigSpec.BooleanValue SHOW_ARCHIVE_BOOT_ANIMATION;
     public static final ModConfigSpec.BooleanValue CUSTOM_DEATH_SCREEN;
     public static final ModConfigSpec.BooleanValue CUSTOM_LOADING_SCREEN;
@@ -109,9 +111,15 @@ public final class ClientConfig {
                 .comment("Check CurseForge release/beta metadata via CFWidget when the beta welcome message is shown. No downloads are installed.")
                 .translation("cyberneticenhancements.configuration.checkForUpdates")
                 .define("checkForUpdates", true);
+        SHOW_CHANGELOG_POPUP = builder.translation("cyberneticenhancements.configuration.showChangelogPopup")
+                .comment("Show the What's New popup on the title screen the first time a new release starts. The link at the bottom left of the title screen still opens it.")
+                .define("showChangelogPopup", true);
+        LAST_SEEN_CHANGELOG = builder
+                .comment("The release whose changelog popup has been shown on the title screen. Managed by the mod; clear it to see the popup again.")
+                .define("lastSeenChangelog", "");
         ARCHIVE_TAB_ORDER = builder
                 .translation("cyberneticenhancements.configuration.archiveTabOrder")
-                .defineList("archiveTabOrder", java.util.List.of("wiki", "schematics", "banking", "contacts", "compass", "lore", "quests", "journal", "hud"),
+                .defineList("archiveTabOrder", java.util.List.of("wiki", "schematics", "banking", "contacts", "compass", "map", "lore", "quests", "journal", "hud"),
                         value -> value instanceof String);
         HUD_VISIBILITY_OVERRIDES = builder
                 .comment("Per-screen HUD visibility choices saved by the Neural Archive HUD tab.")

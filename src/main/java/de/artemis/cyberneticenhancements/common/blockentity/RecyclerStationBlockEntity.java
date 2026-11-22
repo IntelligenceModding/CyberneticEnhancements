@@ -84,9 +84,12 @@ public final class RecyclerStationBlockEntity extends UpgradeableStationBlockEnt
             station.stop();
             return;
         }
-        if (++station.progress < RECYCLE_TICKS) { station.setChanged(); return; }
+        station.progress += 1 + de.artemis.cyberneticenhancements.common.skills.SkillEffects.extraProgress(level, station.journalOwner);
+        if (station.progress < RECYCLE_TICKS) { station.setChanged(); return; }
         var merged = station.mergedOutput(station.plan().outputs());
         if (merged == null) { station.stop(); return; }
+        var boosted = station.mergedOutput(de.artemis.cyberneticenhancements.common.skills.SkillEffects.salvage(level, station.journalOwner, station.plan().outputs()));
+        if (boosted != null) merged = boosted;
         ItemStack recycled = station.runningInput;
         station.getItem(INPUT_SLOT).shrink(1);
         for (int i = 0; i < OUTPUT_COUNT; i++) station.items.set(OUTPUT_START + i, merged.get(i));

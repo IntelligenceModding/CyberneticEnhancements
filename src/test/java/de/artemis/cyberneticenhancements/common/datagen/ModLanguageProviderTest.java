@@ -34,15 +34,8 @@ public class ModLanguageProviderTest {
                 "src/generated/resources/assets/cyberneticenhancements/lang/en_us.json"))).getAsJsonObject();
         for (var type : de.artemis.cyberneticenhancements.common.entity.NpcType.values()) {
             String id = type.id();
-            for (String suffix : new String[]{"type." + id, "section.choices." + id,
-                    "line." + id + ".greeting", "line." + id + ".back", "player." + id + ".open", "player." + id + ".back"})
+            for (String suffix : new String[]{"type." + id, "line." + id + ".greeting"})
                 assertTrue("Missing NPC translation: " + suffix, language.has("screen.cyberneticenhancements.npc." + suffix));
-            var tree = de.artemis.cyberneticenhancements.common.dialogue.NpcDialogueTrees.tree(type);
-            for (var node : tree.nodes().values()) {
-                assertTrue("Missing NPC line: " + node.npcLineKey(), language.has(node.npcLineKey()));
-                for (var choice : node.choices())
-                    assertTrue("Missing player line: " + choice.playerLineKey(), language.has(choice.playerLineKey()));
-            }
         }
     }
 

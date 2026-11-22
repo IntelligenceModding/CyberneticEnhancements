@@ -38,7 +38,7 @@ public final class TitleSlideshowAudio {
 
     public static void tick(ClientTickEvent.Post event) {
         var mc = Minecraft.getInstance();
-        SESSION.update(mc.level != null, mc.screen instanceof TitleScreen && mc.getOverlay() == null
+        SESSION.update(mc.level != null, ChangelogPopup.isTitle(mc.screen) && mc.getOverlay() == null
                 && !LaunchIntro.isPlaying() && TitleSlideshow.artworkCreditVisible());
         if (!playable() || gain() <= 0) {
             if (playable()) handedOver = true;

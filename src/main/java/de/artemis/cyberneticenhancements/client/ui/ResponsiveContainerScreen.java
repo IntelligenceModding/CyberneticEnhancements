@@ -87,10 +87,13 @@ public abstract class ResponsiveContainerScreen<T extends AbstractContainerMenu>
         super.init();
         titleLabelX = 10000;
         inventoryLabelX = 10000;
-        addRenderableWidget(new UiButton(leftPos + imageWidth - UiCloseControl.WIDTH,
+        if (showsTitleBar()) addRenderableWidget(new UiButton(leftPos + imageWidth - UiCloseControl.WIDTH,
                 Math.max(4, topPos - 22), UiCloseControl.WIDTH, UiCloseControl.HEIGHT,
                 UiCloseControl.label(), button -> onClose()));
     }
+
+    /** Whether the title plate and the close button sit above the window; a screen that carries its own back button can drop both. */
+    protected boolean showsTitleBar() { return true; }
 
     @Override
     public final void render(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
@@ -139,7 +142,7 @@ public abstract class ResponsiveContainerScreen<T extends AbstractContainerMenu>
     @Override
     public void renderBackground(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
         graphics.fillGradient(0, 0, width, height, 0xB5081018, 0xD0081018);
-        UiRenderer.titlePlate(graphics, font, leftPos, Math.max(4, topPos - 22),
+        if (showsTitleBar()) UiRenderer.titlePlate(graphics, font, leftPos, Math.max(4, topPos - 22),
                 Math.max(1, imageWidth - UiCloseControl.WIDTH - 12), title);
         renderBg(graphics, partialTick, mouseX, mouseY);
         if (stationInventory != null) {
@@ -147,7 +150,7 @@ public abstract class ResponsiveContainerScreen<T extends AbstractContainerMenu>
             var panel = nativeInventory();
             nativeGui.blit(STATION_INVENTORY_TEXTURE, panel.x(), panel.y(), 0F, 0F,
                     StationInventoryLayout.WIDTH, StationInventoryLayout.HEIGHT, 256, 256);
-            nativeGui.drawString(font, Component.translatable("container.inventory"), panel.x() + 8, panel.y() + 7, UiRenderer.TEXT, false);
+            nativeGui.drawString(font, Component.translatable("container.inventory"), panel.x() + 8, panel.y() + 7, 0xFF404040, false);
             nativeGui.flush();
         }
     }

@@ -1,0 +1,9 @@
+{
+  "multipart": [
+    {
+      "apply": {
+        "model": "cyberneticenhancements:block/copper_cable_core_down"
+      }
+    }
+  ]
+}

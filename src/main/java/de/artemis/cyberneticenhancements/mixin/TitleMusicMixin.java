@@ -18,7 +18,7 @@ abstract class TitleMusicMixin {
     @Inject(method = "tick", at = @At("HEAD"), cancellable = true)
     private void cyberneticenhancements$silentTitle(CallbackInfo ci) {
         var minecraft = Minecraft.getInstance();
-        if (minecraft.level != null || (!(minecraft.screen instanceof TitleScreen)
+        if (minecraft.level != null || (!de.artemis.cyberneticenhancements.client.ChangelogPopup.isTitle(minecraft.screen)
                 && !de.artemis.cyberneticenhancements.client.TitleSlideshowAudio.isMenuSessionActive()
                 && !de.artemis.cyberneticenhancements.client.TitleMusic.isPlaying())) return;
         // Stop an existing menu track and prevent scheduling another. Other

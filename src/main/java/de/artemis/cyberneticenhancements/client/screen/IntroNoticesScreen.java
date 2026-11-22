@@ -16,7 +16,11 @@ import java.util.List;
 /** Revisit the startup notices at your own pace, using the same presentation and translations. */
 public final class IntroNoticesScreen extends ResponsiveScreen {
     private static final LaunchIntroPresentation.NoticePage[] PAGES = LaunchIntroPresentation.NoticePage.values();
+    private static final long FADE_MILLIS = 250L;
     private final Screen parent;
+    private final long openedAt = net.minecraft.Util.getMillis();
+    private long closingAt = -1L;
+    private float opacity = 0;
     private int page;
     private Button previous, next, done;
     private int panelTop, panelWidth, panelHeight, pageNumberY;
@@ -45,7 +49,7 @@ public final class IntroNoticesScreen extends ResponsiveScreen {
     private Button button(Component label, int x, Runnable action) {
         return addRenderableWidget(new Button(x, height - 55, 128, 20, label, button -> action.run(), narration -> narration.get()) {
             @Override protected void renderWidget(GuiGraphics graphics, int mx, int my, float partialTick) {
-                FlatlinedPresentation.button(graphics, this);
+                FlatlinedPresentation.button(graphics, this, opacity);
             }
         });
     }
@@ -71,13 +75,24 @@ public final class IntroNoticesScreen extends ResponsiveScreen {
             renderPanorama(graphics, partialTick);
             TitleScreenPresentation.background(graphics, this, 1);
         }
-        VanillaMenuPresentation.promptPanel(graphics, (width - panelWidth) / 2, panelTop, panelWidth, panelHeight, 1);
-        int top = panelTop + 16;
-        graphics.drawCenteredString(font, PAGES[page].heading(), width / 2 + 2, top + 2, 0xA6000000);
-        graphics.drawCenteredString(font, PAGES[page].heading(), width / 2, top, 0xFFFF5266);
-        for (var line : lines) graphics.drawString(font, line.text(), line.x(), line.y(), line.color(), true);
-        graphics.drawCenteredString(font, Component.literal((page + 1) + " / " + PAGES.length), width / 2, pageNumberY, VanillaMenuPresentation.MUTED);
+        long now = net.minecraft.Util.getMillis();
+        opacity = Math.clamp((now - openedAt) / (float) FADE_MILLIS, 0F, 1F);
+        if (closingAt >= 0) opacity = Math.min(opacity, 1F - Math.clamp((now - closingAt) / (float) FADE_MILLIS, 0F, 1F));
+        VanillaMenuPresentation.promptPanel(graphics, (width - panelWidth) / 2, panelTop, panelWidth, panelHeight, opacity);
+        if (opacity > 0.02F) {
+            int top = panelTop + 16;
+            graphics.drawCenteredString(font, PAGES[page].heading(), width / 2 + 2, top + 2, faded(0xA6000000));
+            graphics.drawCenteredString(font, PAGES[page].heading(), width / 2, top, faded(0xFFFF5266));
+            for (var line : lines) graphics.drawString(font, line.text(), line.x(), line.y(), faded(line.color()), true);
+            graphics.drawCenteredString(font, Component.literal((page + 1) + " / " + PAGES.length), width / 2, pageNumberY, faded(VanillaMenuPresentation.MUTED));
+        }
         super.renderContent(graphics, mouseX, mouseY, partialTick);
+        if (closingAt >= 0 && now - closingAt >= FADE_MILLIS) minecraft.setScreen(parent);
+    }
+
+    private int faded(int argb) {
+        // Font rendering treats alpha below 4 as opaque.
+        return Math.max(4, Math.round((argb >>> 24) * opacity)) << 24 | argb & 0xFFFFFF;
     }
 
     @Override public void renderBackground(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {}
@@ -87,7 +102,10 @@ public final class IntroNoticesScreen extends ResponsiveScreen {
         return super.keyPressed(key, scanCode, modifiers);
     }
 
-    @Override public void onClose() { minecraft.setScreen(parent); }
+    /** Fades out first; the title screen takes over once the panel is gone. */
+    @Override public void onClose() {
+        if (closingAt < 0) closingAt = net.minecraft.Util.getMillis();
+    }
 
     private void rebuildLinks() {
         if (links.contains(getFocused())) setFocused(null);

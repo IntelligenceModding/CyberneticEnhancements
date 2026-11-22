@@ -2,6 +2,11 @@ package de.artemis.cyberneticenhancements.common.dialogue;
 
 import de.artemis.cyberneticenhancements.CyberneticEnhancements;
 import de.artemis.cyberneticenhancements.common.quest.*;
+import de.artemis.cyberneticenhancements.common.economy.PlayerEurodollarManager;
+import de.artemis.cyberneticenhancements.common.skills.Skill;
+import de.artemis.cyberneticenhancements.common.skills.SkillEffect;
+import de.artemis.cyberneticenhancements.common.skills.Skills;
+import de.artemis.cyberneticenhancements.common.streetcred.StreetCred;
 import net.minecraft.core.BlockPos;
 import net.minecraft.gametest.framework.GameTest;
 import net.minecraft.gametest.framework.GameTestHelper;
@@ -62,7 +67,7 @@ public final class NpcActionFeedbackGameTests {
             drain(owner.channel()); drain(observer.channel());
             h.assertTrue(PlayerQuestManager.acceptIssuerOffer(player, npc, 0) == PlayerQuestManager.Result.OK, "Acceptance failed");
             assertActionFeedback(h, drain(owner.channel()), false);
-            h.assertTrue(PlayerQuestManager.acceptIssuerOffer(player, npc, 0) == PlayerQuestManager.Result.HAS_ACTIVE, "Replayed acceptance succeeded");
+            h.assertTrue(PlayerQuestManager.acceptIssuerOffer(player, npc, 0) != PlayerQuestManager.Result.OK, "Replayed acceptance succeeded");
             h.assertTrue(drain(owner.channel()).stream().noneMatch(NpcActionFeedbackGameTests::isActionFeedback), "Replayed acceptance repeated feedback");
             for (int route = 0; route < 3; route++) {
                 var quest = feedbackQuest(h, npc, QuestStatus.READY);
@@ -235,6 +240,36 @@ public final class NpcActionFeedbackGameTests {
         long particles = packets.stream().filter(p -> p instanceof net.minecraft.network.protocol.game.ClientboundLevelParticlesPacket).count();
         h.assertTrue(sounds == 1 && chat == 1 && actionBar == 0 && particles == (completion ? 1 : 0),
                 "Action feedback was missing or duplicated: sound=" + sounds + ", chat=" + chat + ", actionbar=" + actionBar + ", particles=" + particles);
+    }
+
+    @GameTest(template = "sandevistan_test", batch = "skills", timeoutTicks = 40)
+    public static void skillPointsAndRespecUseAuthoritativeState(GameTestHelper h) {
+        var player = feedbackPlayer(h, "skills-player").player();
+        try {
+            h.assertTrue(Skills.available(player) == 1 && !Skills.meets(player, Skill.CHARISMA, 4),
+                    "A new player should have one point and no ranked dialogue");
+            h.assertTrue(Skills.spend(player, Skill.CHARISMA) && !Skills.spend(player, Skill.CHARISMA),
+                    "Spending beyond the available budget succeeded");
+            StreetCred.set(player, StreetCred.threshold(4));
+            for (int rank = 2; rank <= 4; rank++)
+                h.assertTrue(Skills.spend(player, Skill.CHARISMA), "A Street Cred point could not be spent");
+            h.assertTrue(Skills.meets(player, Skill.CHARISMA, 4) && Skills.percent(player, SkillEffect.SHOP_DISCOUNT) == 4,
+                    "A rank did not unlock its check or apply its bonus");
+            int cost = Skills.respecCost(player);
+            PlayerEurodollarManager.setBalance(player, cost - 1);
+            h.assertTrue(!Skills.respec(player, cost) && Skills.spent(player) == 4,
+                    "An unaffordable reset changed ranks");
+            PlayerEurodollarManager.setBalance(player, cost);
+            h.assertTrue(!Skills.respec(player, cost - 1) && PlayerEurodollarManager.balance(player) == cost,
+                    "An outdated reset quote charged the player");
+            h.assertTrue(Skills.respec(player, cost) && !Skills.respec(player, cost)
+                            && Skills.available(player) == 4 && PlayerEurodollarManager.balance(player) == 0
+                            && !Skills.meets(player, Skill.CHARISMA, 4),
+                    "Reset did not clear ranks and restore points exactly once");
+            h.succeed();
+        } finally {
+            player.server.getPlayerList().remove(player);
+        }
     }
 
     private static FeedbackPlayer feedbackPlayer(GameTestHelper h, String name) {

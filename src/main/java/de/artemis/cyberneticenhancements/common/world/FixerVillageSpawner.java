@@ -1,6 +1,9 @@
 package de.artemis.cyberneticenhancements.common.world;
 
+import de.artemis.cyberneticenhancements.common.fasttravel.FastTravelPoints;
+import de.artemis.cyberneticenhancements.common.registry.ModBlocks;
 import net.minecraft.core.BlockPos;
+import net.minecraft.world.level.block.Blocks;
 import net.minecraft.core.Registry;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.resources.ResourceLocation;
@@ -54,6 +57,7 @@ public final class FixerVillageSpawner {
                 continue;
             }
             cleanupVanillaVillagePopulation(serverLevel, chunk);
+            replaceBells(serverLevel, chunk);
             trySpawnNpcs(serverLevel, chunk);
         }
 
@@ -89,6 +93,43 @@ public final class FixerVillageSpawner {
                 continue;
             }
             NightCityResidents.get(level).register(start.getBoundingBox());
+            break;
+        }
+    }
+
+    /** Every city has a fast travel terminal where the village would hang its bell. */
+    private static void replaceBells(ServerLevel level, LevelChunk chunk) {
+        ChunkPos chunkPos = chunk.getPos();
+        Registry<Structure> structureRegistry = level.registryAccess().registryOrThrow(Registries.STRUCTURE);
+        for (StructureStart start : level.structureManager().startsForStructure(chunkPos, structure -> true)) {
+            if (!NIGHT_CITY_STRUCTURE_ID.equals(structureRegistry.getKey(start.getStructure()))) {
+                continue;
+            }
+            var box = start.getBoundingBox();
+            int minX = Math.max(box.minX(), chunkPos.getMinBlockX()), maxX = Math.min(box.maxX(), chunkPos.getMaxBlockX());
+            int minZ = Math.max(box.minZ(), chunkPos.getMinBlockZ()), maxZ = Math.min(box.maxZ(), chunkPos.getMaxBlockZ());
+            int minY = Math.max(box.minY(), level.getMinBuildHeight()), maxY = Math.min(box.maxY(), level.getMaxBuildHeight() - 1);
+            var bells = new ArrayList<BlockPos>();
+            for (int y = minY; y <= maxY; y++) {
+                if (!chunk.getSection(chunk.getSectionIndex(y)).maybeHas(state -> state.is(Blocks.BELL))) {
+                    y |= 15;
+                    continue;
+                }
+                for (int x = minX; x <= maxX; x++) for (int z = minZ; z <= maxZ; z++) {
+                    var pos = new BlockPos(x, y, z);
+                    if (chunk.getBlockState(pos).is(Blocks.BELL)) bells.add(pos);
+                }
+            }
+            for (BlockPos bell : bells) {
+                // The bell hangs from a frame, so the terminal stands on the ground beneath it.
+                BlockPos ground = bell;
+                for (int i = 0; i < 8 && level.getBlockState(ground.below()).getCollisionShape(level, ground.below()).isEmpty(); i++) {
+                    ground = ground.below();
+                }
+                level.setBlock(bell, Blocks.AIR.defaultBlockState(), 2);
+                level.setBlock(ground, ModBlocks.FAST_TRAVEL.get().defaultBlockState(), 3);
+                FastTravelPoints.get(level.getServer()).add(level.dimension().location().toString(), ground, null);
+            }
             break;
         }
     }

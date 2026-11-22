@@ -9,7 +9,9 @@ public enum QuestType {
     RECOVERY("recovery"),
     CYBERPSYCHO("cyberpsycho"),
     /** A world-encounter quest: revive a patient near rough coordinates, mark them with a beacon and bring the beacon back. Never offered on a board. */
-    LOCATE("locate");
+    LOCATE("locate"),
+    /** A cargo from a washed-up shipping container: either one the player found, or one a contact lost and asks to have recovered. */
+    SALVAGE("salvage");
 
     private final String id;
 
@@ -28,7 +30,7 @@ public enum QuestType {
 
     public boolean requiresInPersonTurnIn() {
         return switch (this) {
-            case EXTRACTION, RECOVERY, CYBERPSYCHO, LOCATE -> true;
+            case EXTRACTION, RECOVERY, CYBERPSYCHO, LOCATE, SALVAGE -> true;
             default -> false;
         };
     }

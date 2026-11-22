@@ -93,7 +93,7 @@ public final class CompassPreferences {
             case CITY -> ClientConfig.COMPASS_CITIES.get();
             case MAX_TAC -> ClientConfig.COMPASS_MAX_TAC.get();
             case MEDTEC -> ClientConfig.COMPASS_MEDTEC.get();
-            case CUSTOM -> true;
+            case CUSTOM, DEATH -> true;
         };
     }
 
@@ -143,7 +143,7 @@ public final class CompassPreferences {
 
     public static void delete(CompassLandmark point) {
         String id = point.id();
-        if(point.kind()==CompassLandmark.Kind.CUSTOM){
+        if(point.kind()==CompassLandmark.Kind.CUSTOM||point.kind()==CompassLandmark.Kind.DEATH){
             CustomCompassMarkers.delete(id);
             update(id,new CompassMarkerOverrides.Entry(false,"",null));
             return;

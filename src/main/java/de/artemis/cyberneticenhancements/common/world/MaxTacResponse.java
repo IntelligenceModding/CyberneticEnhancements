@@ -171,8 +171,11 @@ public final class MaxTacResponse extends SavedData {
         pursuit.officers.remove(officer);
         if (pursuit.officers.isEmpty() && pursuit.deployed >= SQUAD_SIZE) {
             var player = level.getServer().getPlayerList().getPlayer(offender);
-            if (player != null) de.artemis.cyberneticenhancements.common.journal.PlayerJournal.record(player, "combat", "maxtac_defeated",
-                    Math.max(0, (level.getServer().overworld().getGameTime() - pursuit.started) / 20));
+            if (player != null) {
+                de.artemis.cyberneticenhancements.common.journal.PlayerJournal.record(player, "combat", "maxtac_defeated",
+                        Math.max(0, (level.getServer().overworld().getGameTime() - pursuit.started) / 20));
+                de.artemis.cyberneticenhancements.common.streetcred.StreetCred.gain(player, de.artemis.cyberneticenhancements.common.streetcred.StreetCredRewards.MAX_TAC_SQUAD);
+            }
             data.pursuits.remove(offender);
         }
         data.setDirty();

@@ -6,6 +6,8 @@ import de.artemis.cyberneticenhancements.common.entity.GangMemberEntity;
 import de.artemis.cyberneticenhancements.common.entity.StreetRipperdocEntity;
 import de.artemis.cyberneticenhancements.common.feedback.GameplayMessages;
 import de.artemis.cyberneticenhancements.common.registry.ModEntityTypes;
+import de.artemis.cyberneticenhancements.common.dialogue.FaceDialogue;
+import de.artemis.cyberneticenhancements.common.streetcred.StreetCred;
 import net.minecraft.ChatFormatting;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
@@ -32,20 +34,15 @@ import java.util.UUID;
 public final class StreetEncounters {
     public static final GameRules.Key<GameRules.BooleanValue> RULE =
             GameRules.register("cyberneticStreetEncounters", GameRules.Category.SPAWNING, GameRules.BooleanValue.create(true));
-    public static final int ANSWER_TICKS = 20 * 30, GANG_SIZE = 3;
+    /** Points for backing a gang down, or for turning down what a gang offers: respect, not money. */
+    public static final int FACE_DOWN = 3;
     private static final String NEXT = "cyberneticenhancements.next_street_encounter";
     private static final int MIN_GAP = 20 * 60 * 20, MAX_GAP = 20 * 60 * 40, MIN_BALANCE = 50;
     private static final Map<UUID, Shakedown> ACTIVE = new HashMap<>();
 
-    private record Shakedown(int demand, long deadline, List<UUID> members) {}
+    private record Shakedown(int demand, long deadline, List<UUID> members, boolean tribute) {}
 
     private StreetEncounters() {}
-
-    /** The toll: a tenth of the player's money, within a range that stays a nuisance rather than a ruin. */
-    public static int demand(int balance) { return Math.clamp(balance / 10, 25, 400); }
-
-    /** Chance that a refusal is taken seriously: every implant on show counts, up to three in four. */
-    public static double bluffChance(int installedCount) { return Math.clamp(installedCount * 0.12, 0, 0.75); }
 
     public static boolean pending(UUID player) { return ACTIVE.containsKey(player); }
 
@@ -59,6 +56,12 @@ public final class StreetEncounters {
         for (var entry : new ArrayList<>(ACTIVE.entrySet())) {
             if (server.overworld().getGameTime() < entry.getValue().deadline()) continue;
             var player = server.getPlayerList().getPlayer(entry.getKey());
+            if (entry.getValue().tribute()) {
+                // Nothing was demanded, so there is nothing to take offence at: they simply go.
+                if (player != null) GameplayMessages.chat(player, Component.translatable("message.cyberneticenhancements.encounter.tribute.timeout"));
+                leave(server, entry.getKey());
+                continue;
+            }
             if (player != null) GameplayMessages.chat(player, Component.translatable("message.cyberneticenhancements.encounter.shakedown.timeout").withStyle(ChatFormatting.RED));
             provoked(server, entry.getKey());
         }
@@ -76,8 +79,9 @@ public final class StreetEncounters {
                 || level.dimension() != net.minecraft.world.level.Level.OVERWORLD || !level.canSeeSky(player.blockPosition())
                 || ACTIVE.containsKey(player.getUUID())) return;
         data.putLong(NEXT, now + gap(level));
-        boolean shakedown = level.random.nextFloat() < 0.4F && level.getDifficulty() != Difficulty.PEACEFUL
-                && PlayerEurodollarManager.balance(player) >= MIN_BALANCE;
+        var stance = ShakedownStance.of(player); // The street picks on a nobody far more often than on a name.
+        boolean shakedown = level.random.nextFloat() < stance.chance() && level.getDifficulty() != Difficulty.PEACEFUL
+                && (PlayerEurodollarManager.balance(player) >= MIN_BALANCE || stance.tributeChance() > 0);
         if (shakedown) startShakedown(player); else startRipperdoc(player);
     }
 
@@ -126,34 +130,66 @@ public final class StreetEncounters {
     public static boolean startShakedown(ServerPlayer player) {
         if (ACTIVE.containsKey(player.getUUID())) return false;
         var level = player.serverLevel();
+        var stance = ShakedownStance.of(player);
+        int playerLevel = StreetCred.level(player);
+        boolean tribute = level.random.nextDouble() < stance.tributeChance();
         var members = new ArrayList<UUID>();
         var pos = spot(level, player, ModEntityTypes.GANG_MEMBER.get(), 10, 16);
         if (pos == null) return false;
-        for (int slot = 0; slot < GANG_SIZE; slot++) {
+        for (int slot = 0; slot < stance.size(); slot++) {
             // Spread them along the line, falling back to the base spot where the neighbour is blocked.
-            var at = pos.offset(slot - 1, 0, 0);
+            var at = pos.offset(slot - stance.size() / 2, 0, 0);
             GangMemberEntity thug = place(level, ModEntityTypes.GANG_MEMBER.get(), level.noCollision(
                     ModEntityTypes.GANG_MEMBER.get().getSpawnAABB(at.getX() + 0.5, at.getY(), at.getZ() + 0.5)) ? at : pos);
             if (thug == null) continue;
-            thug.deploy(player, slot, thug.blockPosition());
+            thug.deploy(player, slot, thug.blockPosition(), stance.power());
             if (level.addFreshEntity(thug)) members.add(thug.getUUID());
         }
         if (members.isEmpty()) return false;
-        int demand = demand(PlayerEurodollarManager.balance(player));
-        ACTIVE.put(player.getUUID(), new Shakedown(demand, level.getGameTime() + ANSWER_TICKS, members));
-        var pay = Component.translatable("message.cyberneticenhancements.encounter.shakedown.pay", demand).withStyle(Style.EMPTY
-                .withColor(ChatFormatting.GREEN).withUnderlined(true).withClickEvent(new ClickEvent(ClickEvent.Action.RUN_COMMAND, "/cyberneticenhancements encounter pay")));
-        var refuse = Component.translatable("message.cyberneticenhancements.encounter.shakedown.refuse").withStyle(Style.EMPTY
-                .withColor(ChatFormatting.RED).withUnderlined(true).withClickEvent(new ClickEvent(ClickEvent.Action.RUN_COMMAND, "/cyberneticenhancements encounter refuse")));
-        GameplayMessages.chat(player, Component.translatable("message.cyberneticenhancements.encounter.shakedown", demand, ANSWER_TICKS / 20)
-                .append(Component.literal("\n")).append(pay).append(Component.literal("   ")).append(refuse));
+        int seconds = stance.answerTicks() / 20;
+        var boss = level.getEntity(members.get(0));
+        var speaker = boss == null ? Component.empty() : boss.getName();
+        int amount = tribute ? ShakedownStance.tribute(playerLevel) : stance.demand(PlayerEurodollarManager.balance(player));
+        if (!tribute) for (var id : members) if (level.getEntity(id) instanceof GangMemberEntity member) member.demand(amount);
+        ACTIVE.put(player.getUUID(), new Shakedown(amount, level.getGameTime() + stance.answerTicks(), members, tribute));
+        // They speak to you where they stand; there is nothing to open, and the clock keeps running while you think.
+        if (boss != null) FaceDialogue.open(player, boss, shakedownNode(player, stance, speaker, tribute, amount, seconds), true,
+                answering -> ACTIVE.containsKey(answering.getUUID()));
         return true;
+    }
+
+    private static FaceDialogue.Node shakedownNode(ServerPlayer player, ShakedownStance stance, Component speaker, boolean tribute, int amount, int seconds) {
+        int level = StreetCred.level(player);
+        var options = new ArrayList<FaceDialogue.Option>();
+        if (tribute) {
+            options.add(FaceDialogue.Option.of(Component.translatable("message.cyberneticenhancements.encounter.tribute.take", amount), p -> { pay(p); return null; }));
+            options.add(FaceDialogue.Option.of(Component.translatable("message.cyberneticenhancements.encounter.tribute.decline"), p -> { refuse(p); return null; }));
+            return new FaceDialogue.Node(speaker, Component.translatable("message.cyberneticenhancements.encounter.tribute", amount, seconds), options);
+        }
+        options.add(FaceDialogue.Option.of(Component.translatable("message.cyberneticenhancements.encounter.shakedown.pay", amount), p -> { pay(p); return null; }));
+        options.add(FaceDialogue.Option.of(Component.translatable("message.cyberneticenhancements.encounter.shakedown.refuse"), p -> { refuse(p); return null; }));
+        options.add(level >= ShakedownStance.NAME_LEVEL
+                ? FaceDialogue.Option.of(Component.translatable("dialogue.cyberneticenhancements.shakedown.name",
+                        Math.round(ShakedownStance.nameDropChance(level) * 100)), p -> { nameDrop(p); return null; })
+                : FaceDialogue.Option.locked(Component.translatable("dialogue.cyberneticenhancements.shakedown.name.locked"),
+                        Component.translatable("dialogue.cyberneticenhancements.requires_street_cred", ShakedownStance.NAME_LEVEL)));
+        options.add(level >= ShakedownStance.STARE_LEVEL
+                ? FaceDialogue.Option.of(Component.translatable("dialogue.cyberneticenhancements.shakedown.stare"), p -> { stareDown(p); return null; })
+                : FaceDialogue.Option.locked(Component.translatable("dialogue.cyberneticenhancements.shakedown.stare"),
+                        Component.translatable("dialogue.cyberneticenhancements.requires_street_cred", ShakedownStance.STARE_LEVEL)));
+        return new FaceDialogue.Node(speaker, Component.translatable("message.cyberneticenhancements.encounter.shakedown." + stance.key(), amount, seconds), options);
     }
 
     /** Settles a pending shakedown by paying. Without enough money the gang takes offence instead. */
     public static boolean pay(ServerPlayer player) {
         var shakedown = ACTIVE.get(player.getUUID());
         if (shakedown == null) return false;
+        if (shakedown.tribute()) {
+            PlayerEurodollarManager.add(player, shakedown.demand(), "tribute", "Tribute from a street gang", null, "Street gang");
+            GameplayMessages.chat(player, Component.translatable("message.cyberneticenhancements.encounter.tribute.taken", shakedown.demand()));
+            leave(player.server, player.getUUID());
+            return true;
+        }
         if (!PlayerEurodollarManager.tryWithdraw(player, shakedown.demand(), "shakedown", "Street gang toll", null, "Street gang")) {
             GameplayMessages.chat(player, Component.translatable("message.cyberneticenhancements.encounter.shakedown.broke").withStyle(ChatFormatting.RED));
             provoked(player.server, player.getUUID());
@@ -166,11 +202,49 @@ public final class StreetEncounters {
 
     /** Refusing is a bluff: the more chrome on show, the likelier the gang backs down. Otherwise they attack. */
     public static boolean refuse(ServerPlayer player) {
-        if (!ACTIVE.containsKey(player.getUUID())) return false;
-        boolean bluffed = player.getRandom().nextDouble() < bluffChance(new PlayerCyberwareInventory(player).getInstalledCount());
+        var shakedown = ACTIVE.get(player.getUUID());
+        if (shakedown == null) return false;
+        if (shakedown.tribute()) {
+            // Turning down what a gang offers earns more than it would have cost them.
+            GameplayMessages.chat(player, Component.translatable("message.cyberneticenhancements.encounter.tribute.declined").withStyle(ChatFormatting.GOLD));
+            StreetCred.gain(player, FACE_DOWN);
+            leave(player.server, player.getUUID());
+            return true;
+        }
+        boolean bluffed = player.getRandom().nextDouble() < ShakedownStance.of(player).bluffChance(new PlayerCyberwareInventory(player).getInstalledCount());
         GameplayMessages.chat(player, Component.translatable("message.cyberneticenhancements.encounter.shakedown." + (bluffed ? "bluffed" : "refused"))
                 .withStyle(bluffed ? ChatFormatting.GREEN : ChatFormatting.RED));
         if (bluffed) leave(player.server, player.getUUID()); else provoked(player.server, player.getUUID());
+        return true;
+    }
+
+    /** For names that need no words: the gang only has to look at who is standing there. No roll, and a name that is made by it. */
+    public static boolean stareDown(ServerPlayer player) {
+        var shakedown = ACTIVE.get(player.getUUID());
+        if (shakedown == null || shakedown.tribute() || StreetCred.level(player) < ShakedownStance.STARE_LEVEL) return false;
+        GameplayMessages.chat(player, Component.translatable("message.cyberneticenhancements.encounter.shakedown.stare").withStyle(ChatFormatting.GOLD));
+        StreetCred.gain(player, FACE_DOWN);
+        leave(player.server, player.getUUID());
+        return true;
+    }
+
+    /** Answering with a name instead of money: the gang either knows who they are dealing with, or does not and takes offence. */
+    public static boolean nameDrop(ServerPlayer player) {
+        var shakedown = ACTIVE.get(player.getUUID());
+        if (shakedown == null || shakedown.tribute()) return false;
+        double chance = ShakedownStance.nameDropChance(StreetCred.level(player));
+        if (chance <= 0) {
+            GameplayMessages.chat(player, Component.translatable("message.cyberneticenhancements.encounter.shakedown.nobody").withStyle(ChatFormatting.RED));
+            provoked(player.server, player.getUUID());
+            return true;
+        }
+        boolean known = player.getRandom().nextDouble() < chance;
+        GameplayMessages.chat(player, Component.translatable("message.cyberneticenhancements.encounter.shakedown." + (known ? "recognised" : "unknown"))
+                .withStyle(known ? ChatFormatting.GOLD : ChatFormatting.RED));
+        if (known) {
+            StreetCred.gain(player, FACE_DOWN);
+            leave(player.server, player.getUUID());
+        } else provoked(player.server, player.getUUID());
         return true;
     }
 

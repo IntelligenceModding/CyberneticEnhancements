@@ -105,6 +105,7 @@ final class QuestWikiEntries {
                     case RECOVERY -> Items.IRON_INGOT;
                     case CYBERPSYCHO -> Items.NETHERITE_SWORD;
                     case LOCATE -> Items.RECOVERY_COMPASS;
+                    case SALVAGE -> Items.BARREL;
                 }), text("badge"), Component.empty(),
                 List.of(text("rating_range", stars(QuestGuide.difficulty(type, 1)), stars(QuestGuide.difficulty(type, 3)))),
                 List.copyOf(sections));

@@ -21,6 +21,8 @@ public final class BetaWelcomeMessage {
     private static final String DISABLE_COMMAND = "cyberneticenhancements-client disable-welcome";
     private static Connection pendingConnection;
     private static int readyTicks;
+    /** Set once the lifepath choice has been in the way, so the notice then comes without its sound. */
+    private static boolean quiet;
     private static long noticeGeneration;
 
     private BetaWelcomeMessage() {
@@ -40,10 +42,14 @@ public final class BetaWelcomeMessage {
                 })));
     }
 
+    /** True until the welcome notice has been shown (or switched off) for this join. */
+    public static boolean waiting() { return pendingConnection != null; }
+
     public static void onLogin(ClientPlayerNetworkEvent.LoggingIn event) {
         noticeGeneration++;
         pendingConnection = event.getConnection();
         readyTicks = 0;
+        quiet = false;
     }
 
     public static void onLogout(ClientPlayerNetworkEvent.LoggingOut event) {
@@ -64,6 +70,8 @@ public final class BetaWelcomeMessage {
         if (minecraft.player == null || minecraft.level == null || minecraft.getConnection() == null
                 || minecraft.getConnection().getConnection() != pendingConnection
                 || minecraft.screen instanceof ReceivingLevelScreen || minecraft.getOverlay() != null) return;
+        // Choosing a lifepath comes first and alone: the notice waits for it, and arrives without a sound.
+        if (OriginClient.hidesHud()) { quiet = true; readyTicks = 0; return; }
 
         if (++readyTicks < 20) return;
         Connection joinedConnection = pendingConnection;
@@ -72,7 +80,7 @@ public final class BetaWelcomeMessage {
         String version = ModList.get().getModContainerById(CyberneticEnhancements.MOD_ID)
                 .orElseThrow().getModInfo().getVersion().toString();
         minecraft.gui.getChat().addMessage(message(version, SharedConstants.getCurrentVersion().getName()));
-        minecraft.getSoundManager().play(SimpleSoundInstance.forUI(SoundEvents.EXPERIENCE_ORB_PICKUP, 1.1F, 0.3F));
+        if (!quiet) minecraft.getSoundManager().play(SimpleSoundInstance.forUI(SoundEvents.EXPERIENCE_ORB_PICKUP, 1.1F, 0.3F));
         if (ClientConfig.CHECK_FOR_UPDATES.get()) {
             CurseForgeUpdateChecker.check(SharedConstants.getCurrentVersion().getName(), version).thenAccept(update ->
                     minecraft.execute(() -> {

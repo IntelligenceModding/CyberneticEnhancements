@@ -19,6 +19,7 @@ public final class NoticeLinks {
     public static final String CREATOR_MODRINTH = "https://modrinth.com/user/Doomed_Artemis";
     public static final String ORGANIZATION_MODRINTH = "https://modrinth.com/organization/intelligence";
     public static final String MED_TEC_AV = "https://www.planetminecraft.com/project/zetatech-atlus/";
+    public static final String SHIPPING_CONTAINERS = "https://www.planetminecraft.com/project/dreamwanderer-s-bundle-of-shipping-containers/";
     public static final String CURSEFORGE ="https://www.curseforge.com/members/doomed_artemis/projects";
 
     private NoticeLinks() {}
@@ -79,6 +80,7 @@ public final class NoticeLinks {
             case "disclaimer_artwork" -> text(key, link("Cyberpunk 2077", "https://www.cyberpunk.net/us/en/"),
                     link("CD PROJEKT S.A.", "https://www.cdprojekt.com/en/"));
             case "credits_structure" -> text(key, link("Captain_JEK", MED_TEC_AV));
+            case "credits_containers" -> text(key, link("DreamWanderer", SHIPPING_CONTAINERS));
             case "settings_open" -> text(key, link(text("client_settings").getString(), SETTINGS));
             case "beta_reports" -> text(key, link(text("report_issue").getString(), PROJECT_GITHUB + "/issues"));
             default -> Component.translatable("screen.cyberneticenhancements.intro." + key);

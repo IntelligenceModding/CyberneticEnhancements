@@ -16,7 +16,7 @@ public final class LaunchIntroPresentation {
         THANK_YOU("thanks_title", "thanks_message", "thanks_more", "thanks_platforms"),
         BETA("beta_title", "beta_message", "beta_reports", "beta_disclaimers"),
         TRANSPARENCY("transparency_title", "transparency_message", "transparency_review", "transparency_testing", "transparency_artists"),
-        CREDITS("credits_title", "credits_message", "credits_structure");
+        CREDITS("credits_title", "credits_message", "credits_structure", "credits_containers");
 
         private final String heading;
         private final String[] paragraphs;

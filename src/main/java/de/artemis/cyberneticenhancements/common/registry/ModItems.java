@@ -55,6 +55,12 @@ public final class ModItems {
     );
     /** Quest items of the missing-patient quest; both are bound to one contract and fail it if lost. */
     public static final DeferredItem<Item> REVIVE_INJECTOR = register("revive_injector", Item::new, properties -> properties.stacksTo(1).rarity(Rarity.RARE));
+    /** Cargo from a washed-up shipping container that belongs to somebody; picking it up opens a quest, see ShippingContainerQuests. */
+    public static final DeferredItem<Item> BUILDING_GADGET = register("building_gadget", de.artemis.cyberneticenhancements.common.item.BuildingGadgetItem::new, properties -> properties.stacksTo(1));
+    /** A red valve fitted into the middle of a water pipe. */
+    public static final DeferredItem<Item> SHUTOFF_VALVE = register("shutoff_valve", de.artemis.cyberneticenhancements.common.item.ShutoffValveItem::new, UnaryOperator.identity());
+    public static final DeferredItem<Item> HANGING_WIRE = register("hanging_wire", de.artemis.cyberneticenhancements.common.item.HangingWireItem::new, UnaryOperator.identity());
+    public static final DeferredItem<Item> LOST_CARGO = register("lost_cargo", Item::new, properties -> properties.stacksTo(1).rarity(Rarity.UNCOMMON));
     public static final DeferredItem<Item> SIGNAL_BEACON = register("signal_beacon", de.artemis.cyberneticenhancements.common.item.SignalBeaconItem::new, properties -> properties.stacksTo(1).rarity(Rarity.UNCOMMON));
     public static final DeferredItem<Item> FIXER_SPAWN_EGG = register(
             "fixer_spawn_egg",
@@ -94,6 +100,9 @@ public final class ModItems {
 
     private static final Map<String, DeferredItem<CyberwareItem>> CYBERWARE_BY_ID = createCyberwareRegistry();
 
+    /** Items that only matter to quests; they have a creative tab of their own. */
+    public static final List<DeferredItem<Item>> QUEST_ITEMS = List.of(COURIER_PACKAGE, REVIVE_INJECTOR, SIGNAL_BEACON, LOST_CARGO);
+
     public static final List<DeferredItem<Item>> MATERIALS = List.of(
             RAW_CHROMIUM, CHROMIUM_SCRAP, CHROMIUM_ALLOY, CHROMIUM_SURVEY,
             COPPER_WIRING,
@@ -108,7 +117,6 @@ public final class ModItems {
             RARE_ITEM_COMPONENTS,
             EPIC_ITEM_COMPONENTS,
             LEGENDARY_ITEM_COMPONENTS,
-            COURIER_PACKAGE, REVIVE_INJECTOR, SIGNAL_BEACON,
             FIXER_SPAWN_EGG,
             RIPPERDOC_SPAWN_EGG,
             TECHIE_SPAWN_EGG,

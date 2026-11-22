@@ -5,16 +5,12 @@ import de.artemis.cyberneticenhancements.common.quest.QuestDimension;
 import java.util.UUID;
 import de.artemis.cyberneticenhancements.common.dialogue.NpcService;
 import de.artemis.cyberneticenhancements.common.dialogue.NpcShopCatalog;
-import de.artemis.cyberneticenhancements.common.dialogue.NpcDialogueChoice;
-import de.artemis.cyberneticenhancements.common.dialogue.NpcDialogueTree;
-import de.artemis.cyberneticenhancements.common.dialogue.NpcDialogueTrees;
 import de.artemis.cyberneticenhancements.common.economy.PlayerEurodollarManager;
 import de.artemis.cyberneticenhancements.common.entity.AbstractCityNpcEntity;
 import de.artemis.cyberneticenhancements.common.entity.NpcType;
 import de.artemis.cyberneticenhancements.common.quest.QuestContract;
 import de.artemis.cyberneticenhancements.common.quest.QuestType;
 import de.artemis.cyberneticenhancements.common.quest.PlayerQuestManager;
-import de.artemis.cyberneticenhancements.common.world.RelicCacheIntel;
 import de.artemis.cyberneticenhancements.common.registry.ModItems;
 import de.artemis.cyberneticenhancements.common.registry.ModMenuTypes;
 import net.minecraft.network.RegistryFriendlyByteBuf;
@@ -27,7 +23,6 @@ import net.minecraft.world.item.ItemStack;
 
 public final class FixerDialogMenu extends AbstractBaseMenu {
     public static final int OPTION_INTRO = 0;
-    public static final int OPTION_CACHE_INTEL = 1;
     public static final int OPTION_STABILIZE = 2;
     public static final int OPTION_PURGE = 3;
     public static final int OPTION_BUY_MAXDOC_MK2 = 4;
@@ -39,10 +34,13 @@ public final class FixerDialogMenu extends AbstractBaseMenu {
     public static final int OPTION_ACCEPT_CONTRACT_3 = 10;
     public static final int OPTION_TURN_IN_CONTRACT = 11;
     public static final int OPTION_ABANDON_CONTRACT = 12;
+    public static final int OPTION_TURN_IN_CONTRACT_2 = 13;
+    public static final int OPTION_ABANDON_CONTRACT_2 = 14;
+    public static final int OPTION_TURN_IN_CONTRACT_3 = 15;
+    public static final int OPTION_ABANDON_CONTRACT_3 = 16;
 
     public static final int RESPONSE_GREETING = 0;
     public static final int RESPONSE_INTRO = 1;
-    public static final int RESPONSE_CACHE_INTEL = 2;
     public static final int RESPONSE_STABILIZE_OK = 3;
     public static final int RESPONSE_NEED_FUNDS = 4;
     public static final int RESPONSE_PURGE_LOCKED = 5;
@@ -68,7 +66,6 @@ public final class FixerDialogMenu extends AbstractBaseMenu {
     public static final int RESPONSE_IDENTITY_APPEARANCE_OK = 25;
     public static final int RESPONSE_IDENTITY_INVALID = 26;
     public static final int RESPONSE_IDENTITY_COLOR_OK = 27;
-    public static final int RESPONSE_NO_CACHE_INTEL = 28;
     public static final int RESPONSE_DEV_QUEST_UNAVAILABLE = 29;
     private static final int DEV_QUEST_OPTION_BASE = 100;
     private static final int TRUST_MAX_POINTS = 300;
@@ -82,35 +79,24 @@ public final class FixerDialogMenu extends AbstractBaseMenu {
     private static final int DATA_BALANCE = 6;
     private static final int DATA_STABILIZE_PRICE = 7;
     private static final int DATA_PURGE_PRICE = 8;
-    private static final int DATA_ACTIVE_PRESENT = 9;
-    private static final int DATA_ACTIVE_TYPE = 10;
-    private static final int DATA_ACTIVE_TIER = 11;
-    private static final int DATA_ACTIVE_TARGET_INDEX = 12;
-    private static final int DATA_ACTIVE_TARGET_COUNT = 13;
-    private static final int DATA_ACTIVE_PROGRESS = 14;
-    private static final int DATA_ACTIVE_READY = 15;
-    private static final int DATA_ACTIVE_REWARD_MONEY = 16;
-    private static final int DATA_ACTIVE_REWARD_TRUST = 17;
-    private static final int DATA_ACTIVE_REWARD_ITEM_KIND = 18;
-    private static final int DATA_ACTIVE_REWARD_ITEM_COUNT = 19;
-    private static final int DATA_ACTIVE_HAS_LOCATION = 20;
-    private static final int DATA_ACTIVE_LOCATION_X = 21;
-    private static final int DATA_ACTIVE_LOCATION_Y = 22;
-    private static final int DATA_ACTIVE_LOCATION_Z = 23;
-    private static final int DATA_OFFER_BASE = 24;
+    private static final int DATA_ACTIVE_BASE = 9;
+    private static final int ACTIVE_SLOTS = PlayerQuestManager.MAX_ACTIVE_PER_ISSUER;
+    private static final int ACTIVE_PRESENT = 0, ACTIVE_TYPE = 1, ACTIVE_TIER = 2, ACTIVE_TARGET_INDEX = 3, ACTIVE_TARGET_COUNT = 4,
+            ACTIVE_PROGRESS = 5, ACTIVE_READY = 6, ACTIVE_REWARD_MONEY = 7, ACTIVE_REWARD_TRUST = 8, ACTIVE_REWARD_ITEM_KIND = 9,
+            ACTIVE_REWARD_ITEM_COUNT = 10, ACTIVE_HAS_LOCATION = 11, ACTIVE_LOCATION_X = 12, ACTIVE_LOCATION_Y = 13,
+            ACTIVE_LOCATION_Z = 14, ACTIVE_ROUTE = 15;
+    private static final int DATA_PER_ACTIVE = 16;
+    private static final int DATA_OFFER_BASE = DATA_ACTIVE_BASE + DATA_PER_ACTIVE * ACTIVE_SLOTS;
     private static final int DATA_PER_OFFER = 10;
     private static final int OFFER_SLOTS = PlayerQuestManager.DEV_OFFER_COUNT;
-    private static final int DATA_DIALOGUE_NODE = DATA_OFFER_BASE + DATA_PER_OFFER * OFFER_SLOTS;
-    private static final int DATA_SHOP_PRICE_MULTIPLIER = DATA_DIALOGUE_NODE + 1;
-    private static final int DATA_OFFERS_PREPARING = DATA_DIALOGUE_NODE + 2;
-    private static final int DATA_ACTIVE_ROUTE = DATA_DIALOGUE_NODE + 3;
-    private static final int DATA_COUNT = DATA_DIALOGUE_NODE + 4;
+    private static final int DATA_SHOP_PRICE_MULTIPLIER = DATA_OFFER_BASE + DATA_PER_OFFER * OFFER_SLOTS;
+    private static final int DATA_OFFERS_PREPARING = DATA_SHOP_PRICE_MULTIPLIER + 1;
+    private static final int DATA_COUNT = DATA_SHOP_PRICE_MULTIPLIER + 2;
 
     private final Player player;
     private final AbstractCityNpcEntity npc;
     private final int[] syncedData = new int[DATA_COUNT];
     private int responseId;
-    private int currentDialogueNodeId;
     private boolean synchronizingBoard;
     private PlayerQuestManager.BoardSnapshot synchronizationBoard;
     private DevQuestRequest devQuestRequest;
@@ -136,14 +122,20 @@ public final class FixerDialogMenu extends AbstractBaseMenu {
         if (!(player instanceof ServerPlayer serverPlayer) || npc == null || !npc.npcType().supportsContracts()) return null;
         if (synchronizingBoard && synchronizationBoard != null) return synchronizationBoard;
         var board = isDevTest() ? new PlayerQuestManager.BoardSnapshot(PlayerQuestManager.activeContracts(serverPlayer).stream()
-                .filter(contract -> contract.issuerId().equals(npc.getUUID())).findFirst().orElse(null), java.util.List.of())
+                .filter(contract -> contract.issuerId().equals(npc.getUUID())).toList(), java.util.List.of())
                 : PlayerQuestManager.snapshotForIssuer(serverPlayer, npc);
         if (synchronizingBoard) synchronizationBoard = board;
         return board;
     }
 
+    private int initialView;
+
+    /** The window it opens in, as numbered by {@code FaceDialogueWindowPayload}, or 0 for the conversation. */
+    public int initialView() { return initialView; }
+
     public FixerDialogMenu(int containerId, Inventory inventory, RegistryFriendlyByteBuf extraData) {
         this(containerId, inventory, (AbstractCityNpcEntity) inventory.player.level().getEntity(extraData.readVarInt()));
+        this.initialView = extraData.readVarInt();
     }
 
     public FixerDialogMenu(int containerId, Inventory inventory, AbstractCityNpcEntity npc) {
@@ -151,8 +143,6 @@ public final class FixerDialogMenu extends AbstractBaseMenu {
         this.player = inventory.player;
         this.npc = npc;
         this.responseId = npc == null ? RESPONSE_BUSY_STATE : RESPONSE_GREETING;
-        this.currentDialogueNodeId = dialogueTree().rootNodeId();
-        this.syncedData[DATA_DIALOGUE_NODE] = this.currentDialogueNodeId;
         if (npc != null) npc.noteConversationReply();
         addStateSlots();
     }
@@ -175,15 +165,13 @@ public final class FixerDialogMenu extends AbstractBaseMenu {
     }
 
     private int serverValue(int dataIndex) {
-        if (dataIndex == DATA_DIALOGUE_NODE) return currentDialogueNodeId;
         if (dataIndex == DATA_SHOP_PRICE_MULTIPLIER) return npc == null ? 1000 : Math.round(npc.priceMultiplier(player) * 1000.0F);
         if (npc == null) {
             return 0;
         }
         PlayerQuestManager.BoardSnapshot board = contractBoard();
-        QuestContract activeContract = board == null ? null : board.active();
-        if (dataIndex == DATA_ACTIVE_ROUTE)
-            return activeContract == null ? 0 : de.artemis.cyberneticenhancements.common.quest.QuestDimension.of(activeContract.dimensionId()).ordinal();
+        if (dataIndex >= DATA_ACTIVE_BASE && dataIndex < DATA_OFFER_BASE)
+            return activeServerValue((dataIndex - DATA_ACTIVE_BASE) / DATA_PER_ACTIVE, (dataIndex - DATA_ACTIVE_BASE) % DATA_PER_ACTIVE, board);
         if (dataIndex == DATA_OFFERS_PREPARING)
             return (isDevTest() ? devQuestRequest != null
                     : player instanceof ServerPlayer serverPlayer && PlayerQuestManager.offersPreparing(serverPlayer, npc)) ? 1 : 0;
@@ -197,22 +185,32 @@ public final class FixerDialogMenu extends AbstractBaseMenu {
             case DATA_BALANCE -> PlayerEurodollarManager.balance(player);
             case DATA_STABILIZE_PRICE -> priceForServerOption(OPTION_STABILIZE);
             case DATA_PURGE_PRICE -> priceForServerOption(OPTION_PURGE);
-            case DATA_ACTIVE_PRESENT -> activeContract == null ? 0 : 1;
-            case DATA_ACTIVE_TYPE -> activeContract == null ? -1 : activeContract.type().ordinal();
-            case DATA_ACTIVE_TIER -> activeContract == null ? 0 : activeContract.tier();
-            case DATA_ACTIVE_TARGET_INDEX -> activeContract == null ? 0 : activeContract.targetIndex();
-            case DATA_ACTIVE_TARGET_COUNT -> activeContract == null ? 0 : activeContract.targetCount();
-            case DATA_ACTIVE_PROGRESS -> activeContract == null ? 0 : activeContract.progress();
-            case DATA_ACTIVE_READY -> activeContract != null && activeContract.isReady() ? 1 : 0;
-            case DATA_ACTIVE_REWARD_MONEY -> activeContract == null ? 0 : activeContract.rewardMoney();
-            case DATA_ACTIVE_REWARD_TRUST -> activeContract == null ? 0 : activeContract.rewardTrust();
-            case DATA_ACTIVE_REWARD_ITEM_KIND -> activeContract == null ? 0 : activeContract.rewardItemKind();
-            case DATA_ACTIVE_REWARD_ITEM_COUNT -> activeContract == null ? 0 : activeContract.rewardItemCount();
-            case DATA_ACTIVE_HAS_LOCATION -> activeContract != null && activeContract.targetPos() != null && !activeContract.dimensionId().isBlank() ? 1 : 0;
-            case DATA_ACTIVE_LOCATION_X -> activeContract == null || activeContract.targetPos() == null ? 0 : activeContract.targetPos().getX();
-            case DATA_ACTIVE_LOCATION_Y -> activeContract == null || activeContract.targetPos() == null ? 0 : activeContract.targetPos().getY();
-            case DATA_ACTIVE_LOCATION_Z -> activeContract == null || activeContract.targetPos() == null ? 0 : activeContract.targetPos().getZ();
             default -> offerServerValue(dataIndex, board);
+        };
+    }
+
+    private int activeServerValue(int slot, int field, PlayerQuestManager.BoardSnapshot board) {
+        QuestContract contract = board == null || slot >= board.actives().size() ? null : board.actives().get(slot);
+        if (contract == null) return field == ACTIVE_TYPE ? -1 : 0;
+        boolean located = contract.targetPos() != null;
+        return switch (field) {
+            case ACTIVE_PRESENT -> 1;
+            case ACTIVE_TYPE -> contract.type().ordinal();
+            case ACTIVE_TIER -> contract.tier();
+            case ACTIVE_TARGET_INDEX -> contract.targetIndex();
+            case ACTIVE_TARGET_COUNT -> contract.targetCount();
+            case ACTIVE_PROGRESS -> contract.progress();
+            case ACTIVE_READY -> contract.isReady() ? 1 : 0;
+            case ACTIVE_REWARD_MONEY -> contract.rewardMoney();
+            case ACTIVE_REWARD_TRUST -> contract.rewardTrust();
+            case ACTIVE_REWARD_ITEM_KIND -> contract.rewardItemKind();
+            case ACTIVE_REWARD_ITEM_COUNT -> contract.rewardItemCount();
+            case ACTIVE_HAS_LOCATION -> located && !contract.dimensionId().isBlank() ? 1 : 0;
+            case ACTIVE_LOCATION_X -> located ? contract.targetPos().getX() : 0;
+            case ACTIVE_LOCATION_Y -> located ? contract.targetPos().getY() : 0;
+            case ACTIVE_LOCATION_Z -> located ? contract.targetPos().getZ() : 0;
+            case ACTIVE_ROUTE -> de.artemis.cyberneticenhancements.common.quest.QuestDimension.of(contract.dimensionId()).ordinal();
+            default -> 0;
         };
     }
 
@@ -270,11 +268,6 @@ public final class FixerDialogMenu extends AbstractBaseMenu {
             purchaseShopOffer(serverPlayer, -(optionId + 1));
             return;
         }
-        if (NpcDialogueTrees.isDialogueChoice(optionId)) {
-            handleDialogueChoice(serverPlayer, optionId);
-            broadcastChanges();
-            return;
-        }
         switch (optionId) {
             case OPTION_INTRO -> {
                 if (!npc.hasMet(serverPlayer)) {
@@ -282,14 +275,6 @@ public final class FixerDialogMenu extends AbstractBaseMenu {
                     npc.raiseTrust(serverPlayer, 3);
                 }
                 responseId = RESPONSE_INTRO;
-            }
-            case OPTION_CACHE_INTEL -> {
-                if (!npcType().supportsIntel()) return;
-                boolean found = RelicCacheIntel.provide(serverPlayer);
-                if (!npc.hasMet(serverPlayer)) {
-                    npc.markMet(serverPlayer);
-                }
-                responseId = found ? RESPONSE_CACHE_INTEL : RESPONSE_NO_CACHE_INTEL;
             }
             case OPTION_STABILIZE, OPTION_PURGE -> {
                 if (NpcService.forNpc(npcType()).isEmpty()) return;
@@ -328,16 +313,18 @@ public final class FixerDialogMenu extends AbstractBaseMenu {
                     case INVALID -> RESPONSE_BUSY_STATE;
                 };
             }
-            case OPTION_TURN_IN_CONTRACT -> {
-                PlayerQuestManager.TurnInResult result = PlayerQuestManager.turnInIssuerActive(serverPlayer, npc);
+            case OPTION_TURN_IN_CONTRACT, OPTION_TURN_IN_CONTRACT_2, OPTION_TURN_IN_CONTRACT_3 -> {
+                PlayerQuestManager.TurnInResult result = PlayerQuestManager.turnInIssuerActive(serverPlayer, npc,
+                        activeContractId(optionId == OPTION_TURN_IN_CONTRACT ? 0 : optionId == OPTION_TURN_IN_CONTRACT_2 ? 1 : 2));
                 responseId = switch (result) {
                     case OK -> RESPONSE_CONTRACT_TURNED_IN;
                     case MISSING_ITEMS -> RESPONSE_CONTRACT_MISSING_ITEMS;
                     case NOT_READY, UNAVAILABLE, IN_PERSON_REQUIRED, REJECTED -> RESPONSE_CONTRACT_NOT_READY;
                 };
             }
-            case OPTION_ABANDON_CONTRACT -> {
-                PlayerQuestManager.Result result = PlayerQuestManager.abandonIssuerActive(serverPlayer, npc);
+            case OPTION_ABANDON_CONTRACT, OPTION_ABANDON_CONTRACT_2, OPTION_ABANDON_CONTRACT_3 -> {
+                PlayerQuestManager.Result result = PlayerQuestManager.abandonIssuerActive(serverPlayer, npc,
+                        activeContractId(optionId == OPTION_ABANDON_CONTRACT ? 0 : optionId == OPTION_ABANDON_CONTRACT_2 ? 1 : 2));
                 responseId = result == PlayerQuestManager.Result.OK ? RESPONSE_CONTRACT_ABANDONED : RESPONSE_BUSY_STATE;
             }
             default -> {
@@ -352,40 +339,10 @@ public final class FixerDialogMenu extends AbstractBaseMenu {
         broadcastChanges();
     }
 
-    private void handleDialogueChoice(ServerPlayer serverPlayer, int choiceId) {
-        NpcDialogueChoice choice;
-        try {
-            choice = dialogueTree().choice(currentDialogueNodeId, choiceId);
-        } catch (IllegalArgumentException ignored) {
-            return;
-        }
-
-        de.artemis.cyberneticenhancements.common.journal.PlayerJournal.record(serverPlayer, "contacts", "dialogue", npc.getDisplayName(), Component.translatable(choice.translationKey()));
-        if (choice.trustDelta() > 0) {
-            if (choice.rewardMemoryKey() == null || choice.rewardMemoryKey().isBlank()) {
-                npc.raiseTrust(serverPlayer, choice.trustDelta());
-            } else {
-                npc.grantDialogueTrustOnce(serverPlayer, choice.rewardMemoryKey(), choice.trustDelta());
-            }
-        } else if (choice.trustDelta() < 0 || choice.annoyanceDelta() > 0 || choice.closeConversation()) {
-            npc.applyDialoguePenalty(
-                    serverPlayer,
-                    Math.max(0, -choice.trustDelta()),
-                    choice.annoyanceDelta(),
-                    choice.closeConversation()
-            );
-        }
-
-
-        currentDialogueNodeId = choice.nextNodeId();
-        if (npcType().supportsIntel() && choice.view() == de.artemis.cyberneticenhancements.common.dialogue.NpcDialogueView.CACHE_INTEL) {
-            responseId = RelicCacheIntel.provide(serverPlayer) ? RESPONSE_CACHE_INTEL : RESPONSE_NO_CACHE_INTEL;
-            return;
-        }
-        responseId = switch (choice.view()) {
-            case CONTRACTS -> RESPONSE_CONTRACTS;
-            default -> RESPONSE_GREETING;
-        };
+    /** The id of the contract shown in this slot of the window, or a value that matches none, so a stale click does nothing. */
+    private String activeContractId(int slot) {
+        var board = contractBoard();
+        return board == null || slot >= board.actives().size() ? "-" : board.actives().get(slot).id();
     }
 
     private boolean chargeFunds(ServerPlayer player, int count, String note) {
@@ -415,8 +372,10 @@ public final class FixerDialogMenu extends AbstractBaseMenu {
     public int shopPrice(int index) {
         if (index < 0 || index >= shopOffers().size() || isDevTest()) return 0;
         int basePrice = shopOffers().get(index).basePrice();
-        if (player instanceof ServerPlayer) return priceForBase(basePrice);
-        int discounted = Math.max(1, Math.round(basePrice * (100 - trustDiscountPercent()) / 100.0F));
+        if (player instanceof ServerPlayer) return priceForBase(basePrice, null);
+        int discounted = Math.max(1, Math.round(basePrice * (100 - trustDiscountPercent()) / 100.0F * de.artemis.cyberneticenhancements.common.origin.Origins.priceMultiplier(player, npcType(), null)
+                * de.artemis.cyberneticenhancements.common.streetcred.StreetCredEffects.priceMultiplier(player)
+                * de.artemis.cyberneticenhancements.common.skills.SkillEffects.vendorMultiplier(player, npcType(), false)));
         return Math.max(1, Math.round(discounted * Math.max(1.0F, syncedData[DATA_SHOP_PRICE_MULTIPLIER] / 1000.0F)));
     }
 
@@ -465,9 +424,6 @@ public final class FixerDialogMenu extends AbstractBaseMenu {
     private int optionMask() {
         int mask = 0;
         mask |= 1 << OPTION_INTRO;
-        if (npcType().supportsIntel()) {
-            mask |= 1 << OPTION_CACHE_INTEL;
-        }
         if (supportsServices()) {
             mask |= 1 << OPTION_STABILIZE;
         }
@@ -548,20 +504,6 @@ public final class FixerDialogMenu extends AbstractBaseMenu {
         return npcType().id();
     }
 
-    public int currentDialogueNodeId() {
-        int nodeId = syncedData[DATA_DIALOGUE_NODE];
-        try {
-            dialogueTree().node(nodeId);
-            return nodeId;
-        } catch (IllegalArgumentException ignored) {
-            return dialogueTree().rootNodeId();
-        }
-    }
-
-    public NpcDialogueTree dialogueTree() {
-        return isDevTest() ? de.artemis.cyberneticenhancements.common.entity.DevTestEntity.dialogueTree() : NpcDialogueTrees.tree(npcType());
-    }
-
     public Component npcTypeLabel() {
         return isDevTest() ? Component.literal("Dev-Test") : npcType().displayName();
     }
@@ -576,10 +518,6 @@ public final class FixerDialogMenu extends AbstractBaseMenu {
 
     public boolean supportsShop() {
         return npcType().supportsShop();
-    }
-
-    public boolean supportsIntel() {
-        return npcType().supportsIntel();
     }
 
     /** A passing street NPC: no trust, discount or renaming, since it is never kept as a contact. */
@@ -660,7 +598,7 @@ public final class FixerDialogMenu extends AbstractBaseMenu {
     }
 
     public int trustDiscountPercent() {
-        return npcType().supportsTrustDiscount() ? discountPercentForTrustPoints(trustPoints()) : 0;
+        return npcType().supportsTrustDiscount() ? de.artemis.cyberneticenhancements.common.origin.Origins.discount(player, discountPercentForTrustPoints(trustPoints())) : 0;
     }
 
     public int unlockLevelForOption(int optionId) {
@@ -686,64 +624,47 @@ public final class FixerDialogMenu extends AbstractBaseMenu {
         return (syncedData[DATA_OPTION_MASK] & (1 << optionId)) != 0;
     }
 
-    public boolean hasActiveContract() {
-        return syncedData[DATA_ACTIVE_PRESENT] == 1;
+    public boolean hasActiveContract(int slot) {
+        return activeValue(slot, ACTIVE_PRESENT) == 1;
     }
 
-    public boolean activeContractReady() {
-        return syncedData[DATA_ACTIVE_READY] == 1;
+    public int activeContractCount() {
+        int count = 0;
+        for (int slot = 0; slot < ACTIVE_SLOTS; slot++) if (hasActiveContract(slot)) count++;
+        return count;
     }
 
-    public int activeContractTier() {
-        return syncedData[DATA_ACTIVE_TIER];
+    public boolean activeContractReady(int slot) {
+        return activeValue(slot, ACTIVE_READY) == 1;
     }
 
-    public int activeContractTargetIndex() {
-        return syncedData[DATA_ACTIVE_TARGET_INDEX];
+    public int activeContractTier(int slot) {
+        return activeValue(slot, ACTIVE_TIER);
     }
 
-    public int activeContractTargetCount() {
-        return syncedData[DATA_ACTIVE_TARGET_COUNT];
+    public int activeContractTargetIndex(int slot) {
+        return activeValue(slot, ACTIVE_TARGET_INDEX);
     }
 
-    public int activeContractProgress() {
-        return syncedData[DATA_ACTIVE_PROGRESS];
+    public int activeContractTargetCount(int slot) {
+        return activeValue(slot, ACTIVE_TARGET_COUNT);
     }
 
-    public int activeContractRewardMoney() {
-        return syncedData[DATA_ACTIVE_REWARD_MONEY];
+    public int activeContractProgress(int slot) {
+        return activeValue(slot, ACTIVE_PROGRESS);
     }
 
-    public int activeContractRewardTrust() {
-        return syncedData[DATA_ACTIVE_REWARD_TRUST];
+    public QuestType activeContractType(int slot) {
+        return questTypeFromOrdinal(activeValue(slot, ACTIVE_TYPE));
     }
 
-    public int activeContractRewardItemKind() {
-        return syncedData[DATA_ACTIVE_REWARD_ITEM_KIND];
+    private QuestDimension activeRoute(int slot) {
+        return QuestDimension.byIndex(activeValue(slot, ACTIVE_ROUTE));
     }
 
-    public int activeContractRewardItemCount() {
-        return syncedData[DATA_ACTIVE_REWARD_ITEM_COUNT];
-    }
-
-    public boolean activeContractHasLocation() {
-        return syncedData[DATA_ACTIVE_HAS_LOCATION] == 1;
-    }
-
-    public int activeContractLocationX() {
-        return syncedData[DATA_ACTIVE_LOCATION_X];
-    }
-
-    public int activeContractLocationY() {
-        return syncedData[DATA_ACTIVE_LOCATION_Y];
-    }
-
-    public int activeContractLocationZ() {
-        return syncedData[DATA_ACTIVE_LOCATION_Z];
-    }
-
-    public QuestType activeContractType() {
-        return questTypeFromOrdinal(syncedData[DATA_ACTIVE_TYPE]);
+    private int activeValue(int slot, int field) {
+        if (slot < 0 || slot >= ACTIVE_SLOTS) return 0;
+        return syncedData[DATA_ACTIVE_BASE + slot * DATA_PER_ACTIVE + field];
     }
 
     public boolean offerPresent(int slot) {
@@ -784,12 +705,17 @@ public final class FixerDialogMenu extends AbstractBaseMenu {
 
     private int priceForServerOption(int optionId) {
         if (isDevTest()) return 0;
-        return priceForBase(basePriceForOption(optionId));
+        boolean service = optionId == OPTION_STABILIZE || optionId == OPTION_PURGE;
+        return priceForBase(basePriceForOption(optionId), service && !NpcService.forNpc(npcType()).isEmpty() ? NpcService.forOption(npcType(), optionId) : null);
     }
 
-    private int priceForBase(int basePrice) {
-        int trustDiscountPercent = npc == null || !npc.npcType().supportsTrustDiscount() ? 0 : discountPercentForTrustPoints(npc.trustPoints(player));
-        int discountedPrice = Math.max(1, Math.round(basePrice * (100 - trustDiscountPercent) / 100.0F));
+    private int priceForBase(int basePrice, NpcService service) {
+        int trustDiscountPercent = npc == null || !npc.npcType().supportsTrustDiscount() ? 0
+                : de.artemis.cyberneticenhancements.common.origin.Origins.discount(player, discountPercentForTrustPoints(npc.trustPoints(player)));
+        float lifepath = npc == null ? 1.0F : de.artemis.cyberneticenhancements.common.origin.Origins.priceMultiplier(player, npc.npcType(), service)
+                * de.artemis.cyberneticenhancements.common.streetcred.StreetCredEffects.priceMultiplier(player)
+                * de.artemis.cyberneticenhancements.common.skills.SkillEffects.vendorMultiplier(player, npc.npcType(), service != null);
+        int discountedPrice = Math.max(1, Math.round(basePrice * (100 - trustDiscountPercent) / 100.0F * lifepath));
         float priceMultiplier = npc == null ? 1.0F : npc.priceMultiplier(player);
         return Math.max(1, Math.round(discountedPrice * priceMultiplier));
     }
@@ -809,34 +735,35 @@ public final class FixerDialogMenu extends AbstractBaseMenu {
         return Math.max(0, Math.min(100, Math.round(trustPoints * 100.0F / TRUST_MAX_POINTS)));
     }
 
-    public Component activeContractTitle() {
-        var title = activeContractType() == QuestType.INVESTIGATION && activeContractTargetIndex() == 1
-                ? Component.translatable("quest.cyberneticenhancements.title.chromium_survey") : questTitleFor(activeContractType());
-        return de.artemis.cyberneticenhancements.common.quest.QuestDimension.byIndex(syncedData[DATA_ACTIVE_ROUTE]).title(title);
+    public Component activeContractTitle(int slot) {
+        var title = activeContractType(slot) == QuestType.INVESTIGATION && activeContractTargetIndex(slot) == 1
+                ? Component.translatable("quest.cyberneticenhancements.title.chromium_survey") : questTitleFor(activeContractType(slot));
+        return activeRoute(slot).title(title);
     }
 
-    public Component activeContractObjective() {
-        return objectiveFor(activeContractType(), activeContractTargetIndex(), activeContractProgress(), activeContractTargetCount(),
-                activeContractReady(), QuestDimension.byIndex(syncedData[DATA_ACTIVE_ROUTE]));
+    public Component activeContractObjective(int slot) {
+        return objectiveFor(activeContractType(slot), activeContractTargetIndex(slot), activeContractProgress(slot), activeContractTargetCount(slot),
+                activeContractReady(slot), activeRoute(slot));
     }
 
-    public Component activeContractRewardSummary() {
-        return rewardSummary(activeContractRewardMoney(), activeContractRewardTrust(), activeContractRewardItemKind(), activeContractRewardItemCount()).copy()
-                .append(Component.translatable("quest.cyberneticenhancements.reward.xp", de.artemis.cyberneticenhancements.common.quest.QuestDimension.byIndex(syncedData[DATA_ACTIVE_ROUTE])
-                        .reward(de.artemis.cyberneticenhancements.common.progression.ExperienceRewards.quest(activeContractType(), activeContractTier()))))
-                .append(activeContractType() == QuestType.INVESTIGATION && activeContractTargetIndex() == 1
+    public Component activeContractRewardSummary(int slot) {
+        return rewardSummary(activeValue(slot, ACTIVE_REWARD_MONEY), activeValue(slot, ACTIVE_REWARD_TRUST),
+                activeValue(slot, ACTIVE_REWARD_ITEM_KIND), activeValue(slot, ACTIVE_REWARD_ITEM_COUNT)).copy()
+                .append(Component.translatable("quest.cyberneticenhancements.reward.xp", activeRoute(slot)
+                        .reward(de.artemis.cyberneticenhancements.common.progression.ExperienceRewards.quest(activeContractType(slot), activeContractTier(slot)))))
+                .append(activeContractType(slot) == QuestType.INVESTIGATION && activeContractTargetIndex(slot) == 1
                         ? Component.translatable("quest.cyberneticenhancements.reward.chromium_marker") : Component.empty());
     }
 
-    public Component activeContractLocationSummary() {
-        if (!activeContractHasLocation()) {
+    public Component activeContractLocationSummary(int slot) {
+        if (activeValue(slot, ACTIVE_HAS_LOCATION) != 1) {
             return Component.empty();
         }
         return Component.translatable(
                 "screen.cyberneticenhancements.fixer.contract.location",
-                activeContractLocationX(),
-                activeContractLocationY(),
-                activeContractLocationZ()
+                activeValue(slot, ACTIVE_LOCATION_X),
+                activeValue(slot, ACTIVE_LOCATION_Y),
+                activeValue(slot, ACTIVE_LOCATION_Z)
         );
     }
 
@@ -890,6 +817,7 @@ public final class FixerDialogMenu extends AbstractBaseMenu {
                     : Component.translatable("quest.cyberneticenhancements.objective.recovery_dimension", targetCount, targetLabel(type, targetIndex), route.displayName());
             case CYBERPSYCHO -> Component.translatable("quest.cyberneticenhancements.objective.cyberpsycho.offer");
             case LOCATE -> Component.translatable("quest.cyberneticenhancements.objective.locate");
+            case SALVAGE -> Component.translatable("quest.cyberneticenhancements.objective.salvage");
         };
     }
 
@@ -903,7 +831,43 @@ public final class FixerDialogMenu extends AbstractBaseMenu {
             case RECOVERY -> QuestContract.safeRecoveryItem(targetIndex).getDefaultInstance().getHoverName();
             case CYBERPSYCHO -> Component.translatable("entity.cyberneticenhancements.cyberpsycho");
             case LOCATE -> Component.translatable("quest.cyberneticenhancements.target.patient");
+            case SALVAGE -> Component.translatable("quest.cyberneticenhancements.target.cargo");
         };
+    }
+
+    /** One thing a contract pays out, with the item that stands for it. */
+    public record RewardLine(ItemStack icon, Component text) {}
+
+    public java.util.List<RewardLine> activeContractRewards(int slot) {
+        return rewardLines(activeValue(slot, ACTIVE_REWARD_MONEY), activeValue(slot, ACTIVE_REWARD_TRUST),
+                activeValue(slot, ACTIVE_REWARD_ITEM_KIND), activeValue(slot, ACTIVE_REWARD_ITEM_COUNT),
+                activeRoute(slot).reward(de.artemis.cyberneticenhancements.common.progression.ExperienceRewards.quest(activeContractType(slot), activeContractTier(slot))),
+                activeContractType(slot) == QuestType.INVESTIGATION && activeContractTargetIndex(slot) == 1);
+    }
+
+    public java.util.List<RewardLine> offerRewards(int slot) {
+        return rewardLines(offerRewardMoney(slot), offerRewardTrust(slot), offerRewardItemKind(slot), offerRewardItemCount(slot),
+                offerRoute(slot).reward(de.artemis.cyberneticenhancements.common.progression.ExperienceRewards.quest(offerType(slot), offerTier(slot))),
+                offerType(slot) == QuestType.INVESTIGATION && offerTargetIndex(slot) == 1);
+    }
+
+    /** One line per kind of reward: the money, the trust, an item if there is one, the experience, and the compass marker of a survey. */
+    private java.util.List<RewardLine> rewardLines(int money, int trust, int rewardItemKind, int rewardItemCount, int experience, boolean marker) {
+        var lines = new java.util.ArrayList<RewardLine>();
+        if (money > 0) lines.add(new RewardLine(new ItemStack(net.minecraft.world.item.Items.GOLD_INGOT), Component.translatable("quest.cyberneticenhancements.reward.line.money", money)));
+        if (trust > 0) lines.add(new RewardLine(new ItemStack(net.minecraft.world.item.Items.AMETHYST_SHARD), Component.translatable("quest.cyberneticenhancements.reward.line.trust", trust)));
+        ItemStack rewardStack = switch (rewardItemKind) {
+            case QuestContract.REWARD_CHROMIUM -> new ItemStack(ModItems.CHROMIUM_ALLOY.get(), rewardItemCount);
+            case QuestContract.REWARD_MAXDOC -> new ItemStack(ModItems.consumable("maxdoc_mk2").get(), rewardItemCount);
+            case QuestContract.REWARD_RAM_JOLT -> new ItemStack(ModItems.consumable("ram_jolt").get(), rewardItemCount);
+            case QuestContract.REWARD_CHROME_SUPPRESSANT -> new ItemStack(ModItems.consumable("chrome_suppressant").get(), rewardItemCount);
+            default -> ItemStack.EMPTY;
+        };
+        if (!rewardStack.isEmpty()) lines.add(new RewardLine(rewardStack.copyWithCount(1),
+                Component.translatable("quest.cyberneticenhancements.reward.line.item", rewardStack.getCount(), rewardStack.getHoverName())));
+        if (experience > 0) lines.add(new RewardLine(new ItemStack(net.minecraft.world.item.Items.EXPERIENCE_BOTTLE), Component.translatable("quest.cyberneticenhancements.reward.line.xp", experience)));
+        if (marker) lines.add(new RewardLine(new ItemStack(net.minecraft.world.item.Items.COMPASS), Component.translatable("quest.cyberneticenhancements.reward.line.chromium_marker")));
+        return lines;
     }
 
     private Component rewardSummary(int money, int trust, int rewardItemKind, int rewardItemCount) {
@@ -964,6 +928,7 @@ public final class FixerDialogMenu extends AbstractBaseMenu {
         if (npc != null) {
             npc.clearCustomer(player);
         }
+        if (player instanceof ServerPlayer serverPlayer) de.artemis.cyberneticenhancements.common.dialogue.FaceDialogue.resume(serverPlayer);
     }
 
     @Override

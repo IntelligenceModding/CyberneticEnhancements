@@ -39,6 +39,7 @@ public final class ChromiumDiscovery {
         if (!mark(player, center, false)) return false;
         player.displayClientMessage(Component.translatable("message.cyberneticenhancements.chromium.discovered"), true);
         PlayerJournal.recordAt(player, center, "world", "chromium_discovered");
+        de.artemis.cyberneticenhancements.common.streetcred.StreetCred.gain(player, de.artemis.cyberneticenhancements.common.streetcred.StreetCredRewards.CHROMIUM_DEPOSIT);
         return true;
     }
 

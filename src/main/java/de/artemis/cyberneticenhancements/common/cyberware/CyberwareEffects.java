@@ -129,6 +129,7 @@ public final class CyberwareEffects {
             if (reduction > 0.0001D) {
                 event.setAmount((float) (event.getAmount() * (1.0D - reduction)));
             }
+            event.setAmount(event.getAmount() * de.artemis.cyberneticenhancements.common.skills.SkillEffects.damageTakenMultiplier(player, event.getSource().getEntity()));
             CyberstrainManager.onIncomingDamage(player, event.getAmount(), event.getSource().getEntity() instanceof LivingEntity attacker ? attacker : null);
             SkeletonCyberwareManager.onIncomingDamage(event);
             LegCyberwareManager.onIncomingDamage(event);
@@ -177,6 +178,7 @@ public final class CyberwareEffects {
         CyberwareAbilities.mergeActiveEffects(player, inventory, totals);
         CyberstrainManager.applyPenalties(player, inventory, totals);
         CombatStatusManager.mergePlayerEffects(player, totals);
+        de.artemis.cyberneticenhancements.common.skills.SkillEffects.mergeSurvival(player, totals);
         return totals;
     }
 

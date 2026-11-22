@@ -83,6 +83,20 @@ public final class ScorchedGroundPiece extends StructurePiece {
         int top = Math.min(core.maxY() + 3, level.getMaxBuildHeight() - 1);
         int floor = core.minY() - 1;
         var pos = new BlockPos.MutableBlockPos();
+        // What grows on the untouched land here, before anything is reshaped: new ground is dressed with the same plants at the same density.
+        var palette = new java.util.ArrayList<BlockState>();
+        int samples = 0;
+        for (int x = Math.max(box.minX(), core.minX() - BLEND); x <= Math.min(box.maxX(), core.maxX() + BLEND); x++) {
+            for (int z = Math.max(box.minZ(), core.minZ() - BLEND); z <= Math.min(box.maxZ(), core.maxZ() + BLEND); z++) {
+                if (x >= core.minX() - 1 && x <= core.maxX() + 1 && z >= core.minZ() - 1 && z <= core.maxZ() + 1) continue;
+                samples++;
+                BlockState plant = level.getBlockState(pos.set(x, level.getHeight(Heightmap.Types.OCEAN_FLOOR_WG, x, z), z));
+                if (isGroundCover(plant) && !(plant.getBlock() instanceof net.minecraft.world.level.block.DoublePlantBlock
+                        && plant.getValue(net.minecraft.world.level.block.DoublePlantBlock.HALF) != net.minecraft.world.level.block.state.properties.DoubleBlockHalf.LOWER))
+                    palette.add(plant);
+            }
+        }
+        float density = samples == 0 ? 0 : (float) palette.size() / samples;
         for (int x = Math.max(box.minX(), core.minX() - BLEND); x <= Math.min(box.maxX(), core.maxX() + BLEND); x++) {
             for (int z = Math.max(box.minZ(), core.minZ() - BLEND); z <= Math.min(box.maxZ(), core.maxZ() + BLEND); z++) {
                 int dx = Math.max(Math.max(core.minX() - x, x - core.maxX()), 0);
@@ -100,28 +114,60 @@ public final class ScorchedGroundPiece extends StructurePiece {
                 int natural = ground - 1;
                 double t = eased / BLEND;
                 int target = (int) Math.round(floor + (natural - floor) * (t * t * (3 - 2 * t)));
-                if (target == natural) continue;
+                boolean ring = dx <= 1 && dz <= 1;
+                if (target == natural && !ring) continue;
                 // The land is made of what it is made of here: sand in a desert, terracotta in badlands, grass over dirt elsewhere.
-                BlockState surface = naturalLayer(level, x, natural, z, Blocks.GRASS_BLOCK.defaultBlockState());
+                BlockState above = level.getBlockState(pos.set(x, natural + 1, z));
+                // What grew here is put back; ground that had nothing, or was cleared around the build, gets the biome's plants at its density.
+                BlockState plant = !ring && isGroundCover(above) ? above
+                        : !palette.isEmpty() && random.nextFloat() < density ? palette.get(random.nextInt(palette.size())) : null;
+                boolean cover = plant != null;
+                BlockState surface = naturalSurface(level, x, natural, z, cover && plant.is(Blocks.SNOW));
                 BlockState filler = naturalLayer(level, x, natural - 1, z, Blocks.DIRT.defaultBlockState());
-                if (target > natural) {
+                if (target == natural) {
+                    // Only the ring around the build was cleared; its ground stays and just gets its plants back.
+                } else if (target > natural) {
                     for (int y = Math.max(ground, level.getMinBuildHeight()); y <= target; y++) {
                         pos.set(x, y, z);
-                        level.setBlock(pos, y == target && distance > 0 ? surface : filler, 2);
+                        level.setBlock(pos, y == target ? surface : filler, 2);
                     }
                 } else {
                     for (int y = natural; y > target; y--) {
                         pos.set(x, y, z);
                         level.setBlock(pos, Blocks.AIR.defaultBlockState(), 2);
                     }
-                    if (distance > 0) level.setBlock(pos.set(x, target, z), surface, 2);
+                    level.setBlock(pos.set(x, target, z), surface, 2);
                 }
                 for (int y = natural + 1; y <= natural + 2; y++) { // Whatever grew on the old surface has nothing to stand on any more.
                     pos.set(x, y, z);
-                    if (level.getBlockState(pos).getBlock() instanceof BushBlock) level.setBlock(pos, Blocks.AIR.defaultBlockState(), 2);
+                    if (isGroundCover(level.getBlockState(pos))) level.setBlock(pos, Blocks.AIR.defaultBlockState(), 2);
                 }
+                if (cover) restoreCover(level, pos.set(x, target + 1, z), plant);
             }
         }
+    }
+
+    /** Grass, flowers, petals, ferns, bushes, cacti and snow: the small things a biome scatters over its surface. */
+    private static boolean isGroundCover(BlockState state) {
+        return state.getBlock() instanceof BushBlock || state.getBlock() instanceof net.minecraft.world.level.block.SnowLayerBlock
+                || state.getBlock() instanceof net.minecraft.world.level.block.CactusBlock;
+    }
+
+    private static void restoreCover(WorldGenLevel level, BlockPos.MutableBlockPos pos, BlockState cover) {
+        if (!level.getBlockState(pos).isAir() || !cover.canSurvive(level, pos)) return;
+        if (cover.getBlock() instanceof net.minecraft.world.level.block.DoublePlantBlock) {
+            if (cover.getValue(net.minecraft.world.level.block.DoublePlantBlock.HALF) != net.minecraft.world.level.block.state.properties.DoubleBlockHalf.LOWER
+                    || !level.getBlockState(pos.above()).isAir()) return;
+            net.minecraft.world.level.block.DoublePlantBlock.placeAt(level, cover, pos, 2);
+        } else level.setBlock(pos, cover, 2);
+    }
+
+    /** The top of the land at this column, always something to walk on: where it would be bare dirt it is grass, so the site is never laid on dirt. */
+    private static BlockState naturalSurface(WorldGenLevel level, int x, int y, int z, boolean snowy) {
+        BlockState state = naturalLayer(level, x, y, z, Blocks.GRASS_BLOCK.defaultBlockState());
+        if (state.is(Blocks.DIRT)) state = Blocks.GRASS_BLOCK.defaultBlockState();
+        return state.hasProperty(net.minecraft.world.level.block.SnowyDirtBlock.SNOWY)
+                ? state.setValue(net.minecraft.world.level.block.SnowyDirtBlock.SNOWY, snowy) : state;
     }
 
     /** The chunk whose generation is running on this thread. */

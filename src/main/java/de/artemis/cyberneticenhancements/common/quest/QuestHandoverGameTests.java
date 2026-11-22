@@ -161,10 +161,14 @@ public final class QuestHandoverGameTests {
                 var nextOffer = quest(contact, QuestType.RECOVERY);
                 offer.setStatus(QuestStatus.OFFERED);
                 nextOffer.setStatus(QuestStatus.OFFERED);
+                var thirdOffer = quest(contact, QuestType.RECOVERY);
+                var fourthOffer = quest(contact, QuestType.RECOVERY);
+                thirdOffer.setStatus(QuestStatus.OFFERED);
+                fourthOffer.setStatus(QuestStatus.OFFERED);
                 var root = player.getPersistentData().getCompound("cyberneticenhancements.quest_state");
                 var boards = root.getCompound("IssuerBoards");
                 var board = new CompoundTag();
-                var offers = new ListTag(); offers.add(offer.toTag()); offers.add(nextOffer.toTag());
+                var offers = new ListTag(); offers.add(offer.toTag()); offers.add(nextOffer.toTag()); offers.add(thirdOffer.toTag()); offers.add(fourthOffer.toTag());
                 board.put("Offers", offers);
                 board.putLong("RefreshDay", player.level().getDayTime() / 24000);
                 boards.put(contact.getStringUUID(), board); root.put("IssuerBoards", boards);
@@ -175,9 +179,17 @@ public final class QuestHandoverGameTests {
                         : PlayerQuestManager.acceptIssuerOffer(player, contact, 0);
                 h.assertTrue(result == PlayerQuestManager.Result.OK, "Global cap blocked contact " + (i + 1));
                 h.assertTrue(PlayerQuestManager.activeContracts(player).size() == i + 1, "New contact overwrote another active quest");
+                h.assertTrue(PlayerQuestManager.acceptIssuerOffer(player, contact, 0) == PlayerQuestManager.Result.OK,
+                        "Same contact refused a second active quest");
+                h.assertTrue(PlayerQuestManager.acceptIssuerOffer(player, contact, 0) == PlayerQuestManager.Result.OK,
+                        "Same contact refused a third active quest");
                 h.assertTrue(PlayerQuestManager.acceptIssuerOffer(player, contact, 0) == PlayerQuestManager.Result.HAS_ACTIVE,
-                        "Same contact accepted a second active quest");
+                        "Same contact accepted a fourth active quest");
                 h.assertTrue(!PlayerQuestManager.canReceiveUrgentOffer(player, contact), "Urgent offer bypassed the per-contact cap");
+                h.assertTrue(PlayerQuestManager.abandonIssuerActive(player, contact, nextOffer.id()) == PlayerQuestManager.Result.OK,
+                        "The second quest of a contact could not be dropped on its own");
+                h.assertTrue(PlayerQuestManager.abandonIssuerActive(player, contact, thirdOffer.id()) == PlayerQuestManager.Result.OK,
+                        "The third quest of a contact could not be dropped on its own");
             }
             h.assertTrue(PlayerQuestManager.activeContracts(player).stream().map(QuestContract::issuerId).distinct().count() == 5,
                     "Per-contact quest state did not stay independent");

@@ -28,7 +28,7 @@ final class WikiSearchIndex {
         entry.chips().forEach(chip -> passages.add(chip.getString()));
         for (var section : entry.sections()) {
             passages.add(section.title().getString());
-            section.lines().forEach(line -> passages.add(line.getString()));
+            section.lines().forEach(line -> passages.add(WikiLinks.parse(line).getString()));
             if (section.visual() != null) appendVisual(section.visual(), passages);
         }
         return new WikiSearch.Document(entry.id(), entry.title().getString(), category,
@@ -73,6 +73,7 @@ final class WikiSearchIndex {
             }
             case RelicCacheExampleVisual ignored -> { /* Puzzle tokens are not article content. */ }
             case StructureViewVisual ignored -> { /* A picture, not text. */ }
+            case OriginRosterVisual ignored -> { /* Live player names, not article content. */ }
         }
     }
 }

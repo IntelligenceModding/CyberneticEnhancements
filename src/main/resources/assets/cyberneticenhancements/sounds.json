@@ -65,6 +65,26 @@
   "menu.launch_intro": {
     "sounds": [{ "name": "cyberneticenhancements:menu/launch_intro", "preload": true }]
   },
+  "fast_travel.activate": {
+    "subtitle": "subtitles.cyberneticenhancements.fast_travel.activate",
+    "sounds": [{ "name": "minecraft:block.beacon.activate", "type": "event", "pitch": 1.9, "volume": 0.7 }]
+  },
+  "fast_travel.open": {
+    "subtitle": "subtitles.cyberneticenhancements.fast_travel.open",
+    "sounds": [{ "name": "minecraft:block.enchantment_table.use", "type": "event", "pitch": 1.8, "volume": 0.8 }]
+  },
+  "fast_travel.depart": {
+    "subtitle": "subtitles.cyberneticenhancements.fast_travel.depart",
+    "sounds": [{ "name": "minecraft:block.beacon.power_select", "type": "event", "pitch": 2.0, "volume": 0.9 }]
+  },
+  "fast_travel.arrive": {
+    "subtitle": "subtitles.cyberneticenhancements.fast_travel.arrive",
+    "sounds": [{ "name": "minecraft:entity.enderman.teleport", "type": "event", "pitch": 1.9, "volume": 0.6 }]
+  },
+  "fast_travel.denied": {
+    "subtitle": "subtitles.cyberneticenhancements.fast_travel.denied",
+    "sounds": [{ "name": "minecraft:block.note_block.bass", "type": "event", "pitch": 0.6, "volume": 0.8 }]
+  },
   "calls.join_link": {
     "sounds": [{ "name": "cyberneticenhancements:calls/join_link", "preload": true }]
   },
@@ -97,6 +117,24 @@
   },
   "player.healing": {
     "sounds": ["cyberneticenhancements:player/healing"]
+  },
+  "sandevistan.start": {
+    "subtitle": "subtitles.cyberneticenhancements.sandevistan_start",
+    "sounds": [
+      {
+        "name": "cyberneticenhancements:sandevistan/sandevistan_start",
+        "volume": 0.45
+      }
+    ]
+  },
+  "sandevistan.end": {
+    "subtitle": "subtitles.cyberneticenhancements.sandevistan_end",
+    "sounds": [
+      {
+        "name": "cyberneticenhancements:sandevistan/sandevistan_end",
+        "volume": 0.45
+      }
+    ]
   },
   "player.flatlined": {
     "subtitle": "subtitles.cyberneticenhancements.flatlined",

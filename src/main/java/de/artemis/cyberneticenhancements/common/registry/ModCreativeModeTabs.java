@@ -34,8 +34,7 @@ public final class ModCreativeModeTabs {
                         output.accept(ModBlocks.TECH_STATION.get());
                         output.accept(ModBlocks.UPGRADE_STATION.get());
                         output.accept(ModBlocks.RECYCLER_STATION.get());
-                        output.accept(ModBlocks.IRON_QUEST_CRATE.get());
-                        output.accept(ModBlocks.DROPOFF_POINT.get());
+                        output.accept(ModBlocks.FAST_TRAVEL.get());
                         output.accept(ModItems.FIXER_SPAWN_EGG.get());
                         output.accept(ModItems.DEV_TEST_SPAWN_EGG.get());
                     })
@@ -64,6 +63,38 @@ public final class ModCreativeModeTabs {
                     .title(Component.translatable("itemGroup.cyberneticenhancements.gameplay_cyberware"))
                     .displayItems((parameters, output) -> {
                         ModItems.gameplayCyberwareItems().forEach(item -> output.accept(item.get()));
+                    })
+                    .build()
+    );
+
+    @SuppressWarnings("unused")
+    public static final Supplier<CreativeModeTab> QUEST_CREATIVE_TAB = CREATIVE_MODE_TAB.register(
+            "quest_creative_tab",
+            () -> CreativeModeTab.builder()
+                    .icon(() -> ModItems.COURIER_PACKAGE.get().getDefaultInstance())
+                    .title(Component.translatable("itemGroup.cyberneticenhancements.quest"))
+                    .displayItems((parameters, output) -> {
+                        ModItems.QUEST_ITEMS.forEach(item -> output.accept(item.get()));
+                        output.accept(ModBlocks.IRON_QUEST_CRATE.get());
+                        output.accept(ModBlocks.DROPOFF_POINT.get());
+                    })
+                    .build()
+    );
+
+    @SuppressWarnings("unused")
+    public static final Supplier<CreativeModeTab> BUILDING_CREATIVE_TAB = CREATIVE_MODE_TAB.register(
+            "building_creative_tab",
+            () -> CreativeModeTab.builder()
+                    .icon(() -> ModBlocks.COPPER_CABLE.get().asItem().getDefaultInstance())
+                    .title(Component.translatable("itemGroup.cyberneticenhancements.building"))
+                    .displayItems((parameters, output) -> {
+                        output.accept(ModItems.BUILDING_GADGET.get());
+                        output.accept(ModBlocks.COPPER_CABLE.get());
+                        output.accept(ModBlocks.WATER_PIPE.get());
+                        output.accept(ModItems.SHUTOFF_VALVE.get());
+                        output.accept(ModBlocks.HVAC_DUCT.get());
+                        output.accept(ModBlocks.HVAC_VENT.get());
+                        output.accept(ModItems.HANGING_WIRE.get());
                     })
                     .build()
     );

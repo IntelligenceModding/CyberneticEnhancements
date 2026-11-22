@@ -23,7 +23,7 @@ import org.jetbrains.annotations.Nullable;
  * for by MaxTec. The leader hands out the encounter's quest, the bystanders only stand guard, and the patient is
  * what the quest is looking for.
  */
-public final class WorldEncounterNpcEntity extends AbstractCityNpcEntity {
+public final class WorldEncounterNpcEntity extends AbstractCityNpcEntity implements de.artemis.cyberneticenhancements.common.dialogue.FaceTalker {
     public enum Role {
         /** SEATED is a bystander who sits where they were put until the build is robbed. */
         LEADER, BYSTANDER, PATIENT, SEATED;
@@ -232,10 +232,37 @@ public final class WorldEncounterNpcEntity extends AbstractCityNpcEntity {
     }
 
     @Override
+    public de.artemis.cyberneticenhancements.common.network.FaceDialogueStatePayload.Header header(ServerPlayer player) { return null; }
+
+    @Override
+    public boolean willTalk(ServerPlayer player) {
+        return role() == Role.LEADER && isAlive() && !"red".equals(nameColorId())
+                && !de.artemis.cyberneticenhancements.common.world.WorldEncounterOffenses.refuses(player, this);
+    }
+
+    @Override
+    public de.artemis.cyberneticenhancements.common.dialogue.FaceDialogue.Node greet(ServerPlayer player) {
+        if (!willTalk(player)) return null;
+        lookAt(net.minecraft.commands.arguments.EntityAnchorArgument.Anchor.EYES, player.getEyePosition()); // Their AI is off while they stand around, so they have to be turned to the speaker by hand.
+        var handIn = handInNode(player);
+        return handIn != null ? handIn : new de.artemis.cyberneticenhancements.common.dialogue.LeaderDialogue(this).greet(player);
+    }
+
+    @Override
     public InteractionResult mobInteract(Player player, InteractionHand hand) {
-        // Their AI is off while they stand around, so they have to be turned to the speaker by hand.
-        if (hand == InteractionHand.MAIN_HAND && canInteract(player) && !level().isClientSide())
-            lookAt(net.minecraft.commands.arguments.EntityAnchorArgument.Anchor.EYES, player.getEyePosition());
+        // The leader only talks once right-clicked; there is no window, and a click also hands over what is held.
+        if (role() == Role.LEADER && hand == InteractionHand.MAIN_HAND && !level().isClientSide() && player instanceof ServerPlayer speaker
+                && isAlive() && !de.artemis.cyberneticenhancements.common.world.WorldEncounterOffenses.refuses(player, this)) {
+            if (de.artemis.cyberneticenhancements.common.quest.PlayerQuestManager.tryHandInHeldItem(speaker, this, player.getItemInHand(hand))) {
+                speaker.stopUsingItem();
+                return InteractionResult.CONSUME;
+            }
+            if (!de.artemis.cyberneticenhancements.common.dialogue.FaceDialogue.active(speaker.getUUID())) {
+                var node = greet(speaker);
+                if (node != null) de.artemis.cyberneticenhancements.common.dialogue.FaceDialogue.open(speaker, this, node);
+            }
+            return InteractionResult.CONSUME;
+        }
         return super.mobInteract(player, hand);
     }
 

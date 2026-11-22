@@ -35,6 +35,9 @@ public final class PrefabStructureBlocks {
     private static final ResourceLocation MED_TEC_AV = ResourceLocation.fromNamespaceAndPath(CyberneticEnhancements.MOD_ID, "med_tec_av");
     private static final ResourceKey<Structure> STRUCTURE = ResourceKey.create(Registries.STRUCTURE, MED_TEC_AV);
 
+    private static final net.minecraft.tags.TagKey<Structure> CONTAINERS = net.minecraft.tags.TagKey.create(Registries.STRUCTURE,
+            ResourceLocation.fromNamespaceAndPath(CyberneticEnhancements.MOD_ID, "shipping_container"));
+
     private PrefabStructureBlocks() {}
 
     public static void onBlockDrops(BlockDropsEvent event) {
@@ -61,9 +64,20 @@ public final class PrefabStructureBlocks {
 
     /** True the first time a block that still matches the original structure is broken at this position. */
     private static boolean claim(ServerLevel level, BlockPos pos, BlockState state) {
+        if (isContainerHull(level, pos, state)) return Harvested.get(level).claim(pos);
         var start = level.structureManager().getStructureWithPieceAt(pos, holder -> holder.is(STRUCTURE));
         if (!start.isValid() || !isOriginalBlock(level, start.getPieces(), pos, state)) return false;
         return Harvested.get(level).claim(pos);
+    }
+
+    /** A shipping container's hull is made of scrap too; only what its template places counts, never the cargo, crates or growth added inside. */
+    private static boolean isContainerHull(ServerLevel level, BlockPos pos, BlockState state) {
+        var start = level.structureManager().getStructureWithPieceAt(pos, CONTAINERS);
+        if (!start.isValid()) return false;
+        String block = BuiltInRegistries.BLOCK.getKey(state.getBlock()).toString();
+        for (var piece : start.getPieces())
+            if (piece instanceof ShippingContainerPiece hull && hull.getBoundingBox().isInside(pos)) return block.equals(hull.templateBlockAt(pos));
+        return false;
     }
 
     private static boolean isOriginalBlock(ServerLevel level, java.util.List<net.minecraft.world.level.levelgen.structure.StructurePiece> pieces,

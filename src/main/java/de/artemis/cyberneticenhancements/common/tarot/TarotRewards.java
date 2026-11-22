@@ -26,7 +26,7 @@ public final class TarotRewards {
             if (bonus > 0) instance.addPermanentModifier(new AttributeModifier(id, bonus, operation));
         }
     }
-    private static net.minecraft.core.Holder<Attribute> attribute(TarotCatalog.BonusType type) {
+    public static net.minecraft.core.Holder<Attribute> attribute(TarotCatalog.BonusType type) {
         return switch (type) {
             case HEALTH -> Attributes.MAX_HEALTH;
             case HEADROOM -> null;
@@ -43,9 +43,10 @@ public final class TarotRewards {
         };
     }
     public static int chromeHeadroom(Player player) {
-        if (player.level().isClientSide) return (int) Math.round(TarotCatalog.total(TarotCatalog.BonusType.HEADROOM, TarotKnowledge::clientKnows));
+        int origin = de.artemis.cyberneticenhancements.common.origin.Origins.headroom(player);
+        if (player.level().isClientSide) return origin + (int) Math.round(TarotCatalog.total(TarotCatalog.BonusType.HEADROOM, TarotKnowledge::clientKnows));
         Set<String> known = TarotKnowledge.known(player);
-        return (int) Math.round(TarotCatalog.total(TarotCatalog.BonusType.HEADROOM, known::contains));
+        return origin + (int) Math.round(TarotCatalog.total(TarotCatalog.BonusType.HEADROOM, known::contains));
     }
     public static void onRespawn(PlayerEvent.PlayerRespawnEvent event) { apply(event.getEntity()); }
     private TarotRewards() {}

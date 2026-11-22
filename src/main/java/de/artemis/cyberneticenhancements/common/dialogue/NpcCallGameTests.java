@@ -301,7 +301,7 @@ public final class NpcCallGameTests {
                     && caller.player.getInventory().countItem(net.minecraft.world.item.Items.COMPASS) == 0
                     && caller.player.getInventory().countItem(de.artemis.cyberneticenhancements.common.registry.ModItems.COURIER_PACKAGE.get()) == 1
                     && de.artemis.cyberneticenhancements.common.quest.QuestNavigation.capture(caller.player).targets().stream()
-                            .anyMatch(target -> target.questId().equals(delivery.id())), "Phone acceptance did not issue the parcel and HUD navigation immediately");
+                            .anyMatch(target -> target.questId().equals(delivery.id())), "Phone acceptance did not issue the cargo and HUD navigation immediately");
         } finally {
             PlayerQuestManager.clearAllQuestData(caller.player);
             NpcCallManager.onLogout(new net.neoforged.neoforge.event.entity.player.PlayerEvent.PlayerLoggedOutEvent(caller.player));
@@ -371,11 +371,11 @@ public final class NpcCallGameTests {
                 caller.player.getInventory().clearContent();
                 if (type == QuestType.RECOVERY) caller.player.getInventory().add(new net.minecraft.world.item.ItemStack(quest.recoveryItem(), quest.targetCount()));
                 if (type == QuestType.CYBERPSYCHO) caller.player.getInventory().add(PlayerQuestManager.createCyberpsychoShard(quest));
-                if (type == QuestType.EXTRACTION || type == QuestType.LOCATE) {
+                if (type == QuestType.EXTRACTION || type == QuestType.LOCATE || type == QuestType.SALVAGE) {
                     var shard = new net.minecraft.world.item.ItemStack(net.minecraft.world.item.Items.AMETHYST_SHARD);
                     var tag = new CompoundTag();
                     tag.putString("QuestContractId", quest.id());
-                    tag.putString("QuestItemType", type == QuestType.LOCATE ? "signal_beacon" : "exfil_shard");
+                    tag.putString("QuestItemType", type == QuestType.LOCATE ? "signal_beacon" : type == QuestType.SALVAGE ? "salvage_cargo" : "exfil_shard");
                     shard.set(net.minecraft.core.component.DataComponents.CUSTOM_DATA, net.minecraft.world.item.component.CustomData.of(tag));
                     caller.player.getInventory().add(shard);
                 }

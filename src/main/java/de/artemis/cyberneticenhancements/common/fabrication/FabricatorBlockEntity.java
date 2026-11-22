@@ -160,16 +160,21 @@ public final class FabricatorBlockEntity extends BlockEntity implements WorldlyC
             station.cancel();
             return;
         }
-        if (++station.progress < recipe.ticks()) {
+        station.progress += 1 + de.artemis.cyberneticenhancements.common.skills.SkillEffects.extraProgress(level, station.journalOwner);
+        if (station.progress < recipe.ticks()) {
             station.setChanged();
             return;
         }
         List<ItemStack> remainders = new ArrayList<>();
+        // Fabrication: now and then one unit of the largest part is not used up. A part of one is never given back.
+        var refunded = de.artemis.cyberneticenhancements.common.skills.SkillEffects.refunds(level, station.journalOwner)
+                ? recipe.parts().stream().filter(part -> part.count() > 1).max(java.util.Comparator.comparingInt(part -> part.count())).orElse(null) : null;
         for (var part : recipe.parts()) {
             ItemStack stack = station.items.get(part.slot());
-            for (int n = 0; n < part.count(); n++)
+            int consumed = part == refunded ? part.count() - 1 : part.count();
+            for (int n = 0; n < consumed; n++)
                 if (stack.hasCraftingRemainingItem()) remainders.add(stack.getCraftingRemainingItem());
-            stack.shrink(part.count());
+            stack.shrink(consumed);
         }
         if (station.items.get(26).isEmpty()) station.items.set(26, result);
         else station.items.get(26).grow(result.getCount());

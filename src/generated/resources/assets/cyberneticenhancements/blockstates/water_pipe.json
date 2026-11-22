@@ -1,0 +1,121 @@
+{
+  "multipart": [
+    {
+      "apply": {
+        "model": "cyberneticenhancements:block/water_pipe_core"
+      }
+    },
+    {
+      "apply": {
+        "model": "cyberneticenhancements:block/water_pipe_arm"
+      },
+      "when": {
+        "up": "true"
+      }
+    },
+    {
+      "apply": {
+        "model": "cyberneticenhancements:block/water_pipe_arm",
+        "x": 180
+      },
+      "when": {
+        "down": "true"
+      }
+    },
+    {
+      "apply": {
+        "model": "cyberneticenhancements:block/water_pipe_arm",
+        "x": 90
+      },
+      "when": {
+        "north": "true"
+      }
+    },
+    {
+      "apply": {
+        "model": "cyberneticenhancements:block/water_pipe_arm",
+        "x": 90,
+        "y": 180
+      },
+      "when": {
+        "south": "true"
+      }
+    },
+    {
+      "apply": {
+        "model": "cyberneticenhancements:block/water_pipe_arm",
+        "x": 90,
+        "y": 90
+      },
+      "when": {
+        "east": "true"
+      }
+    },
+    {
+      "apply": {
+        "model": "cyberneticenhancements:block/water_pipe_arm",
+        "x": 90,
+        "y": 270
+      },
+      "when": {
+        "west": "true"
+      }
+    },
+    {
+      "apply": {
+        "model": "cyberneticenhancements:block/shutoff_valve_head"
+      },
+      "when": {
+        "valve": "up"
+      }
+    },
+    {
+      "apply": {
+        "model": "cyberneticenhancements:block/shutoff_valve_head",
+        "x": 180
+      },
+      "when": {
+        "valve": "down"
+      }
+    },
+    {
+      "apply": {
+        "model": "cyberneticenhancements:block/shutoff_valve_head",
+        "x": 90
+      },
+      "when": {
+        "valve": "north"
+      }
+    },
+    {
+      "apply": {
+        "model": "cyberneticenhancements:block/shutoff_valve_head",
+        "x": 90,
+        "y": 180
+      },
+      "when": {
+        "valve": "south"
+      }
+    },
+    {
+      "apply": {
+        "model": "cyberneticenhancements:block/shutoff_valve_head",
+        "x": 90,
+        "y": 90
+      },
+      "when": {
+        "valve": "east"
+      }
+    },
+    {
+      "apply": {
+        "model": "cyberneticenhancements:block/shutoff_valve_head",
+        "x": 90,
+        "y": 270
+      },
+      "when": {
+        "valve": "west"
+      }
+    }
+  ]
+}

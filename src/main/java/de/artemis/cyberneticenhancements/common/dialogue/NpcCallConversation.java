@@ -25,6 +25,8 @@ final class NpcCallConversation {
     private List<QuestContract> offers = List.of();
     private String selectedOfferId = "";
     private String reportQuestId = "";
+    /** Which of this contact's active contracts the conversation is about, when there are several. */
+    private String focusedQuestId = "";
     private int offerOffset;
     private boolean questions, ended;
     private Component line = text("ringing");
@@ -42,6 +44,7 @@ final class NpcCallConversation {
     NpcCallConversation(AbstractCityNpcEntity npc, String turnInQuestId) {
         this.npc = npc;
         this.turnInQuestId = turnInQuestId;
+        this.focusedQuestId = turnInQuestId;
     }
 
     Component line() { return line; }
@@ -55,7 +58,7 @@ final class NpcCallConversation {
             else finish(text("quest.report_unavailable"));
             return;
         }
-        if (quest != null && quest.itemLossPending()) { showItemLoss(player); return; }
+        if (lossQuest(player) != null) { showItemLoss(player); return; }
         if (prepareCacheFailure(player)) { showCacheFailure(); return; }
         line = NpcCallDialogue.greeting(npc, player);
         rootChoices(player);
@@ -65,8 +68,8 @@ final class NpcCallConversation {
         incomingReason = reason;
         if (reason == NpcCallReason.CACHE_FAILED && !prepareCacheFailure(player)) return false;
         if (reason == NpcCallReason.LOST_ITEM) {
-            var quest = active(player);
-            if (quest == null || !quest.itemLossPending()) return false;
+            var quest = lossQuest(player);
+            if (quest == null) return false;
             lostItemQuestId = quest.id();
         }
         if (reason == NpcCallReason.URGENT_QUEST) {
@@ -77,7 +80,7 @@ final class NpcCallConversation {
         requestedMoney = Math.clamp(de.artemis.cyberneticenhancements.common.economy.PlayerEurodollarManager.balance(player) / 20,
                 de.artemis.cyberneticenhancements.common.economy.EconomyBalance.value("support.minimum"),
                 de.artemis.cyberneticenhancements.common.economy.EconomyBalance.value("support.maximum"));
-        if (reason == NpcCallReason.OVERDUE) reminderQuestId = Objects.requireNonNull(active(player)).id();
+        if (reason == NpcCallReason.OVERDUE) reminderQuestId = focusedQuestId = Objects.requireNonNull(active(player)).id();
         return true;
     }
 
@@ -91,7 +94,7 @@ final class NpcCallConversation {
         rootChoices(player);
         if (incomingReason == NpcCallReason.URGENT_QUEST) {
             var board = PlayerQuestManager.snapshotForIssuer(player, npc);
-            var offer = board.active() == null ? board.offers().stream().filter(value -> value.id().equals(urgentOfferId)).findFirst().orElse(null) : null;
+            var offer = board.actives().size() < PlayerQuestManager.MAX_ACTIVE_PER_ISSUER ? board.offers().stream().filter(value -> value.id().equals(urgentOfferId)).findFirst().orElse(null) : null;
             if (offer == null) {
                 urgentOfferId = "";
                 line = text("quest.offer_gone");
@@ -167,7 +170,7 @@ final class NpcCallConversation {
                     line = NpcCallDialogue.variant(npc, "advice." + npc.npcTypeId());
                     questionChoices();
                 } else if (npc.npcType().supportsContracts() && active(player) != null) {
-                    showActive(player, QUEST_STATUS);
+                    openActives(player);
                 } else {
                     line = NpcCallDialogue.variant(npc, "questions");
                     questionChoices();
@@ -183,6 +186,12 @@ final class NpcCallConversation {
             }
             case SERVICES -> services();
             case MORE_CONTRACTS -> openContracts(player, true);
+            case CONTRACT_FIRST, CONTRACT_FIRST + 1, CONTRACT_FIRST + 2 -> {
+                var actives = PlayerQuestManager.snapshotForIssuer(player, npc).actives();
+                int index = action - CONTRACT_FIRST;
+                if (index < actives.size()) focusedQuestId = actives.get(index).id();
+                showActive(player, QUEST_STATUS);
+            }
             case OFFER_FIRST, OFFER_SECOND -> showOffer(player, offerOffset + action - OFFER_FIRST);
             case ACCEPT_CONTRACT -> accept(player);
             case ACCEPT_URGENT -> acceptUrgent(player);
@@ -197,16 +206,33 @@ final class NpcCallConversation {
                 sync(player);
             }
             case QUEST_STATUS, QUEST_HELP, QUEST_LOCATION -> showActive(player, action);
+            case ABANDON_CONTRACT -> {
+                var contract = active(player);
+                if (contract == null) showActive(player, QUEST_STATUS);
+                else {
+                    questions = false;
+                    line = text("quest.abandon_confirm", contract.title());
+                    choices = List.of(choice(CONFIRM_ABANDON, "confirm_abandon"), choice(QUEST_STATUS, "keep_contract"), choice(END, "end"));
+                }
+            }
+            case CONFIRM_ABANDON -> {
+                var contract = active(player);
+                var result = contract == null ? PlayerQuestManager.Result.INVALID : PlayerQuestManager.abandonIssuerActive(player, npc, contract.id());
+                if (result == PlayerQuestManager.Result.OK) {
+                    line = NpcCallDialogue.variant(npc, "quest.abandoned", contract.title());
+                    rootChoices(player);
+                    sync(player);
+                } else showActive(player, QUEST_STATUS);
+            }
             case REPORT_CONTRACT -> report(player);
             case ACKNOWLEDGE_REMINDER -> {
                 if (!failedCacheQuestId.isEmpty()) {
                     de.artemis.cyberneticenhancements.common.quest.QuestFailureCalls.acknowledge(player, failedCacheQuestId);
                     failedCacheQuestId = "";
                     line = text(failedPatient ? "incoming.patient_lost_acknowledged" : "incoming.cache_failed_acknowledged");
-                    if (failedPatient) { // The contact only lasted for this quest, so the call ends with the answer.
-                        finish(line);
-                        break;
-                    }
+                    // A call about a failed contract ends with the answer: there is nothing left to talk about, and for a patient the contact is gone too.
+                    finish(line);
+                    break;
                 } else line = NpcCallDialogue.variant(npc, "incoming.acknowledged");
                 rootChoices(player);
             }
@@ -244,7 +270,8 @@ final class NpcCallConversation {
     }
 
     private void showItemLoss(ServerPlayer player) {
-        var quest = active(player);
+        if (!lostItemQuestId.isEmpty()) focusedQuestId = lostItemQuestId;
+        var quest = lostItemQuestId.isEmpty() ? lossQuest(player) : active(player);
         if (quest == null || !quest.itemLossPending() || !lostItemQuestId.isEmpty() && !quest.id().equals(lostItemQuestId)) {
             line = text("incoming.quest_changed");
             rootChoices(player);
@@ -293,15 +320,38 @@ final class NpcCallConversation {
         choices = List.of(choice(BACK, "back"), choice(END, "end"));
     }
 
+    /** The contract the conversation is about: the chosen one, or the first when none was chosen (or it is gone). */
     private QuestContract active(ServerPlayer player) {
-        return PlayerQuestManager.snapshotForIssuer(player, npc).active();
+        var actives = PlayerQuestManager.snapshotForIssuer(player, npc).actives();
+        return actives.stream().filter(quest -> quest.id().equals(focusedQuestId)).findFirst().orElse(actives.isEmpty() ? null : actives.get(0));
+    }
+
+    private QuestContract lossQuest(ServerPlayer player) {
+        return PlayerQuestManager.snapshotForIssuer(player, npc).actives().stream().filter(QuestContract::itemLossPending).findFirst().orElse(null);
+    }
+
+    /** With several active contracts the player says which one they mean; with one it goes straight to it. */
+    private void openActives(ServerPlayer player) {
+        var actives = PlayerQuestManager.snapshotForIssuer(player, npc).actives();
+        if (actives.size() < 2) {
+            focusedQuestId = actives.isEmpty() ? "" : actives.get(0).id();
+            showActive(player, QUEST_STATUS);
+            return;
+        }
+        questions = false;
+        line = text("quest.which");
+        var options = new ArrayList<Choice>();
+        for (int index = 0; index < actives.size(); index++) options.add(new Choice(CONTRACT_FIRST + index, text("choice.contract", actives.get(index).title())));
+        options.add(choice(BACK, "back"));
+        options.add(choice(END, "end"));
+        choices = List.copyOf(options);
     }
 
     private void openContracts(ServerPlayer player, boolean nextPage) {
         questions = false;
         var board = PlayerQuestManager.snapshotForIssuer(player, npc);
-        if (board.active() != null) {
-            showActive(player, QUEST_STATUS);
+        if (board.actives().size() >= PlayerQuestManager.MAX_ACTIVE_PER_ISSUER || !board.actives().isEmpty() && board.offers().isEmpty()) {
+            openActives(player);
             return;
         }
         offers = board.offers();
@@ -326,8 +376,8 @@ final class NpcCallConversation {
     private void showOffer(ServerPlayer player, int index) {
         var shown = offers.get(index);
         var board = PlayerQuestManager.snapshotForIssuer(player, npc);
-        if (board.active() != null) {
-            showActive(player, QUEST_STATUS);
+        if (board.actives().size() >= PlayerQuestManager.MAX_ACTIVE_PER_ISSUER) {
+            openActives(player);
             return;
         }
         var offer = board.offers().stream().filter(value -> value.id().equals(shown.id())).findFirst().orElse(null);
@@ -349,12 +399,13 @@ final class NpcCallConversation {
         }
         var result = index < 0 ? PlayerQuestManager.Result.INVALID : PlayerQuestManager.acceptIssuerOffer(player, npc, index);
         if (result == PlayerQuestManager.Result.OK) {
+            focusedQuestId = selectedOfferId;
             var contract = Objects.requireNonNull(active(player));
             showActive(player, QUEST_STATUS);
             line = text("quest.accepted", contract.title(), contract.objectiveLine());
             sync(player);
         } else if (result == PlayerQuestManager.Result.HAS_ACTIVE) {
-            showActive(player, QUEST_STATUS);
+            openActives(player);
         } else {
             openContracts(player, false);
             line = text("quest.offer_gone");
@@ -365,6 +416,7 @@ final class NpcCallConversation {
         var result = urgentOfferId.isEmpty() ? PlayerQuestManager.Result.INVALID
                 : PlayerQuestManager.acceptUrgentIssuerOffer(player, npc, urgentOfferId);
         if (result == PlayerQuestManager.Result.OK) {
+            focusedQuestId = urgentOfferId;
             urgentOfferId = "";
             var contract = Objects.requireNonNull(active(player));
             finish(text("incoming.urgent_accepted", contract.title(), contract.objectiveLine(), contract.rewardSummary())
@@ -407,7 +459,7 @@ final class NpcCallConversation {
         if (remoteReady) reportQuestId = contract.id();
         choices = List.of(choice(remoteReady ? REPORT_CONTRACT : QUEST_STATUS,
                         remoteReady ? "report_contract" : "quest_status"),
-                choice(QUEST_HELP, "quest_help"), PlayerQuestManager.canRequestDeliveryReplacement(player, npc)
+                choice(ABANDON_CONTRACT, "abandon_contract"), PlayerQuestManager.canRequestDeliveryReplacement(player, npc)
                         ? choice(REQUEST_REPLACEMENT, "replacement") : choice(QUEST_LOCATION, "quest_location"), choice(BACK, "back"), choice(END, "end"));
     }
 

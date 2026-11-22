@@ -208,13 +208,7 @@ public final class TitleJournalScreen extends ResponsiveScreen {
     private void drawScrollbar(GuiGraphics g, int mx, int my) {
         var track = track();
         if (track.max() <= 0) return;
-        boolean highlighted = scrollbar.dragging() || track.contains(mx, my);
-        g.fill(track.x(), track.y(), track.x() + track.width(), track.y() + track.height(), 0xFF200B13);
-        UiRenderer.outline(g, track.x(), track.y(), track.width(), track.height(), VanillaMenuPresentation.SCROLL_EDGE);
-        g.fill(track.x(), track.thumbStart(), track.x() + track.width(), track.thumbStart() + track.thumbLength(),
-                highlighted ? 0xFFB94A63 : 0xFF803047);
-        UiRenderer.outline(g, track.x(), track.thumbStart(), track.width(), track.thumbLength(),
-                highlighted ? VanillaMenuPresentation.HIGHLIGHT : VanillaMenuPresentation.SCROLL_THUMB_EDGE);
+        VanillaMenuPresentation.scrollbar(g, track, scrollbar.dragging() || track.contains(mx, my));
     }
     private int contentHeight() {
         int total = selected == null ? visibleSources.size() * 54 : pageEntries.stream().mapToInt(e -> rowHeight(e) + 10).sum();

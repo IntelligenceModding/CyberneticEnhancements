@@ -67,7 +67,7 @@ public final class QuestRecovery {
                 yield level.getEntitiesOfClass(net.minecraft.world.entity.Mob.class, new AABB(pos).inflate(range),
                         mob -> mob.isAlive() && mob.getType() == contract.eliminationTarget()).isEmpty() ? "target_missing" : null;
             }
-            case RECOVERY, LOCATE -> null; // A missing patient is simply laid out again when the player comes near.
+            case RECOVERY, LOCATE, SALVAGE -> null; // A missing patient is simply laid out again when the player comes near.
         };
         if (reason == null) {
             checks.remove(contract.id());

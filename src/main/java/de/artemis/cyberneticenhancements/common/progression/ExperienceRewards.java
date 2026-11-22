@@ -33,6 +33,7 @@ public final class ExperienceRewards {
             case INVESTIGATION -> 40 + 25 * rank;
             case CYBERPSYCHO -> 60 + 30 * rank;
             case LOCATE -> 30 + 15 * rank;
+            case SALVAGE -> 25 + 15 * rank;
         };
     }
 }

@@ -42,7 +42,7 @@ public final class QuestProgressOverlay {
 
     private static boolean canShow() {
         var minecraft = Minecraft.getInstance();
-        return GameplayHudVisibility.shows(GameplayHudVisibility.Element.QUESTS, true) && !minecraft.player.isSpectator()
+        return GameplayHudVisibility.shows(GameplayHudVisibility.Element.QUESTS, true) && !minecraft.player.isSpectator() && !StreetCredHud.visible()
                 && !(GameplayHudVisibility.shows(GameplayHudVisibility.Element.CALLS, true) && NpcCallOverlay.isVisible())
                 && !(GameplayHudVisibility.shows(GameplayHudVisibility.Element.CONTACTS, true) && NpcContactsOverlay.isVisible());
     }

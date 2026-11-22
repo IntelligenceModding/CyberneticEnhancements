@@ -50,6 +50,103 @@ public final class CyberwareDebugCommand {
                                         .executes(context -> locateTarot(context.getSource(), StringArgumentType.getString(context, "card")))))
                         .then(tarotCollectionCommand("give", true))
                         .then(tarotCollectionCommand("remove", false)))
+                .then(Commands.literal("origin")
+                        .requires(source -> source.hasPermission(Commands.LEVEL_GAMEMASTERS))
+                        .then(Commands.argument("players", net.minecraft.commands.arguments.EntityArgument.players())
+                                .then(originArgument()))
+                        .then(Commands.literal("set")
+                                .then(Commands.argument("players", net.minecraft.commands.arguments.EntityArgument.players())
+                                        .then(originArgument())))
+                        .then(Commands.literal("reset")
+                                .then(Commands.argument("players", net.minecraft.commands.arguments.EntityArgument.players())
+                                        .executes(context -> setOrigin(context.getSource(),
+                                                net.minecraft.commands.arguments.EntityArgument.getPlayers(context, "players"), "none"))))
+                        .then(Commands.literal("random")
+                                .then(Commands.argument("players", net.minecraft.commands.arguments.EntityArgument.players())
+                                        .executes(context -> {
+                                            var all = de.artemis.cyberneticenhancements.common.origin.Origin.values();
+                                            int changed = 0;
+                                            for (ServerPlayer player : net.minecraft.commands.arguments.EntityArgument.getPlayers(context, "players"))
+                                                changed += setOrigin(context.getSource(), java.util.List.of(player), all[player.getRandom().nextInt(all.length)].id());
+                                            return changed;
+                                        })))
+                        .then(Commands.literal("get")
+                                .then(Commands.argument("players", net.minecraft.commands.arguments.EntityArgument.players())
+                                        .executes(context -> {
+                                            var players = net.minecraft.commands.arguments.EntityArgument.getPlayers(context, "players");
+                                            for (ServerPlayer player : players) {
+                                                var origin = de.artemis.cyberneticenhancements.common.origin.Origins.of(player);
+                                                de.artemis.cyberneticenhancements.common.feedback.GameplayMessages.success(context.getSource(), () -> Component.translatable("command.cyberneticenhancements.debug.origin_current",
+                                                        player.getDisplayName(), origin == null ? Component.translatable("command.cyberneticenhancements.debug.origin_unchosen") : origin.title()), false);
+                                            }
+                                            return players.size();
+                                        }))))
+                .then(Commands.literal("streetcred")
+                        .then(Commands.literal("level")
+                                .then(Commands.argument("players", net.minecraft.commands.arguments.EntityArgument.players())
+                                        .then(Commands.argument("level", IntegerArgumentType.integer(1, de.artemis.cyberneticenhancements.common.streetcred.StreetCred.MAX_LEVEL))
+                                                .executes(context -> setStreetCred(context.getSource(), net.minecraft.commands.arguments.EntityArgument.getPlayers(context, "players"),
+                                                        player -> de.artemis.cyberneticenhancements.common.streetcred.StreetCred.threshold(IntegerArgumentType.getInteger(context, "level")))))))
+                        .then(Commands.literal("rank")
+                                .then(Commands.argument("players", net.minecraft.commands.arguments.EntityArgument.players())
+                                        .then(Commands.argument("tier", IntegerArgumentType.integer(0, de.artemis.cyberneticenhancements.common.streetcred.StreetCred.MAX_LEVEL / 10))
+                                                .executes(context -> setStreetCred(context.getSource(), net.minecraft.commands.arguments.EntityArgument.getPlayers(context, "players"),
+                                                        player -> de.artemis.cyberneticenhancements.common.streetcred.StreetCred.threshold(Math.max(1, IntegerArgumentType.getInteger(context, "tier") * 10)))))))
+                        .then(Commands.literal("levelup")
+                                .then(Commands.argument("players", net.minecraft.commands.arguments.EntityArgument.players())
+                                        .executes(context -> setStreetCred(context.getSource(), net.minecraft.commands.arguments.EntityArgument.getPlayers(context, "players"),
+                                                player -> de.artemis.cyberneticenhancements.common.streetcred.StreetCred.threshold(de.artemis.cyberneticenhancements.common.streetcred.StreetCred.level(player) + 1)))))
+                        .then(Commands.literal("rankup")
+                                .then(Commands.argument("players", net.minecraft.commands.arguments.EntityArgument.players())
+                                        .executes(context -> setStreetCred(context.getSource(), net.minecraft.commands.arguments.EntityArgument.getPlayers(context, "players"),
+                                                player -> de.artemis.cyberneticenhancements.common.streetcred.StreetCred.threshold((de.artemis.cyberneticenhancements.common.streetcred.StreetCred.level(player) / 10 + 1) * 10)))))
+                        .then(Commands.literal("reset")
+                                .then(Commands.argument("players", net.minecraft.commands.arguments.EntityArgument.players())
+                                        .executes(context -> setStreetCred(context.getSource(), net.minecraft.commands.arguments.EntityArgument.getPlayers(context, "players"), player -> 0))))
+                        .requires(source -> source.hasPermission(Commands.LEVEL_GAMEMASTERS))
+                        .then(Commands.literal("get")
+                                .then(Commands.argument("players", net.minecraft.commands.arguments.EntityArgument.players())
+                                        .executes(context -> {
+                                            var players = net.minecraft.commands.arguments.EntityArgument.getPlayers(context, "players");
+                                            for (ServerPlayer player : players)
+                                                de.artemis.cyberneticenhancements.common.feedback.GameplayMessages.success(context.getSource(), () -> Component.translatable("command.cyberneticenhancements.debug.streetcred_current",
+                                                        player.getDisplayName(), de.artemis.cyberneticenhancements.common.streetcred.StreetCred.level(player),
+                                                        de.artemis.cyberneticenhancements.common.streetcred.StreetCred.points(player)), false);
+                                            return players.size();
+                                        })))
+                        .then(Commands.literal("add")
+                                .then(Commands.argument("players", net.minecraft.commands.arguments.EntityArgument.players())
+                                        .then(Commands.argument("points", IntegerArgumentType.integer(1))
+                                                .executes(context -> {
+                                                    var players = net.minecraft.commands.arguments.EntityArgument.getPlayers(context, "players");
+                                                    for (ServerPlayer player : players) {
+                                                        de.artemis.cyberneticenhancements.common.streetcred.StreetCred.gain(player, IntegerArgumentType.getInteger(context, "points"));
+                                                        de.artemis.cyberneticenhancements.common.feedback.GameplayMessages.success(context.getSource(), () -> Component.translatable("command.cyberneticenhancements.debug.streetcred_current",
+                                                                player.getDisplayName(), de.artemis.cyberneticenhancements.common.streetcred.StreetCred.level(player),
+                                                                de.artemis.cyberneticenhancements.common.streetcred.StreetCred.points(player)), false);
+                                                    }
+                                                    return players.size();
+                                                }))))
+                        .then(Commands.literal("set")
+                                .then(Commands.argument("players", net.minecraft.commands.arguments.EntityArgument.players())
+                                        .then(Commands.argument("points", IntegerArgumentType.integer(0))
+                                                .executes(context -> {
+                                                    var players = net.minecraft.commands.arguments.EntityArgument.getPlayers(context, "players");
+                                                    for (ServerPlayer player : players) {
+                                                        de.artemis.cyberneticenhancements.common.streetcred.StreetCred.set(player, IntegerArgumentType.getInteger(context, "points"));
+                                                        de.artemis.cyberneticenhancements.common.feedback.GameplayMessages.success(context.getSource(), () -> Component.translatable("command.cyberneticenhancements.debug.streetcred_current",
+                                                                player.getDisplayName(), de.artemis.cyberneticenhancements.common.streetcred.StreetCred.level(player),
+                                                                de.artemis.cyberneticenhancements.common.streetcred.StreetCred.points(player)), false);
+                                                    }
+                                                    return players.size();
+                                                })))))
+                .then(Commands.literal("container")
+                        .requires(source -> source.hasPermission(Commands.LEVEL_GAMEMASTERS))
+                        .then(Commands.literal("locate")
+                                .then(Commands.argument("kind", StringArgumentType.word())
+                                        .suggests((context, builder) -> net.minecraft.commands.SharedSuggestionProvider.suggest(
+                                                de.artemis.cyberneticenhancements.common.world.ShippingContainerLocator.KINDS.keySet(), builder))
+                                        .executes(context -> locateContainer(context.getSource(), StringArgumentType.getString(context, "kind"))))))
                 .then(Commands.literal("cyberpsycho")
                         .requires(source -> source.hasPermission(Commands.LEVEL_GAMEMASTERS))
                         .executes(context -> spawnCyberpsycho(context.getSource(), 2, null))
@@ -62,7 +159,13 @@ public final class CyberwareDebugCommand {
                                                 StringArgumentType.getString(context, "loadout"))))))
                 .then(Commands.literal("medtec")
                         .requires(source -> source.hasPermission(Commands.LEVEL_GAMEMASTERS))
-                        .then(Commands.literal("coverage").executes(context -> grantMedtecCoverage(context.getSource()))))
+                        .then(Commands.literal("coverage").executes(context -> grantMedtecCoverage(context.getSource())))
+                        .then(Commands.literal("locate")
+                                .executes(context -> locateMedtecSite(context.getSource(), de.artemis.cyberneticenhancements.common.world.MedTecAvLocator.ANY))
+                                .then(Commands.argument("kind", StringArgumentType.word())
+                                        .suggests((context, builder) -> net.minecraft.commands.SharedSuggestionProvider.suggest(
+                                                de.artemis.cyberneticenhancements.common.world.MedTecAvLocator.kinds(context.getSource().getLevel()), builder))
+                                        .executes(context -> locateMedtecSite(context.getSource(), StringArgumentType.getString(context, "kind"))))))
                 .then(Commands.literal("cyberware")
                         .executes(context -> execute(context.getSource())))
                 .then(Commands.literal("applystatus")
@@ -106,6 +209,41 @@ public final class CyberwareDebugCommand {
         );
     }
 
+    private static com.mojang.brigadier.builder.RequiredArgumentBuilder<CommandSourceStack, String> originArgument() {
+        return Commands.argument("origin", StringArgumentType.word())
+                .suggests((context, builder) -> net.minecraft.commands.SharedSuggestionProvider.suggest(
+                        java.util.stream.Stream.concat(java.util.stream.Stream.of("none"),
+                                java.util.Arrays.stream(de.artemis.cyberneticenhancements.common.origin.Origin.values()).map(de.artemis.cyberneticenhancements.common.origin.Origin::id)), builder))
+                .executes(context -> setOrigin(context.getSource(),
+                        net.minecraft.commands.arguments.EntityArgument.getPlayers(context, "players"),
+                        StringArgumentType.getString(context, "origin")));
+    }
+
+    /** Sets or clears lifepaths; "none" brings the choice back on the next join or reload. */
+    private static int setOrigin(CommandSourceStack source, java.util.Collection<ServerPlayer> players, String id) {
+        var origin = de.artemis.cyberneticenhancements.common.origin.Origin.find(id);
+        if (origin == null && !id.equals("none")) {
+            de.artemis.cyberneticenhancements.common.feedback.GameplayMessages.failure(source, Component.translatable("command.cyberneticenhancements.debug.origin_unknown", id)); return 0;
+        }
+        for (ServerPlayer player : players) {
+            de.artemis.cyberneticenhancements.common.origin.Origins.set(player, origin);
+            de.artemis.cyberneticenhancements.common.feedback.GameplayMessages.success(source, () -> Component.translatable("command.cyberneticenhancements.debug.origin_set",
+                    player.getDisplayName(), origin == null ? Component.translatable("command.cyberneticenhancements.debug.origin_none") : origin.title()), false);
+        }
+        return players.size();
+    }
+
+    /** Jumps players to an exact Street Cred total, so each popup, sound and rank change can be reached on demand. Past the top it stays at the top. */
+    private static int setStreetCred(CommandSourceStack source, java.util.Collection<ServerPlayer> players, java.util.function.ToIntFunction<ServerPlayer> points) {
+        for (ServerPlayer player : players) {
+            de.artemis.cyberneticenhancements.common.streetcred.StreetCred.set(player, points.applyAsInt(player));
+            de.artemis.cyberneticenhancements.common.feedback.GameplayMessages.success(source, () -> Component.translatable("command.cyberneticenhancements.debug.streetcred_current",
+                    player.getDisplayName(), de.artemis.cyberneticenhancements.common.streetcred.StreetCred.level(player),
+                    de.artemis.cyberneticenhancements.common.streetcred.StreetCred.points(player)), false);
+        }
+        return players.size();
+    }
+
     private static LiteralArgumentBuilder<CommandSourceStack> tarotCollectionCommand(String action, boolean give) {
         return Commands.literal(action).requires(source -> source.hasPermission(Commands.LEVEL_GAMEMASTERS))
                 .then(Commands.argument("players", net.minecraft.commands.arguments.EntityArgument.players())
@@ -133,6 +271,50 @@ public final class CyberwareDebugCommand {
                     changed, player.getDisplayName()), false);
         }
         return changedTotal;
+    }
+
+    /** Finds the nearest shipping container of one kind: its damage, cargo, growth, water or whether it holds a cargo. */
+    private static int locateContainer(CommandSourceStack source, String kind) {
+        if (!de.artemis.cyberneticenhancements.common.world.ShippingContainerLocator.KINDS.containsKey(kind)) {
+            de.artemis.cyberneticenhancements.common.feedback.GameplayMessages.failure(source, Component.translatable("command.cyberneticenhancements.debug.container_unknown", kind)); return 0;
+        }
+        de.artemis.cyberneticenhancements.common.feedback.GameplayMessages.success(source, () -> Component.translatable("command.cyberneticenhancements.debug.container_searching", kind), false);
+        de.artemis.cyberneticenhancements.common.world.ShippingContainerLocator.locate(source.getLevel(), BlockPos.containing(source.getPosition()), kind, at -> {
+            if (at == null) {
+                de.artemis.cyberneticenhancements.common.feedback.GameplayMessages.failure(source, Component.translatable("command.cyberneticenhancements.debug.container_none", kind)); return;
+            }
+            String teleport = "/tp @s " + (at.getX() + .5) + " " + (at.getY() + 8) + " " + (at.getZ() + .5);
+            Component coordinates = Component.literal("[" + at.getX() + ", " + at.getY() + ", " + at.getZ() + "]")
+                    .withStyle(style -> style.withUnderlined(true)
+                            .withClickEvent(new net.minecraft.network.chat.ClickEvent(net.minecraft.network.chat.ClickEvent.Action.SUGGEST_COMMAND, teleport))
+                            .withHoverEvent(new net.minecraft.network.chat.HoverEvent(net.minecraft.network.chat.HoverEvent.Action.SHOW_TEXT, Component.translatable("chat.coordinates.tooltip"))));
+            int distance = (int) Math.sqrt(net.minecraft.world.phys.Vec3.atCenterOf(at).distanceToSqr(source.getPosition()));
+            de.artemis.cyberneticenhancements.common.feedback.GameplayMessages.success(source, () -> Component.translatable("command.cyberneticenhancements.debug.container_found",
+                    kind, coordinates, distance), false);
+        });
+        return 1;
+    }
+
+    /** Finds the nearest Med Tec AV of one kind: a structure of its set, or a template of its pool, such as a biome-specific build. */
+    private static int locateMedtecSite(CommandSourceStack source, String kind) {
+        if (!de.artemis.cyberneticenhancements.common.world.MedTecAvLocator.kinds(source.getLevel()).contains(kind)) {
+            de.artemis.cyberneticenhancements.common.feedback.GameplayMessages.failure(source, Component.translatable("command.cyberneticenhancements.debug.medtec_unknown", kind)); return 0;
+        }
+        de.artemis.cyberneticenhancements.common.feedback.GameplayMessages.success(source, () -> Component.translatable("command.cyberneticenhancements.debug.medtec_searching", kind), false);
+        de.artemis.cyberneticenhancements.common.world.MedTecAvLocator.locate(source.getLevel(), BlockPos.containing(source.getPosition()), kind, at -> {
+            if (at == null) {
+                de.artemis.cyberneticenhancements.common.feedback.GameplayMessages.failure(source, Component.translatable("command.cyberneticenhancements.debug.medtec_none", kind)); return;
+            }
+            String teleport = "/tp @s " + (at.getX() + .5) + " " + (at.getY() + 8) + " " + (at.getZ() + .5);
+            Component coordinates = Component.literal("[" + at.getX() + ", " + at.getY() + ", " + at.getZ() + "]")
+                    .withStyle(style -> style.withUnderlined(true)
+                            .withClickEvent(new net.minecraft.network.chat.ClickEvent(net.minecraft.network.chat.ClickEvent.Action.SUGGEST_COMMAND, teleport))
+                            .withHoverEvent(new net.minecraft.network.chat.HoverEvent(net.minecraft.network.chat.HoverEvent.Action.SHOW_TEXT, Component.translatable("chat.coordinates.tooltip"))));
+            int distance = (int) Math.sqrt(net.minecraft.world.phys.Vec3.atCenterOf(at).distanceToSqr(source.getPosition()));
+            de.artemis.cyberneticenhancements.common.feedback.GameplayMessages.success(source, () -> Component.translatable("command.cyberneticenhancements.debug.medtec_found",
+                    kind, coordinates, distance), false);
+        });
+        return 1;
     }
 
     private static int locateTarot(CommandSourceStack source, String filter) {

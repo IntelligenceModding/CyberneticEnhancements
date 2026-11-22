@@ -1,5 +1,9 @@
 package de.artemis.cyberneticenhancements.client.ui;
 
+import org.joml.Vector2f;
+import org.joml.Matrix4f;
+import net.minecraft.client.renderer.RenderType;
+import com.mojang.blaze3d.vertex.VertexConsumer;
 import de.artemis.cyberneticenhancements.client.ClientConfig;
 import de.artemis.cyberneticenhancements.client.FlatlinedDeathCounter;
 import net.minecraft.client.Minecraft;
@@ -170,20 +174,91 @@ public final class FlatlinedPresentation {
     }
 
     public static int buttonFrame(GuiGraphics graphics, AbstractWidget button, float opacity, boolean selected) {
+        return buttonFrame(graphics, button, opacity, selected, Float.POSITIVE_INFINITY, 0);
+    }
+
+    public static void cutCornerButton(GuiGraphics graphics, AbstractButton button, float opacity,
+                                       float cutStartY, float cutSlope) {
+        int textColor = buttonFrame(graphics, button, opacity, false, cutStartY, cutSlope);
+        button.renderString(graphics, Minecraft.getInstance().font, textColor);
+    }
+
+    public static double cutCornerRight(int right, double y, float cutStartY, float cutSlope) {
+        return right - Math.max(0, y - cutStartY) * cutSlope;
+    }
+
+    private static int buttonFrame(GuiGraphics graphics, AbstractWidget button, float opacity, boolean selected,
+                                   float cutStartY, float cutSlope) {
         if (opacity <= 0.02F) return 0;
         boolean highlighted = button.active && (button.isHoveredOrFocused() || selected);
         int x = button.getX();
         int y = button.getY();
         int right = x + button.getWidth();
         int bottom = y + button.getHeight();
-        graphics.fill(x + 2, y + 2, right + 2, bottom + 2, buttonAlpha(0x90000000, opacity));
-        graphics.fill(x, y, right, bottom, buttonAlpha(!button.active ? 0xFF171717 : highlighted ? 0xFF66172A : 0xFF310C18, opacity));
+        int fill = buttonAlpha(!button.active ? 0xFF171717 : highlighted ? 0xFF66172A : 0xFF310C18, opacity);
         int border = buttonAlpha(!button.active ? 0xFF454045 : highlighted ? VanillaMenuPresentation.HIGHLIGHT : VanillaMenuPresentation.EDGE, opacity);
-        graphics.fill(x, y, right, y + 1, border);
-        graphics.fill(x, bottom - 1, right, bottom, border);
-        graphics.fill(x, y, x + 1, bottom, border);
-        graphics.fill(right - 1, y, right, bottom, border);
+        if (cutStartY >= bottom) {
+            graphics.fill(x + 2, y + 2, right + 2, bottom + 2, buttonAlpha(0x90000000, opacity));
+            graphics.fill(x, y, right, bottom, fill);
+            graphics.fill(x, y, right, y + 1, border);
+            graphics.fill(x, bottom - 1, right, bottom, border);
+            graphics.fill(x, y, x + 1, bottom, border);
+            graphics.fill(right - 1, y, right, bottom, border);
+        } else {
+            drawCutCornerFrame(graphics, x, y, right, bottom, cutStartY, cutSlope, fill, border);
+        }
         return buttonAlpha(button.active ? 0xFFFFB3BC : 0xFF898989, opacity);
+    }
+
+    private static void drawCutCornerFrame(GuiGraphics graphics, int left, int top, int right, int bottom,
+                                           float cutStartY, float slope, int fill, int border) {
+        var pose = graphics.pose().last().pose();
+        double physicalScale = Minecraft.getInstance().getWindow().getGuiScale() * Math.abs(pose.m00());
+        float fringe = (float) (0.85 / Math.max(physicalScale, 0.01));
+        var outer = cutCornerPolygon(left, top, right, bottom, cutStartY, slope, 0);
+        var inner = cutCornerPolygon(left, top, right, bottom, cutStartY, slope, 1);
+        var fade = cutCornerPolygon(left, top, right, bottom, cutStartY, slope, -fringe);
+        var buffer = graphics.bufferSource().getBuffer(RenderType.gui());
+        int transparentBorder = border & 0x00FFFFFF;
+        for (int i = 0; i < outer.length; i++) {
+            int next = (i + 1) % outer.length;
+            buttonVertex(buffer, pose, fade[i], transparentBorder);
+            buttonVertex(buffer, pose, fade[next], transparentBorder);
+            buttonVertex(buffer, pose, outer[next], border);
+            buttonVertex(buffer, pose, outer[i], border);
+            buttonVertex(buffer, pose, outer[i], border);
+            buttonVertex(buffer, pose, outer[next], border);
+            buttonVertex(buffer, pose, inner[next], border);
+            buttonVertex(buffer, pose, inner[i], border);
+        }
+        // RenderType.gui uses quads, so the convex interior is a fan of degenerate quads.
+        for (int i = 1; i < inner.length - 1; i++) {
+            buttonVertex(buffer, pose, inner[0], fill);
+            buttonVertex(buffer, pose, inner[i], fill);
+            buttonVertex(buffer, pose, inner[i + 1], fill);
+            buttonVertex(buffer, pose, inner[i + 1], fill);
+        }
+        graphics.flush();
+    }
+
+    private static Vector2f[] cutCornerPolygon(int left, int top, int right, int bottom,
+                                                       float cutStartY, float slope, float inset) {
+        float x0 = left + inset, x1 = right - inset;
+        float y0 = top + inset, y1 = bottom - inset;
+        // Offset the diagonal by the same perpendicular distance as the straight edges.
+        float cut = cutStartY - inset * (float) ((Math.hypot(1, slope) - 1) / slope);
+        return new Vector2f[]{
+                new Vector2f(x0, y0),
+                new Vector2f(x0, y1),
+                new Vector2f(x1 - slope * Math.max(0, y1 - cut), y1),
+                new Vector2f(x1 - slope * Math.max(0, y0 - cut), Math.clamp(cut, y0, y1)),
+                new Vector2f(x1 - slope * Math.max(0, y0 - cut), y0)
+        };
+    }
+
+    private static void buttonVertex(VertexConsumer buffer, Matrix4f pose,
+                                     Vector2f point, int color) {
+        buffer.addVertex(pose, point.x, point.y, 0).setColor(color);
     }
 
     public static void titleGlitch(GuiGraphics graphics, int width, int height, double seconds) {

@@ -18,9 +18,11 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
 @Mixin(TitleScreen.class)
-abstract class TitleSlideshowMixin extends Screen {
+abstract class TitleSlideshowMixin extends Screen implements de.artemis.cyberneticenhancements.client.TitleFadeAccess {
     @Shadow private boolean fading;
     protected TitleSlideshowMixin(Component title) { super(title); }
+
+    @Override public void cyberneticenhancements$skipFade() { fading = false; }
 
     @Inject(method = "preloadResources", at = @At("RETURN"), cancellable = true)
     private static void cyberneticenhancements$preloadPresentation(
@@ -85,10 +87,20 @@ abstract class TitleSlideshowMixin extends Screen {
         int noticesWidth = font.width(notices);
         addRenderableWidget(new PlainTextButton(width - noticesWidth - 2, height - 34, noticesWidth, 10, notices,
                 button -> minecraft.setScreen(new de.artemis.cyberneticenhancements.client.screen.IntroNoticesScreen(this)), font));
-        if (!TitleStartPrompt.hidesMenu()) return;
+        boolean changelogDue = de.artemis.cyberneticenhancements.client.ChangelogPopup.due();
+        if (!TitleStartPrompt.hidesMenu() && !changelogDue
+                && de.artemis.cyberneticenhancements.client.screen.ChangelogScreen.available()) {
+            // Bottom left, directly above the two version lines the loader prints there.
+            Component whatsNew = Component.translatable("screen.cyberneticenhancements.title.changelog");
+            addRenderableWidget(new PlainTextButton(2, height - 32, font.width(whatsNew), 10, whatsNew,
+                    button -> minecraft.setScreen(new de.artemis.cyberneticenhancements.client.screen.ChangelogScreen(this, true)), font));
+        }
+        if (!TitleStartPrompt.hidesMenu() && !changelogDue) return;
         // The tutorial offer replaces every menu action until it is answered; footer links stay.
         for (var child : java.util.List.copyOf(children()))
             if (child instanceof net.minecraft.client.gui.components.AbstractWidget && !(child instanceof PlainTextButton)) removeWidget(child);
+        // The changelog opens over the title before any button is shown; closing it builds the menu again.
+        if (changelogDue) return;
         var offer = TitleStartPrompt.offerLayout(width, height);
         addRenderableWidget(net.minecraft.client.gui.components.Button.builder(
                 Component.translatable("screen.cyberneticenhancements.title.tutorial.play"), button -> {

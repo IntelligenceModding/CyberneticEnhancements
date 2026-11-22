@@ -37,17 +37,17 @@ public final class QuestRewardDeliveryGameTests {
             var deliveries = QuestRewardDeliveries.get(owner.server);
             dispatcher.execute(prefix + "queue 600", source);
             dispatcher.execute(prefix + "queue 600 dropoff-other", source);
-            h.assertTrue(deliveries.pendingParcels(owner.getUUID()) == 1 && deliveries.pendingParcels(other.getUUID()) == 1, "Queue command targeted the wrong player");
+            h.assertTrue(deliveries.pendingCargos(owner.getUUID()) == 1 && deliveries.pendingCargos(other.getUUID()) == 1, "Queue command targeted the wrong player");
             dispatcher.execute(prefix + "deliver", source);
             h.assertTrue(barrel.hasUnreadDelivery() && count(barrel, new ItemStack(Items.EMERALD)) == 3
-                    && deliveries.pendingParcels(owner.getUUID()) == 0 && deliveries.nextDeliveryIn(other.getUUID(), owner.server.overworld().getGameTime()) == 12000,
+                    && deliveries.pendingCargos(owner.getUUID()) == 0 && deliveries.nextDeliveryIn(other.getUUID(), owner.server.overworld().getGameTime()) == 12000,
                     "Immediate delivery did not use the normal pipeline or changed another player's due time");
             dispatcher.execute(prefix + "read", source);
             h.assertTrue(!barrel.hasUnreadDelivery() && count(barrel, new ItemStack(Items.EMERALD)) == 3, "Read command changed stored rewards");
             dispatcher.execute(prefix + "test", source);
             dispatcher.execute(prefix + "reset", source);
             h.assertTrue(!deliveries.hasPlacedDropoff(owner.getUUID()) && deliveries.registeredPoint(owner.getUUID()) == null
-                    && deliveries.pendingParcels(owner.getUUID()) == 1 && count(barrel, new ItemStack(Items.EMERALD)) == 3, "Setup reset lost pending or stored items");
+                    && deliveries.pendingCargos(owner.getUUID()) == 1 && count(barrel, new ItemStack(Items.EMERALD)) == 3, "Setup reset lost pending or stored items");
             dispatcher.execute(prefix + "give", source);
             dispatcher.execute(prefix + "give", source);
             h.assertTrue(owner.getInventory().countItem(ModBlocks.DROPOFF_POINT.asItem()) == 1, "Give command bypassed normal starter claim tracking");
@@ -124,18 +124,18 @@ public final class QuestRewardDeliveryGameTests {
             h.assertTrue(player.getInventory().isEmpty() && PlayerEurodollarManager.balance(player) == balance + remote.rewardMoney(), "Remote rewards were not separated into immediate money and delayed items");
             var deliveries = QuestRewardDeliveries.get(player.server);
             h.assertTrue(deliveries.pendingContractIds(player.getUUID()).contains(remote.id())
-                    && !deliveries.pendingContractIds(other.getUUID()).contains(remote.id()), "Pending contract was not linked privately to its reward parcel");
+                    && !deliveries.pendingContractIds(other.getUUID()).contains(remote.id()), "Pending contract was not linked privately to its reward cargo");
             h.assertTrue(PlayerQuestManager.questLog(player).stream().anyMatch(entry -> entry.questId().equals(remote.id()) && entry.statusId().equals("pending_delivery")),
                     "Remote turn-in did not enter the pending delivery category");
             var saved = deliveries.save(new CompoundTag(), h.getLevel().registryAccess());
             long due = -1;
             int queuedRewards = 0;
-            for (var entry : saved.getList("Parcels", Tag.TAG_COMPOUND)) {
-                var parcel = (CompoundTag) entry;
-                if (!player.getUUID().equals(parcel.getUUID("Owner"))) continue;
-                h.assertTrue(parcel.getString("QuestId").equals(remote.id()), "Saving a queued reward lost its contract link");
-                due = parcel.getLong("Due");
-                for (var item : parcel.getList("Items", Tag.TAG_COMPOUND)) {
+            for (var entry : saved.getList("Cargos", Tag.TAG_COMPOUND)) {
+                var cargo = (CompoundTag) entry;
+                if (!player.getUUID().equals(cargo.getUUID("Owner"))) continue;
+                h.assertTrue(cargo.getString("QuestId").equals(remote.id()), "Saving a queued reward lost its contract link");
+                due = cargo.getLong("Due");
+                for (var item : cargo.getList("Items", Tag.TAG_COMPOUND)) {
                     var stack = ItemStack.parseOptional(h.getLevel().registryAccess(), (CompoundTag) item);
                     if (ItemStack.isSameItemSameComponents(stack, reward)) queuedRewards += stack.getCount();
                 }
@@ -184,8 +184,8 @@ public final class QuestRewardDeliveryGameTests {
 
     @GameTest(template = "sandevistan_test", batch = "quest_reward_delivery", timeoutTicks = 100)
     public static void deliveriesSurviveSavingFullMissingAndUnloadedBarrelsAndKeepOwnersSeparate(GameTestHelper h) {
-        var owner = player(h, "parcel-owner");
-        var other = player(h, "parcel-other");
+        var owner = player(h, "cargo-owner");
+        var other = player(h, "cargo-other");
         try {
             var barrel = barrel(h, owner, new BlockPos(2, 2, 2));
             h.assertTrue(!barrel.bind(other) && !barrel.canOpen(other) && barrel.canOpen(owner), "Dropoff ownership was not enforced");
@@ -204,19 +204,19 @@ public final class QuestRewardDeliveryGameTests {
             h.assertTrue(barrel.getItem(0).getCount() == 64 && barrel.hasUnreadDelivery(), "Partial delivery did not fill available space and mark new items");
             h.assertTrue(deliveries.pendingContractIds(owner.getUUID()).contains("partial-contract"), "Partly delivered contract stopped being pending");
             var legacySave = deliveries.save(new CompoundTag(), h.getLevel().registryAccess());
-            for (var entry : legacySave.getList("Parcels", Tag.TAG_COMPOUND)) ((CompoundTag) entry).remove("QuestId");
+            for (var entry : legacySave.getList("Cargos", Tag.TAG_COMPOUND)) ((CompoundTag) entry).remove("QuestId");
             var legacy = QuestRewardDeliveries.load(legacySave, h.getLevel().registryAccess());
             h.assertTrue(legacy.pendingContractIds(owner.getUUID()).isEmpty() && legacy.unlinkedPendingRewards(owner.getUUID()).size() == 1
-                    && legacy.unlinkedPendingRewards(other.getUUID()).isEmpty(), "Legacy parcels were lost, guessed a contract, or exposed to another player");
+                    && legacy.unlinkedPendingRewards(other.getUUID()).isEmpty(), "Legacy cargos were lost, guessed a contract, or exposed to another player");
             deliveries = QuestRewardDeliveries.load(deliveries.save(new CompoundTag(), h.getLevel().registryAccess()), h.getLevel().registryAccess());
             h.assertTrue(deliveries.pendingContractIds(owner.getUUID()).contains("partial-contract"), "Reloading a partial delivery lost its contract link");
             barrel.setItem(1, ItemStack.EMPTY);
             barrel.setItem(2, ItemStack.EMPTY);
             deliveries.deliver(owner.server, 101);
             h.assertTrue(count(barrel, new ItemStack(Items.DIAMOND)) == 133, "Saving a partial delivery lost or duplicated its remainder");
-            h.assertTrue(deliveries.pendingContractIds(owner.getUUID()).isEmpty(), "Fully delivered parcel remained pending");
+            h.assertTrue(deliveries.pendingContractIds(owner.getUUID()).isEmpty(), "Fully delivered cargo remained pending");
             deliveries.deliver(owner.server, 102);
-            h.assertTrue(count(barrel, new ItemStack(Items.DIAMOND)) == 133, "Completed parcel was delivered again");
+            h.assertTrue(count(barrel, new ItemStack(Items.DIAMOND)) == 133, "Completed cargo was delivered again");
             deliveries.queue(owner.getUUID(), 0, List.of(new ItemStack(Items.EMERALD, 3)));
             var unloaded = new BlockPos(2000000, 64, 2000000);
             h.assertTrue(!h.getLevel().hasChunkAt(unloaded), "Unloaded fixture was already loaded");

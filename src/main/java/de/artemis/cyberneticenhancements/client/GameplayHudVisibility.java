@@ -15,7 +15,7 @@ import java.util.Locale;
 public final class GameplayHudVisibility {
     public enum Context { GAMEPLAY, CHAT, INVENTORY, PAUSE, ARCHIVE, OTHER }
     public enum Element {
-        CYBERWARE, COMPASS, QUESTS, CONTACTS, CALLS, PSYCHOSIS_TIMER, TAROT, TUTORIAL,
+        CYBERWARE, COMPASS, MINIMAP, QUESTS, CONTACTS, CALLS, PSYCHOSIS_TIMER, TAROT, TUTORIAL,
         HOTBAR, VITALS, EFFECTS, BOSS_BARS, CHAT, NOTIFICATIONS
     }
     public enum Choice { DEFAULT, SHOW, HIDE }
@@ -90,15 +90,24 @@ public final class GameplayHudVisibility {
             case CYBERWARE, QUESTS -> HudVisibilityController.isHudEnabled();
             case COMPASS -> ClientConfig.SHOW_COMPASS.get() && HudVisibilityController.isHudEnabled();
             case PSYCHOSIS_TIMER -> ClientConfig.SHOW_CYBERPSYCHOSIS_TIMER.get();
+            case MINIMAP -> de.artemis.cyberneticenhancements.client.screen.MapSettings.MINIMAP.on();
             default -> true;
         };
         return resolve(context, element, Choice.DEFAULT, enabled);
     }
 
     public static boolean shows(Element element, boolean enabledBySettings) {
-        if (!available(Minecraft.getInstance())) return false;
+        if (!available(Minecraft.getInstance()) || modElement(element) && OriginClient.hidesHud()) return false;
         Context context = context();
         return resolve(context, element, choice(context, element), enabledBySettings);
+    }
+
+    /** The mod's own HUD, as opposed to the vanilla hotbar, vitals and the like. */
+    private static boolean modElement(Element element) {
+        return switch (element) {
+            case HOTBAR, VITALS, EFFECTS, BOSS_BARS, CHAT, NOTIFICATIONS -> false;
+            default -> true;
+        };
     }
 
     static boolean resolve(Context context, Element element, Choice choice, boolean enabledBySettings) {

@@ -3,6 +3,7 @@ package de.artemis.cyberneticenhancements.client;
 import de.artemis.cyberneticenhancements.client.render.SandevistanEchoRenderer;
 import de.artemis.cyberneticenhancements.common.cyberware.sandevistan.SandevistanTimeDilation;
 import de.artemis.cyberneticenhancements.common.network.SandevistanSnapshotPayload;
+import de.artemis.cyberneticenhancements.common.registry.ModSounds;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.renderer.RenderType;
@@ -35,13 +36,13 @@ public final class SandevistanClientEffects {
             boolean newActivation = previous == null || previous.activationTick() != user.activationTick();
             var entity = minecraft.level.getEntity(user.entityId());
             if (user.mode() == 1 && newActivation && entity != null && entity.getUUID().equals(user.uuid())) {
-                minecraft.level.playLocalSound(entity.getX(), entity.getY(), entity.getZ(), SoundEvents.BEACON_ACTIVATE,
-                        SoundSource.PLAYERS, SandevistanClientOptions.soundVolume() * 0.65F, 1.5F, false);
+                minecraft.level.playLocalSound(entity.getX(), entity.getY(), entity.getZ(), ModSounds.SANDEVISTAN_START.get(),
+                        SoundSource.PLAYERS, SandevistanClientOptions.soundVolume() * 0.6F, 1.0F, false);
                 if (entity == minecraft.player) pulseAt = tick;
             } else if (user.mode() != 1 && previous != null && previous.mode() == 1 && entity != null) {
                 minecraft.level.playLocalSound(entity.getX(), entity.getY(), entity.getZ(),
-                        user.mode() == 2 ? SoundEvents.RESPAWN_ANCHOR_DEPLETE.value() : SoundEvents.BEACON_DEACTIVATE,
-                        SoundSource.PLAYERS, SandevistanClientOptions.soundVolume() * 0.65F, user.mode() == 2 ? 0.75F : 1.25F, false);
+                        ModSounds.SANDEVISTAN_END.get(),
+                        SoundSource.PLAYERS, SandevistanClientOptions.soundVolume() * 0.6F, user.mode() == 2 ? 0.85F : 1.0F, false);
                 if (entity == minecraft.player && user.mode() == 2) overloadAt = tick;
             }
             next.put(user.uuid(), user);

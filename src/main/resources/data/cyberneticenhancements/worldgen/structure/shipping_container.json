@@ -1,0 +1,7 @@
+{
+  "type": "cyberneticenhancements:shipping_container",
+  "biomes": "#cyberneticenhancements:has_structure/shipping_container",
+  "spawn_overrides": {},
+  "step": "surface_structures",
+  "terrain_adaptation": "none"
+}

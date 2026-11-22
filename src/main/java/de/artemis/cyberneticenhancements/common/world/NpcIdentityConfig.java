@@ -150,7 +150,23 @@ public final class NpcIdentityConfig {
             "Hal Cantos",
             "Harold Han",
             "Harry",
-            "Haruyoshi Nishikata"
+            "Haruyoshi Nishikata",
+            "Mitch Anderson",
+            "Jefferson Peralez",
+            "Oda Sandayu",
+            "Spider Murphy",
+            "Morgan Blackhand",
+            "Rache Bartmoss",
+            "Santiago Aldecaldo",
+            "Dante Caruso",
+            "Jotaro Shobo",
+            "Joshua Stephenson",
+            "Randy Kutcher",
+            "Lucius Rhyne",
+            "Weldon Holt",
+            "Cassius Ryder",
+            "Oswald Forrest",
+            "Kirk Sawyer"
     );
     private static final List<String> DEFAULT_FEMALE_NAMES = List.of(
             "Rogue Amendiares",
@@ -222,12 +238,17 @@ public final class NpcIdentityConfig {
             "Gillean Jordan",
             "Griselda Martinez",
             "Guadalupe Alejandra Welles",
-            "Hallie Coggins"
+            "Hallie Coggins",
+            "Meredith Stout",
+            "Lizzy Wizzy",
+            "Sandra Dorsett",
+            "Maiko Maeda",
+            "Susan Abernathy",
+            "Nancy Hartley",
+            "Rachel Casich",
+            "Matilda K. Rose"
     );
     private static final List<String> DEFAULT_GENERIC_NAMES = List.of(
-            "V",
-            "Vincent",
-            "Valerie",
             "Songbird",
             "Altiera Cunningham",
             "Delamain",

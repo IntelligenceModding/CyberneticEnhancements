@@ -19,6 +19,7 @@ public final class ModBlockTagProvider extends BlockTagsProvider {
     protected void addTags(HolderLookup.@NotNull Provider provider) {
         tag(BlockTags.MINEABLE_WITH_PICKAXE).add(ModBlocks.CHROMIUM_ORE.get(), ModBlocks.DEEPSLATE_CHROMIUM_ORE.get());
         tag(BlockTags.NEEDS_IRON_TOOL).add(ModBlocks.CHROMIUM_ORE.get(), ModBlocks.DEEPSLATE_CHROMIUM_ORE.get());
+        tag(BlockTags.MINEABLE_WITH_PICKAXE).add(ModBlocks.COPPER_CABLE.get(), ModBlocks.WATER_PIPE.get(), ModBlocks.HVAC_DUCT.get(), ModBlocks.HVAC_VENT.get(), ModBlocks.FAST_TRAVEL.get());
         tag(BlockTags.MINEABLE_WITH_AXE).add(ModBlocks.DROPOFF_POINT.get());
         tag(BlockTags.MINEABLE_WITH_PICKAXE)
                 .add(ModBlocks.IRON_QUEST_CRATE.get())

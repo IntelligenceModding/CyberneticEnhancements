@@ -14,6 +14,9 @@ public record NpcCallRequestPayload(UUID callId, UUID npcId, int action, String 
     public static final int ANSWER_INCOMING = 15, SEND_MONEY = 16, DECLINE_MONEY = 17, ACKNOWLEDGE_REMINDER = 18;
     public static final int ACCEPT_URGENT = 23, DECLINE_URGENT = 24;
     public static final int REQUEST_REPLACEMENT = 25, CONFIRM_ITEM_KEPT = 26, ADMIT_ITEM_LOST = 27;
+    public static final int ABANDON_CONTRACT = 28, CONFIRM_ABANDON = 29;
+    /** The first of the choices that pick one of several active contracts from the same contact; the next ones follow it. */
+    public static final int CONTRACT_FIRST = 30;
     public static final Type<NpcCallRequestPayload> TYPE = new Type<>(ResourceLocation.fromNamespaceAndPath(CyberneticEnhancements.MOD_ID, "npc_call_request"));
     public static final StreamCodec<RegistryFriendlyByteBuf, NpcCallRequestPayload> STREAM_CODEC = CustomPacketPayload.codec(
             (payload, buffer) -> {

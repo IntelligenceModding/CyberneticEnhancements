@@ -174,10 +174,19 @@ public final class QuestContract {
 
     /** The title for the quest HUD: a running urgent timer replaces the "Urgent" prefix with the time left. */
     Component hudTitle(long playTicks) {
-        if (!urgent || status != QuestStatus.ACTIVE || urgentDeadline <= 0) return title();
+        return timedLabel(title(), QuestDimension.of(dimensionId).title(baseTitle()), playTicks);
+    }
+
+    /** A label for this contract, in the compass markers too, so every urgent contract shows its time left the same way: "m:ss: label". */
+    Component timedLabel(Component plain, long playTicks) {
+        return timedLabel(plain, plain, playTicks);
+    }
+
+    private Component timedLabel(Component plain, Component timed, long playTicks) {
+        if (!urgent || status != QuestStatus.ACTIVE || urgentDeadline <= 0) return plain;
         long seconds = Math.ceilDiv(Math.max(0, urgentDeadline - playTicks), 20);
         String remaining = String.format(java.util.Locale.ROOT, "%d:%02d", seconds / 60, seconds % 60);
-        return Component.translatable("quest.cyberneticenhancements.title.timed", remaining, QuestDimension.of(dimensionId).title(baseTitle()));
+        return Component.translatable("quest.cyberneticenhancements.title.timed", remaining, timed);
     }
 
     Component timedObjective(Component objective, long playTicks) {
@@ -359,7 +368,7 @@ public final class QuestContract {
 
     public boolean isProgressComplete() {
         return switch (type) {
-            case DELIVERY, EXTRACTION -> destinationReached;
+            case DELIVERY, EXTRACTION, SALVAGE -> destinationReached;
             case INVESTIGATION -> destinationReached;
             case LOCATE -> beaconLogged();
             case CYBERPSYCHO -> destinationReached && progress >= targetCount;
@@ -533,6 +542,7 @@ public final class QuestContract {
             case RECOVERY -> Component.translatable("quest.cyberneticenhancements.type.recovery");
             case CYBERPSYCHO -> Component.translatable("quest.cyberneticenhancements.type.cyberpsycho");
             case LOCATE -> Component.translatable("quest.cyberneticenhancements.type.locate");
+            case SALVAGE -> Component.translatable("quest.cyberneticenhancements.type.salvage");
         };
     }
 
@@ -559,6 +569,7 @@ public final class QuestContract {
             case RECOVERY -> Component.translatable("quest.cyberneticenhancements.title.recovery");
             case CYBERPSYCHO -> Component.translatable("quest.cyberneticenhancements.title.cyberpsycho");
             case LOCATE -> Component.translatable("quest.cyberneticenhancements.title.locate");
+            case SALVAGE -> Component.translatable("quest.cyberneticenhancements.title.salvage");
         };
     }
 
@@ -574,6 +585,7 @@ public final class QuestContract {
             case RECOVERY -> recoveryItem().getDefaultInstance().getHoverName();
             case CYBERPSYCHO -> Component.literal(psychoName());
             case LOCATE -> Component.translatable("quest.cyberneticenhancements.target.patient");
+            case SALVAGE -> Component.translatable("quest.cyberneticenhancements.target.cargo");
         };
     }
 
@@ -604,6 +616,7 @@ public final class QuestContract {
                     : "quest.cyberneticenhancements.objective.cyberpsycho", psychoName());
             case LOCATE -> Component.translatable(patientStage == PATIENT_REVIVED ? "quest.cyberneticenhancements.objective.locate.beacon"
                     : "quest.cyberneticenhancements.objective.locate");
+            case SALVAGE -> Component.translatable("quest.cyberneticenhancements.objective.salvage");
         };
     }
 
@@ -641,7 +654,7 @@ public final class QuestContract {
         if (tier >= 3) {
             return switch (type) {
                 case DELIVERY, EXTRACTION -> REWARD_CHROME_SUPPRESSANT;
-                case BREACH, INVESTIGATION, ELIMINATION, RECOVERY, CYBERPSYCHO, LOCATE -> REWARD_RAM_JOLT;
+                case BREACH, INVESTIGATION, ELIMINATION, RECOVERY, CYBERPSYCHO, LOCATE, SALVAGE -> REWARD_RAM_JOLT;
             };
         }
         return switch (type) {
@@ -661,7 +674,7 @@ public final class QuestContract {
             case INVESTIGATION -> InvestigationSurvey.READINGS;
             case BREACH -> 1;
             case ELIMINATION -> 2 + tier * 2;
-            case CYBERPSYCHO, LOCATE -> 1;
+            case CYBERPSYCHO, LOCATE, SALVAGE -> 1;
             case RECOVERY -> switch (targetIndex) {
                 case 1 -> 6 + tier * 3;
                 case 2 -> 4 + tier * 2;

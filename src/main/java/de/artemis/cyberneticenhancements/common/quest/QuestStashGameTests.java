@@ -256,7 +256,7 @@ public final class QuestStashGameTests {
     }
 
     @GameTest(template = "sandevistan_test", batch = "quest_item_recovery", timeoutTicks = 80)
-    public static void cursorItemsAreProtectedAndMissingParcelsRequireExplicitReplacement(GameTestHelper h) {
+    public static void cursorItemsAreProtectedAndMissingCargosRequireExplicitReplacement(GameTestHelper h) {
         var owner = feedbackPlayer(h, "quest-cursor");
         var player = owner.player();
         try {
@@ -275,9 +275,9 @@ public final class QuestStashGameTests {
                 var tag = new net.minecraft.nbt.CompoundTag();
                 tag.putString("QuestContractId", quest.id());
                 tag.putString("QuestItemType", "courier_package");
-                var parcel = new ItemStack(de.artemis.cyberneticenhancements.common.registry.ModItems.COURIER_PACKAGE.get());
-                parcel.set(DataComponents.CUSTOM_DATA, net.minecraft.world.item.component.CustomData.of(tag));
-                player.containerMenu.setCarried(creative ? ItemStack.EMPTY : parcel);
+                var cargo = new ItemStack(de.artemis.cyberneticenhancements.common.registry.ModItems.COURIER_PACKAGE.get());
+                cargo.set(DataComponents.CUSTOM_DATA, net.minecraft.world.item.component.CustomData.of(tag));
+                player.containerMenu.setCarried(creative ? ItemStack.EMPTY : cargo);
                 for (int tick = 0; tick < 200; tick++) {
                     player.tickCount++;
                     if (creative && tick % 10 == 0) PlayerQuestManager.updateCreativeCursor(player, quest.id(), "courier_package", 0);
@@ -289,9 +289,9 @@ public final class QuestStashGameTests {
                 for (int tick = 0; tick <= 200; tick++) {
                     player.tickCount++;
                     PlayerQuestManager.onPlayerTick(new net.neoforged.neoforge.event.tick.PlayerTickEvent.Post(player));
-                    h.assertTrue(player.getInventory().isEmpty(), "Missing parcel was restored automatically");
+                    h.assertTrue(player.getInventory().isEmpty(), "Missing cargo was restored automatically");
                     h.assertTrue(PlayerQuestManager.activeContracts(player).getFirst().deliveryItemMissing() == (tick == 200),
-                            "Missing parcel did not get a replacement-call instruction after ten seconds");
+                            "Missing cargo did not get a replacement-call instruction after ten seconds");
                 }
             }
         } finally {

@@ -17,6 +17,7 @@ import de.artemis.cyberneticenhancements.client.screen.CyberwareWikiData.Compact
 import de.artemis.cyberneticenhancements.client.screen.CyberwareWikiData.CraftingGridVisual;
 import de.artemis.cyberneticenhancements.client.screen.CyberwareWikiData.RelicCacheExampleVisual;
 import de.artemis.cyberneticenhancements.client.screen.CyberwareWikiData.StructureViewVisual;
+import de.artemis.cyberneticenhancements.client.screen.CyberwareWikiData.OriginRosterVisual;
 import de.artemis.cyberneticenhancements.client.screen.CyberwareWikiData.UpgradeStageVisual;
 import de.artemis.cyberneticenhancements.client.screen.CyberwareWikiData.SectionVisual;
 import de.artemis.cyberneticenhancements.client.screen.CyberwareWikiData.ServiceOperationVisual;
@@ -106,8 +107,11 @@ public final class CyberwareWikiScreen extends ResponsiveScreen {
     private final ContractBrowser contractBrowser = new ContractBrowser(this::closeForPlacement);
     private final BankingBrowser bankingBrowser = new BankingBrowser();
     private final CompassBrowser compassBrowser = new CompassBrowser();
+    private final MapBrowser mapBrowser = new MapBrowser();
     private final HudBrowser hudBrowser = new HudBrowser();
     private final JournalBrowser journalBrowser = new JournalBrowser();
+    private final SkillsBrowser skillsBrowser = new SkillsBrowser();
+    private final ReputationBrowser reputationBrowser = new ReputationBrowser();
     private boolean initialized;
     private static final String BANKING_TAB_ID = "banking";
     private static final String CONTACTS_TAB_ID = "contacts";
@@ -138,7 +142,26 @@ public final class CyberwareWikiScreen extends ResponsiveScreen {
     private final ScrollState navScroll = new ScrollState();
     private final ScrollState listScroll = new ScrollState();
     private final ScrollState articleScroll = new ScrollState();
-    private final boolean showOpeningAnimation = de.artemis.cyberneticenhancements.client.ClientConfig.SHOW_ARCHIVE_BOOT_ANIMATION.get();
+    private static boolean skipBootOnce;
+    /** Opened straight onto the map by its hotkey: Esc then goes back to the game instead of out of fullscreen first. */
+    private boolean openedByHotkey;
+    private final boolean showOpeningAnimation = !consumeSkipBoot() && de.artemis.cyberneticenhancements.client.ClientConfig.SHOW_ARCHIVE_BOOT_ANIMATION.get();
+
+    private static boolean consumeSkipBoot() {
+        boolean skip = skipBootOnce;
+        skipBootOnce = false;
+        return skip;
+    }
+
+    /** The map hotkey: the archive straight on the map, full screen, without its start-up sequence. */
+    public static CyberwareWikiScreen forMap(Screen parent) {
+        skipBootOnce = true;
+        var screen = new CyberwareWikiScreen(parent);
+        screen.selectTab("map");
+        screen.openedByHotkey = true;
+        MapBrowser.enterFullscreen();
+        return screen;
+    }
     private final long openedAt = System.currentTimeMillis();
     private long contentChangedAt = openedAt + BOOT_SEQUENCE_MS;
     private long sectionChangedAt = openedAt + BOOT_SEQUENCE_MS;
@@ -162,6 +185,9 @@ public final class CyberwareWikiScreen extends ResponsiveScreen {
     private int currentMouseX;
     private int currentMouseY;
     private final String initialEntryId;
+    private final List<LinkLine> linkLines = new ArrayList<>();
+    private int[] linkViewport;
+    private String pendingAnchor;
     private int contactsRefreshCooldown;
     private final Set<String> seenDeceasedContacts = new LinkedHashSet<>();
     private String activeContactsFilterId = CONTACT_FILTER_ALL;
@@ -237,6 +263,7 @@ public final class CyberwareWikiScreen extends ResponsiveScreen {
         seenDeceasedContacts.clear();
         cancelArchiveTabDrag();
         compassBrowser.hide();
+        mapBrowser.hide();
         openingFade.close();
         super.removed();
     }
@@ -320,6 +347,11 @@ public final class CyberwareWikiScreen extends ResponsiveScreen {
     }
 
     private void renderArchiveContent(GuiGraphics guiGraphics, int mouseX, int mouseY, float partialTick) {
+        if (isMapTab() && MapBrowser.fullscreen() && !bootSequenceBlocksInput()) {
+            // The UI viewport is floored to whole units, so the last sliver of the window would show through; bleed past the edge.
+            mapBrowser.render(guiGraphics, font, 0, 0, width + 2, height + 2, mouseX, mouseY);
+            return;
+        }
         RootLayout layout = rootLayout();
         WikiFrameRenderer.drawPanel(guiGraphics, layout.rootX(), layout.rootY(), layout.rootWidth(), layout.rootHeight(), StationScreenStyle.PANEL_BG);
         drawTopBar(guiGraphics, layout.rootX(), layout.rootY(), layout.rootWidth());
@@ -336,7 +368,22 @@ public final class CyberwareWikiScreen extends ResponsiveScreen {
             journalBrowser.render(guiGraphics, font, articlePane.x, articlePane.y, articlePane.width, articlePane.height, mouseX, mouseY);
             return;
         }
+        if (isSkillsTab()) {
+            skillsBrowser.render(guiGraphics, font, articlePane.x, articlePane.y, articlePane.width, articlePane.height, mouseX, mouseY);
+            return;
+        }
+        if (isReputationTab()) {
+            reputationBrowser.render(guiGraphics, font, articlePane.x, articlePane.y, articlePane.width, articlePane.height, mouseX, mouseY);
+            return;
+        }
         journalBrowser.hide();
+        reputationBrowser.hide();
+        if (isMapTab()) {
+            bankingBrowser.hide();
+            mapBrowser.render(guiGraphics, font, articlePane.x, articlePane.y, articlePane.width, articlePane.height, mouseX, mouseY);
+            return;
+        }
+        mapBrowser.hide();
         if (isCompassTab()) {
             bankingBrowser.hide();
             compassBrowser.render(guiGraphics, font, articlePane.x, articlePane.y, articlePane.width, articlePane.height, mouseX, mouseY);
@@ -378,6 +425,9 @@ public final class CyberwareWikiScreen extends ResponsiveScreen {
         if (!bootSequenceBlocksInput() && !hoveredVisualStack.isEmpty()) {
             guiGraphics.renderTooltip(font, hoveredVisualStack, mouseX, mouseY);
         }
+        if (!bootSequenceBlocksInput() && isSkillsTab() && skillsBrowser.tooltip() != null) {
+            guiGraphics.renderTooltip(font, skillsBrowser.tooltip(), mouseX, mouseY);
+        }
         if (!bootSequenceBlocksInput() && hoveredPinTooltip != null) {
             guiGraphics.renderTooltip(font, hoveredPinTooltip, mouseX, mouseY);
         } else if (!bootSequenceBlocksInput() && hoveredSearchContext != null) {
@@ -387,6 +437,7 @@ public final class CyberwareWikiScreen extends ResponsiveScreen {
 
     @Override
     protected boolean mouseClickedContent(double mouseX, double mouseY, int button) {
+        if (button == 1 && isMapTab() && !bootSequenceBlocksInput() && mapBrowser.click(mouseX, mouseY, button)) return true;
         if (button != 0) {
             return super.mouseClickedContent(mouseX, mouseY, button);
         }
@@ -395,6 +446,7 @@ public final class CyberwareWikiScreen extends ResponsiveScreen {
             return true;
         }
 
+        if (isMapTab() && MapBrowser.fullscreen()) return mapBrowser.click(mouseX, mouseY, button);
         RootLayout layout = rootLayout();
         boolean bankingTab = isBankingTab();
         boolean contactsTab = isContactsTab();
@@ -410,8 +462,11 @@ public final class CyberwareWikiScreen extends ResponsiveScreen {
         }
 
         if (isHudTab()) return button == 0 && hudBrowser.click(mouseX, mouseY);
+        if (isMapTab()) return mapBrowser.click(mouseX, mouseY, button);
         if (isCompassTab()) return compassBrowser.click(mouseX, mouseY);
         if (isJournalTab()) return journalBrowser.click(mouseX, mouseY);
+        if (isSkillsTab()) return skillsBrowser.click(mouseX, mouseY, this);
+        if (isReputationTab()) return reputationBrowser.click(mouseX, mouseY);
         if (isWikiTab() && wikiSearch != null) {
             var clear = wikiSearchClearBounds(layout);
             if (isInside(mouseX, mouseY, clear)) {
@@ -423,6 +478,7 @@ public final class CyberwareWikiScreen extends ResponsiveScreen {
             wikiSearch.setFocused(searchClicked);
             if (searchClicked) return true;
         }
+        if (isWikiTab() && (structurePagerClick(mouseX, mouseY) || rosterPagerClick(mouseX, mouseY) || linkClick(mouseX, mouseY))) return true;
         if (isLoreTab()) {
             boolean handled = tarotBrowser.click(mouseX, mouseY);
             if (handled) playClick();
@@ -478,8 +534,11 @@ public final class CyberwareWikiScreen extends ResponsiveScreen {
         contractBrowser.release();
         bankingBrowser.release();
         compassBrowser.release();
+        mapBrowser.release();
         hudBrowser.release();
         journalBrowser.release();
+        skillsBrowser.release();
+        reputationBrowser.release();
         scrollbars.values().forEach(de.artemis.cyberneticenhancements.client.ui.UiScrollbar::release);
         if (bootSequenceBlocksInput()) {
             dragTarget = DragTarget.NONE;
@@ -502,8 +561,11 @@ public final class CyberwareWikiScreen extends ResponsiveScreen {
         if (isQuestsTab()) return contractBrowser.drag(mouseX, mouseY);
         if (isBankingTab()) return bankingBrowser.drag(mouseX, mouseY);
         if (isHudTab()) return hudBrowser.drag(mouseX, mouseY);
+        if (isMapTab()) return mapBrowser.drag(mouseX, mouseY, dragX, dragY);
         if (isCompassTab()) return compassBrowser.drag(mouseX, mouseY);
         if (isJournalTab()) return journalBrowser.drag(mouseX, mouseY);
+        if (isSkillsTab()) return skillsBrowser.drag(mouseX, mouseY);
+        if (isReputationTab()) return reputationBrowser.drag(mouseX, mouseY);
         if (bootSequenceBlocksInput()) {
             return true;
         }
@@ -548,8 +610,11 @@ public final class CyberwareWikiScreen extends ResponsiveScreen {
         if (isQuestsTab()) return contractBrowser.scroll(mouseX, mouseY, scrollY);
         if (isBankingTab()) return bankingBrowser.scroll(mouseX, mouseY, scrollY);
         if (isHudTab()) return hudBrowser.scroll(mouseX, mouseY, scrollY);
+        if (isMapTab()) return mapBrowser.scroll(mouseX, mouseY, scrollY);
         if (isCompassTab()) return compassBrowser.scroll(mouseX, mouseY, scrollY);
         if (isJournalTab()) return journalBrowser.scroll(mouseX, mouseY, scrollY);
+        if (isSkillsTab()) return skillsBrowser.scroll(mouseX, mouseY, scrollY);
+        if (isReputationTab()) return reputationBrowser.scroll(mouseX, mouseY, scrollY);
         if (isLoreTab() || isSchematicsTab() || isBankingTab() || isContactsTab() || isQuestsTab()) {
             if (isInsidePane(mouseX, mouseY, layout.articlePane())) {
                 articleScroll.add(amount, maxContactsScroll(layout.articlePane()));
@@ -575,7 +640,11 @@ public final class CyberwareWikiScreen extends ResponsiveScreen {
     @Override
     public boolean keyPressed(int keyCode, int scanCode, int modifiers) {
         if (keyCode == 256 && draggedArchiveTab != null) { cancelArchiveTabDrag(); return true; }
+        if (keyCode == 256 && isMapTab() && mapBrowser.closeSettings()) return true;
+        if (keyCode == 256 && isMapTab() && MapBrowser.fullscreen() && !openedByHotkey) { MapBrowser.leaveFullscreen(); return true; }
+        if (isMapTab() && !bootSequenceBlocksInput() && de.artemis.cyberneticenhancements.client.ModKeyMappings.OPEN_MAP.matches(keyCode, scanCode)) { onClose(); return true; }
         if (isHudTab() && !bootSequenceBlocksInput() && hudBrowser.key(keyCode, scanCode, modifiers)) return true;
+        if (isMapTab() && !bootSequenceBlocksInput() && mapBrowser.key(keyCode, scanCode, modifiers)) return true;
         if (isCompassTab() && !bootSequenceBlocksInput() && compassBrowser.key(keyCode, scanCode, modifiers)) return true;
         if (isJournalTab() && !bootSequenceBlocksInput() && journalBrowser.key(keyCode, scanCode, modifiers)) return true;
         if (isContactsTab() && contactsSearch != null && contactsSearch.isFocused() && !bootSequenceBlocksInput()) {
@@ -788,6 +857,7 @@ public final class CyberwareWikiScreen extends ResponsiveScreen {
 
         guiGraphics.enableScissor(pane.x + 4, viewportY, pane.x + pane.width - 8, viewportY + viewportHeight);
         int y = headerY - (int) Math.round(articleScroll.current);
+        linkLines.clear();
 
         StationSlotRenderer.drawStandardSlot(guiGraphics, 0, 0, headerX + contentOffsetX, y + 2, StationScreenStyle.SLOT_ACTIVE);
         renderEntryIcon(guiGraphics, selectedEntry, headerX + contentOffsetX, y + 2);
@@ -808,7 +878,12 @@ public final class CyberwareWikiScreen extends ResponsiveScreen {
         }
         y += 6;
 
+        linkViewport = new int[]{pane.x + 4, viewportY, pane.x + pane.width - 8, viewportY + viewportHeight};
         for (ArticleSection section : selectedEntry.sections()) {
+            if (pendingAnchor != null && WikiLinks.anchorOf(section).equals(pendingAnchor)) {
+                articleScroll.target = Math.clamp(y - headerY + articleScroll.current - 4, 0, Math.max(0, maxScroll));
+                pendingAnchor = null;
+            }
             drawArticleSection(guiGraphics, section, contentX + contentOffsetX, y, contentWidth, alphaMask);
             y += sectionHeight(font, section, contentWidth) + SECTION_GAP;
         }
@@ -1345,7 +1420,7 @@ private int renderContactFilterTabs(GuiGraphics g, List<ContactFilter> filters, 
     }
 
     private WikiArticleLayout.Flow articleTextFlow(List<Component> paragraphs, int width) {
-        return articleFlow(paragraphs.stream().map(WikiArticleLayout::describe).toList(), width);
+        return articleFlow(paragraphs.stream().map(WikiLinks::parse).map(WikiArticleLayout::describe).toList(), width);
     }
 
     private WikiArticleLayout.Flow articleFlow(List<WikiArticleLayout.Block> blocks, int width) {
@@ -1371,8 +1446,61 @@ private int renderContactFilterTabs(GuiGraphics g, List<ContactFilter> filters, 
     private void drawArticleLines(GuiGraphics graphics, Component text, int x, int y, int width, int color, int alphaMask) {
         for (var line : font.split(text, Math.max(1, width))) {
             graphics.drawString(font, line, x, y, withAlpha(color, alphaMask), false);
+            linkLines.add(new LinkLine(x, y, line));
             y += WikiArticleLayout.LINE_HEIGHT;
         }
+    }
+
+    /** One drawn line of article text, kept for the frame so a click can be matched to the link under it. */
+    private record LinkLine(int x, int y, net.minecraft.util.FormattedCharSequence line) {
+    }
+
+    private String linkAt(double mouseX, double mouseY) {
+        if (linkViewport == null || mouseX < linkViewport[0] || mouseX >= linkViewport[2] || mouseY < linkViewport[1] || mouseY >= linkViewport[3]) return null;
+        for (LinkLine line : linkLines) {
+            if (mouseY < line.y || mouseY >= line.y + WikiArticleLayout.LINE_HEIGHT || mouseX < line.x) continue;
+            int offset = (int) (mouseX - line.x);
+            if (offset >= font.width(line.line)) return null;
+            return WikiLinks.target(font.getSplitter().componentStyleAtWidth(line.line, offset));
+        }
+        return null;
+    }
+
+    private boolean linkClick(double mouseX, double mouseY) {
+        String target = linkAt(mouseX, mouseY);
+        if (target == null) return false;
+        playClick();
+        String[] parts = WikiLinks.split(target);
+        openLink(parts[0], parts[1]);
+        return true;
+    }
+
+    /** Scrolls to a section of the entry the screen was opened on. */
+    public void jumpTo(String anchor) {
+        pendingAnchor = anchor;
+    }
+
+    /** Opens an entry, in whichever tab it lives, and scrolls to one of its sections when an anchor is given. */
+    void openLink(String entryId, String anchor) {
+        if (!entryIndex.containsKey(entryId)) return;
+        if (wikiSearch != null && wikiSearching()) wikiSearch.setValue("");
+        ArchiveTab tab = archiveTabById(tabByEntryId.get(entryId));
+        if (tab != null && tab != activeTab) activateTab(tab);
+        if (selectedEntry == null || !selectedEntry.id().equals(entryId)) selectEntryById(entryId);
+        pendingAnchor = anchor;
+        if (anchor == null) articleScroll.target = 0;
+        revealInNavigation(currentTabTopics(), baseSectionsByEntryId.get(entryId));
+    }
+
+    /** Opens the categories above the entry's section so it is visible in the list; true when the section is in these topics. */
+    private boolean revealInNavigation(List<WikiTopic> topics, WikiSection section) {
+        for (WikiTopic topic : topics) {
+            if (topic.section() == section || revealInNavigation(topic.children(), section)) {
+                if (topic.section() != section) expandedTopics.add(topic.id());
+                return true;
+            }
+        }
+        return false;
     }
 
     private int referenceTableHeight(ReferenceTableVisual visual, int width) {
@@ -1456,6 +1584,7 @@ private int renderContactFilterTabs(GuiGraphics g, List<ContactFilter> filters, 
             case RelicCacheExampleVisual relicCacheExampleVisual ->
                     renderRelicCacheExampleVisual(guiGraphics, relicCacheExampleVisual, x, y, width, alphaMask);
             case StructureViewVisual structure -> renderStructureView(guiGraphics, structure, x, y, width, alphaMask);
+            case OriginRosterVisual roster -> renderOriginRoster(guiGraphics, roster, x, y, width, alphaMask);
         }
     }
 
@@ -1470,6 +1599,7 @@ private int renderContactFilterTabs(GuiGraphics g, List<ContactFilter> filters, 
             case ServiceOperationsVisual serviceOperationsVisual -> serviceVisualHeight(serviceOperationsVisual, width);
             case RelicCacheExampleVisual ignored -> relicCacheExampleVisualHeight();
             case StructureViewVisual ignored -> STRUCTURE_VIEW_HEIGHT;
+            case OriginRosterVisual ignored -> ROSTER_HEIGHT;
         };
     }
 
@@ -1547,17 +1677,122 @@ private int renderContactFilterTabs(GuiGraphics g, List<ContactFilter> filters, 
     private static final int STRUCTURE_VIEW_HEIGHT = 280;
     private int[] structureViewArea = new int[0];
 
+    private final java.util.Map<List<String>, Integer> structurePages = new java.util.HashMap<>();
+    private List<String> structurePagedViews = List.of();
+    private int[] structurePrevButton = new int[0], structureNextButton = new int[0];
+
     private void renderStructureView(GuiGraphics guiGraphics, StructureViewVisual visual, int x, int y, int width, int alphaMask) {
         drawRecipeSurface(guiGraphics, x, y, width, STRUCTURE_VIEW_HEIGHT);
         structureViewArea = new int[] {x, y, x + width, y + STRUCTURE_VIEW_HEIGHT};
+        int count = visual.templates().size();
+        int page = Math.floorMod(structurePages.getOrDefault(visual.templates(), 0), count);
         guiGraphics.enableScissor(x + 1, y + 1, x + width - 1, y + STRUCTURE_VIEW_HEIGHT - 1);
-        StructureView.render(guiGraphics, visual.template(), x, y, width, STRUCTURE_VIEW_HEIGHT);
+        StructureView.render(guiGraphics, visual.templates().get(page), x, y, width, STRUCTURE_VIEW_HEIGHT);
         guiGraphics.disableScissor();
         guiGraphics.pose().pushPose();
         guiGraphics.pose().translate(0, 0, 600); // in front of the model's depth
         guiGraphics.drawString(font, Component.translatable("wiki.cyberneticenhancements.view.drag_to_rotate"), x + 8, y + STRUCTURE_VIEW_HEIGHT - 14,
                 StationScreenStyle.TEXT_SECONDARY, false);
+        if (count > 1) {
+            structurePagedViews = visual.templates();
+            var label = Component.translatable("wiki.cyberneticenhancements.view.page", page + 1, count);
+            int buttonY = y + 6, buttonSize = 14;
+            int nextX = x + width - 8 - buttonSize;
+            int labelX = nextX - 6 - font.width(label);
+            int prevX = labelX - 6 - buttonSize;
+            structurePrevButton = new int[] {prevX, buttonY, prevX + buttonSize, buttonY + buttonSize};
+            structureNextButton = new int[] {nextX, buttonY, nextX + buttonSize, buttonY + buttonSize};
+            for (int[] button : List.of(structurePrevButton, structureNextButton)) {
+                guiGraphics.fill(button[0], button[1], button[2], button[3], withAlpha(StationScreenStyle.PANEL_ALT, alphaMask));
+                guiGraphics.fill(button[0], button[1], button[2], button[1] + 1, withAlpha(StationScreenStyle.FRAME_HIGHLIGHT_SOFT, alphaMask));
+            }
+            guiGraphics.drawString(font, "<", prevX + (buttonSize - font.width("<")) / 2, buttonY + 3, withAlpha(StationScreenStyle.TEXT_PRIMARY, alphaMask), false);
+            guiGraphics.drawString(font, ">", nextX + (buttonSize - font.width(">")) / 2, buttonY + 3, withAlpha(StationScreenStyle.TEXT_PRIMARY, alphaMask), false);
+            guiGraphics.drawString(font, label, labelX, buttonY + 3, StationScreenStyle.TEXT_SECONDARY, false);
+        } else {
+            structurePrevButton = structureNextButton = new int[0];
+        }
         guiGraphics.pose().popPose();
+    }
+
+    /** The arrows of a paged structure view step to the previous or next template. */
+    private boolean structurePagerClick(double mouseX, double mouseY) {
+        if (structurePagedViews.size() < 2) return false;
+        int step = structureHit(structurePrevButton, mouseX, mouseY) ? -1 : structureHit(structureNextButton, mouseX, mouseY) ? 1 : 0;
+        if (step == 0) return false;
+        structurePages.merge(structurePagedViews, step, (page, delta) -> Math.floorMod(page + delta, structurePagedViews.size()));
+        playClick();
+        return true;
+    }
+
+    private static final int ROSTER_COLUMNS = 3, ROSTER_ROWS = 8, ROSTER_HEIGHT = 26 + ROSTER_ROWS * 11 + 8;
+    private final java.util.Map<String, Integer> rosterPages = new java.util.HashMap<>();
+    private String rosterOrigin = "";
+    private int rosterPageCount = 1;
+    private long rosterDrawn;
+    private int[] rosterPrevButton = new int[0], rosterNextButton = new int[0];
+
+    /** The players who hold a lifepath: one page at a time, fetched from the server, so any number of players costs the same. */
+    private void renderOriginRoster(GuiGraphics guiGraphics, OriginRosterVisual visual, int x, int y, int width, int alphaMask) {
+        drawRecipeSurface(guiGraphics, x, y, width, ROSTER_HEIGHT);
+        int total = de.artemis.cyberneticenhancements.client.OriginRosterClient.total(visual.origin());
+        int pages = total < 0 ? 1 : de.artemis.cyberneticenhancements.common.origin.OriginRegistry.pages(total);
+        int page = Math.clamp(rosterPages.getOrDefault(visual.origin(), 0), 0, pages - 1);
+        rosterPages.put(visual.origin(), page);
+        var roster = de.artemis.cyberneticenhancements.client.OriginRosterClient.page(visual.origin(), page);
+        if (roster != null && roster.page() != page) roster = null;
+        if (roster != null) pages = de.artemis.cyberneticenhancements.common.origin.OriginRegistry.pages(roster.total());
+        int padding = 8;
+        Component heading = roster == null ? Component.translatable("wiki.cyberneticenhancements.origin.roster.loading")
+                : Component.translatable("wiki.cyberneticenhancements.origin.roster.count", roster.total());
+        guiGraphics.drawString(font, heading, x + padding, y + padding, withAlpha(UiRenderer.ACCENT, alphaMask), false);
+        String own = net.minecraft.client.Minecraft.getInstance().getUser().getName();
+        if (roster != null && roster.names().isEmpty()) {
+            guiGraphics.drawString(font, Component.translatable("wiki.cyberneticenhancements.origin.roster.empty"), x + padding, y + 26, StationScreenStyle.TEXT_SECONDARY, false);
+        } else if (roster != null) {
+            int columnWidth = (width - padding * 2) / ROSTER_COLUMNS;
+            for (int index = 0; index < roster.names().size(); index++) {
+                String name = roster.names().get(index);
+                int cellX = x + padding + (index / ROSTER_ROWS) * columnWidth, cellY = y + 26 + (index % ROSTER_ROWS) * 11;
+                String shown = font.plainSubstrByWidth(name, columnWidth - 8);
+                guiGraphics.drawString(font, shown, cellX, cellY, withAlpha(name.equals(own) ? UiRenderer.ACCENT : StationScreenStyle.TEXT_PRIMARY, alphaMask), false);
+            }
+        }
+        rosterOrigin = visual.origin();
+        rosterPageCount = pages;
+        rosterDrawn = net.minecraft.Util.getMillis();
+        if (pages > 1) {
+            var label = Component.translatable("wiki.cyberneticenhancements.view.page", page + 1, pages);
+            int buttonY = y + 6, buttonSize = 14;
+            int nextX = x + width - 8 - buttonSize;
+            int labelX = nextX - 6 - font.width(label);
+            int prevX = labelX - 6 - buttonSize;
+            rosterPrevButton = new int[] {prevX, buttonY, prevX + buttonSize, buttonY + buttonSize};
+            rosterNextButton = new int[] {nextX, buttonY, nextX + buttonSize, buttonY + buttonSize};
+            for (int[] button : List.of(rosterPrevButton, rosterNextButton)) {
+                guiGraphics.fill(button[0], button[1], button[2], button[3], withAlpha(StationScreenStyle.PANEL_ALT, alphaMask));
+                guiGraphics.fill(button[0], button[1], button[2], button[1] + 1, withAlpha(StationScreenStyle.FRAME_HIGHLIGHT_SOFT, alphaMask));
+            }
+            guiGraphics.drawString(font, "<", prevX + (buttonSize - font.width("<")) / 2, buttonY + 3, withAlpha(StationScreenStyle.TEXT_PRIMARY, alphaMask), false);
+            guiGraphics.drawString(font, ">", nextX + (buttonSize - font.width(">")) / 2, buttonY + 3, withAlpha(StationScreenStyle.TEXT_PRIMARY, alphaMask), false);
+            guiGraphics.drawString(font, label, labelX, buttonY + 3, StationScreenStyle.TEXT_SECONDARY, false);
+        } else {
+            rosterPrevButton = rosterNextButton = new int[0];
+        }
+    }
+
+    /** The arrows of a roster step through its pages. Only counts while a roster was drawn this frame, so a scrolled-away one never reacts. */
+    private boolean rosterPagerClick(double mouseX, double mouseY) {
+        if (rosterPageCount < 2 || net.minecraft.Util.getMillis() - rosterDrawn > 150) return false;
+        int step = structureHit(rosterPrevButton, mouseX, mouseY) ? -1 : structureHit(rosterNextButton, mouseX, mouseY) ? 1 : 0;
+        if (step == 0) return false;
+        rosterPages.merge(rosterOrigin, 0, (page, ignored) -> Math.floorMod(page + step, rosterPageCount));
+        playClick();
+        return true;
+    }
+
+    private static boolean structureHit(int[] button, double mouseX, double mouseY) {
+        return button.length == 4 && mouseX >= button[0] && mouseX < button[2] && mouseY >= button[1] && mouseY < button[3];
     }
 
     private void renderRelicCacheExampleVisual(GuiGraphics guiGraphics, RelicCacheExampleVisual visual, int x, int y, int width, int alphaMask) {
@@ -2001,6 +2236,8 @@ private int renderContactFilterTabs(GuiGraphics g, List<ContactFilter> filters, 
         hudBrowser.unfocus();
         tarotBrowser.release();
         journalBrowser.hide();
+        reputationBrowser.hide();
+        skillsBrowser.release();
         compassBrowser.hide();
         if (wikiSearch != null) wikiSearch.setFocused(false);
         if (contactsSearch != null) contactsSearch.setFocused(false);
@@ -2129,7 +2366,7 @@ private int renderContactFilterTabs(GuiGraphics g, List<ContactFilter> filters, 
         int contentY = rootY + TOP_BAR_HEIGHT + PANEL_GAP;
         int contentHeight = rootHeight - TOP_BAR_HEIGHT - FOOTER_HEIGHT - PANEL_GAP * 2;
         if (isLoreTab() || isSchematicsTab() || isBankingTab() || isContactsTab() || isQuestsTab()
-                || isCompassTab() || isJournalTab() || isHudTab()) {
+                || isCompassTab() || isMapTab() || isJournalTab() || isHudTab() || isReputationTab() || isSkillsTab()) {
             Pane fullPane = new Pane(rootX + PANEL_GAP, contentY, rootWidth - PANEL_GAP * 2, contentHeight);
             Pane hiddenPane = new Pane(0, 0, 0, 0);
             return new RootLayout(rootX, rootY, rootWidth, rootHeight, hiddenPane, hiddenPane, fullPane, true);
@@ -2175,7 +2412,11 @@ private int renderContactFilterTabs(GuiGraphics g, List<ContactFilter> filters, 
         return activeTab != null && activeTab.id().equals("compass");
     }
 
+    private boolean isMapTab() { return activeTab != null && "map".equals(activeTab.id()); }
     private boolean isJournalTab() { return activeTab != null && "journal".equals(activeTab.id()); }
+    private boolean isSkillsTab() { return activeTab != null && "skills".equals(activeTab.id()); }
+
+    private boolean isReputationTab() { return activeTab != null && "reputation".equals(activeTab.id()); }
     public boolean isHudTab() { return activeTab != null && "hud".equals(activeTab.id()); }
 
     private boolean isContactsTab() {
@@ -2397,6 +2638,12 @@ private int renderContactFilterTabs(GuiGraphics g, List<ContactFilter> filters, 
             x += tabWidth + TOP_TAB_GAP;
         }
         return bounds;
+    }
+
+    /** Opens on this tab, for a hotkey that goes straight to one of them. Only meant for a screen that is not open yet. */
+    public void selectTab(String id) {
+        ArchiveTab tab = archiveTabById(id);
+        if (tab != null) activeTab = tab;
     }
 
     private ArchiveTab archiveTabById(String id) {

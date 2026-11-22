@@ -38,7 +38,7 @@ public final class QuestGuide {
 
     public static int difficulty(QuestType type, int tier) {
         int base = switch (type) {
-            case DELIVERY, RECOVERY, LOCATE -> 1;
+            case DELIVERY, RECOVERY, LOCATE, SALVAGE -> 1;
             case EXTRACTION, INVESTIGATION -> 2;
             case BREACH, ELIMINATION -> 3;
             case CYBERPSYCHO -> 4;

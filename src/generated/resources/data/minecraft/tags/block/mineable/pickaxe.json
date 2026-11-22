@@ -2,6 +2,11 @@
   "values": [
     "cyberneticenhancements:chromium_ore",
     "cyberneticenhancements:deepslate_chromium_ore",
+    "cyberneticenhancements:copper_cable",
+    "cyberneticenhancements:water_pipe",
+    "cyberneticenhancements:hvac_duct",
+    "cyberneticenhancements:hvac_vent",
+    "cyberneticenhancements:fast_travel",
     "cyberneticenhancements:iron_quest_crate",
     "cyberneticenhancements:cyberware_fabricator",
     "cyberneticenhancements:relic_cache",

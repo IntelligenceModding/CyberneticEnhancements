@@ -31,6 +31,17 @@ public final class ModPayloads {
     }
 
     public static void register(RegisterPayloadHandlersEvent event) {
+        event.registrar("1").playToClient(FastTravelPointsPayload.TYPE, FastTravelPointsPayload.STREAM_CODEC,
+                (p, c) -> c.enqueueWork(() -> de.artemis.cyberneticenhancements.client.FastTravelClientState.update(p)))
+                .playToClient(FastTravelOpenPayload.TYPE, FastTravelOpenPayload.STREAM_CODEC,
+                        (p, c) -> c.enqueueWork(() -> de.artemis.cyberneticenhancements.client.FastTravelClientState.open(p)))
+                .playToClient(FastTravelEffectPayload.TYPE, FastTravelEffectPayload.STREAM_CODEC,
+                        (p, c) -> c.enqueueWork(() -> de.artemis.cyberneticenhancements.client.render.PlayerDeploymentRender.receiveTravel(p)))
+                .playToServer(FastTravelRequestPayload.TYPE, FastTravelRequestPayload.STREAM_CODEC,
+                        (p, c) -> c.enqueueWork(() -> {
+                            if (c.player() instanceof ServerPlayer player)
+                                de.artemis.cyberneticenhancements.common.fasttravel.FastTravel.request(player, p.dimension(), p.target());
+                        }));
         event.registrar("1").playToServer(de.artemis.cyberneticenhancements.common.menu.UpgradeRecipeTransferPayload.TYPE,
                 de.artemis.cyberneticenhancements.common.menu.UpgradeRecipeTransferPayload.STREAM_CODEC,
                 (payload, context) -> context.enqueueWork(() -> {
@@ -80,6 +91,51 @@ public final class ModPayloads {
                 .playToServer(de.artemis.cyberneticenhancements.common.tarot.TarotScanPayload.TYPE,
                         de.artemis.cyberneticenhancements.common.tarot.TarotScanPayload.STREAM_CODEC,
                         (p, c) -> c.enqueueWork(() -> { if (c.player() instanceof ServerPlayer player) de.artemis.cyberneticenhancements.common.tarot.TarotScanning.receive(player, p); }));
+        event.registrar("1").playToClient(de.artemis.cyberneticenhancements.common.skills.SkillsPayload.TYPE,
+                de.artemis.cyberneticenhancements.common.skills.SkillsPayload.STREAM_CODEC,
+                (p, c) -> c.enqueueWork(() -> de.artemis.cyberneticenhancements.common.skills.Skills.receive(p.ranks())))
+                .playToServer(de.artemis.cyberneticenhancements.common.skills.SkillsActionPayload.TYPE,
+                        de.artemis.cyberneticenhancements.common.skills.SkillsActionPayload.STREAM_CODEC,
+                        (p, c) -> c.enqueueWork(() -> {
+                            if (c.player() instanceof ServerPlayer player)
+                                de.artemis.cyberneticenhancements.common.skills.SkillsActionPayload.handle(p, player);
+                        }));
+        event.registrar("1").playToClient(de.artemis.cyberneticenhancements.common.streetcred.StreetCredPayload.TYPE,
+                de.artemis.cyberneticenhancements.common.streetcred.StreetCredPayload.STREAM_CODEC,
+                (p, c) -> c.enqueueWork(() -> de.artemis.cyberneticenhancements.client.StreetCredHud.receive(p.points())));
+        event.registrar("1").playToClient(de.artemis.cyberneticenhancements.common.streetcred.StreetCredBoardPayload.TYPE,
+                de.artemis.cyberneticenhancements.common.streetcred.StreetCredBoardPayload.STREAM_CODEC,
+                (p, c) -> c.enqueueWork(() -> de.artemis.cyberneticenhancements.client.StreetCredBoardClient.receive(p)))
+                .playToServer(de.artemis.cyberneticenhancements.common.streetcred.StreetCredBoardRequestPayload.TYPE,
+                        de.artemis.cyberneticenhancements.common.streetcred.StreetCredBoardRequestPayload.STREAM_CODEC,
+                        (p, c) -> c.enqueueWork(() -> { if (c.player() instanceof ServerPlayer player)
+                            de.artemis.cyberneticenhancements.common.streetcred.StreetCredBoard.get(player.server).respond(player); }));
+        event.registrar("1").playToClient(de.artemis.cyberneticenhancements.common.origin.OriginStatePayload.TYPE,
+                de.artemis.cyberneticenhancements.common.origin.OriginStatePayload.STREAM_CODEC,
+                (p, c) -> c.enqueueWork(() -> de.artemis.cyberneticenhancements.client.OriginClient.receive(p)))
+                .playToServer(de.artemis.cyberneticenhancements.common.origin.OriginChoosePayload.TYPE,
+                        de.artemis.cyberneticenhancements.common.origin.OriginChoosePayload.STREAM_CODEC,
+                        (p, c) -> c.enqueueWork(() -> { if (c.player() instanceof ServerPlayer player)
+                            de.artemis.cyberneticenhancements.common.origin.Origins.choose(player, de.artemis.cyberneticenhancements.common.origin.Origin.find(p.id())); }));
+        event.registrar("1").playToClient(de.artemis.cyberneticenhancements.common.origin.OriginRosterPayload.TYPE,
+                de.artemis.cyberneticenhancements.common.origin.OriginRosterPayload.STREAM_CODEC,
+                (p, c) -> c.enqueueWork(() -> de.artemis.cyberneticenhancements.client.OriginRosterClient.receive(p)))
+                .playToServer(de.artemis.cyberneticenhancements.common.origin.OriginRosterRequestPayload.TYPE,
+                        de.artemis.cyberneticenhancements.common.origin.OriginRosterRequestPayload.STREAM_CODEC,
+                        (p, c) -> c.enqueueWork(() -> { if (c.player() instanceof ServerPlayer player)
+                            de.artemis.cyberneticenhancements.common.origin.OriginRegistry.get(player.server).respond(player, p); }));
+        event.registrar("1").playToServer(HangingWireDecoratePayload.TYPE, HangingWireDecoratePayload.STREAM_CODEC,
+                (payload, context) -> context.enqueueWork(() -> {
+                    if (context.player() instanceof ServerPlayer player)
+                        de.artemis.cyberneticenhancements.common.entity.HangingWireEntity.act(player, payload.wire(), payload.t(), payload.action());
+                }));
+        event.registrar("1").playToClient(OpenHangingSignPayload.TYPE, OpenHangingSignPayload.STREAM_CODEC,
+                (payload, context) -> context.enqueueWork(() -> de.artemis.cyberneticenhancements.client.HangingSignClient.open(payload)))
+                .playToServer(HangingSignTextPayload.TYPE, HangingSignTextPayload.STREAM_CODEC,
+                        (payload, context) -> context.enqueueWork(() -> {
+                            if (context.player() instanceof ServerPlayer player)
+                                de.artemis.cyberneticenhancements.common.entity.HangingWireEntity.writeSign(player, payload.wire(), payload.t(), payload.front(), payload.lines());
+                        }));
         event.registrar("1").playToServer(DeleteCompassMarkerPayload.TYPE, DeleteCompassMarkerPayload.STREAM_CODEC,
                 (payload, context) -> context.enqueueWork(() -> {
                     if (!(context.player() instanceof ServerPlayer player)) return;
@@ -156,6 +212,18 @@ public final class ModPayloads {
                         }))
                 .playToClient(NpcCallStatePayload.TYPE, NpcCallStatePayload.STREAM_CODEC, (payload, context) ->
                         context.enqueueWork(() -> de.artemis.cyberneticenhancements.client.NpcCallOverlay.receive(payload)))
+                .playToClient(FaceDialogueStatePayload.TYPE, FaceDialogueStatePayload.STREAM_CODEC, (payload, context) ->
+                        context.enqueueWork(() -> de.artemis.cyberneticenhancements.client.FaceDialogueOverlay.receive(payload)))
+                .playToServer(FaceDialogueChoosePayload.TYPE, FaceDialogueChoosePayload.STREAM_CODEC, (payload, context) ->
+                        context.enqueueWork(() -> {
+                            if (context.player() instanceof ServerPlayer player)
+                                de.artemis.cyberneticenhancements.common.dialogue.FaceDialogue.choose(player, payload.index());
+                        }))
+                .playToServer(FaceDialogueWindowPayload.TYPE, FaceDialogueWindowPayload.STREAM_CODEC, (payload, context) ->
+                        context.enqueueWork(() -> {
+                            if (context.player() instanceof ServerPlayer player)
+                                de.artemis.cyberneticenhancements.common.dialogue.FaceDialogue.openWindow(player, payload.view());
+                        }))
                 .playToClient(de.artemis.cyberneticenhancements.common.fabrication.SchematicKnowledgePayload.TYPE,
                         de.artemis.cyberneticenhancements.common.fabrication.SchematicKnowledgePayload.STREAM_CODEC, (payload, context) ->
                                 context.enqueueWork(() -> de.artemis.cyberneticenhancements.common.fabrication.SchematicKnowledge.receiveDetails(payload.records())))

@@ -46,6 +46,11 @@ public class CyberneticEnhancements {
         modContainer.registerConfig(net.neoforged.fml.config.ModConfig.Type.SERVER, de.artemis.cyberneticenhancements.common.config.EnforcedSettingsConfig.SPEC);
         modEventBus.addListener(net.neoforged.fml.event.config.ModConfigEvent.Loading.class, de.artemis.cyberneticenhancements.common.config.EnforcedSettingsConfig::onConfig);
         modEventBus.addListener(net.neoforged.fml.event.config.ModConfigEvent.Reloading.class, de.artemis.cyberneticenhancements.common.config.EnforcedSettingsConfig::onConfig);
+        modContainer.registerConfig(net.neoforged.fml.config.ModConfig.Type.SERVER, de.artemis.cyberneticenhancements.common.config.FastTravelConfig.SPEC, "cyberneticenhancements-fast-travel.toml");
+        modContainer.registerConfig(net.neoforged.fml.config.ModConfig.Type.SERVER, de.artemis.cyberneticenhancements.common.config.SkillsConfig.SPEC, "cyberneticenhancements-skills.toml");
+        NeoForge.EVENT_BUS.addListener(de.artemis.cyberneticenhancements.common.fasttravel.FastTravel::tick);
+        NeoForge.EVENT_BUS.addListener(de.artemis.cyberneticenhancements.common.fasttravel.FastTravel::login);
+        NeoForge.EVENT_BUS.addListener(de.artemis.cyberneticenhancements.common.fasttravel.FastTravel::logout);
         CyberwareBalance.initialize();
         de.artemis.cyberneticenhancements.common.world.ChromiumWorldgen.FEATURES.register(modEventBus);
         modEventBus.addListener(de.artemis.cyberneticenhancements.common.world.NpcChunkLoading::register);
@@ -105,6 +110,13 @@ public class CyberneticEnhancements {
         NeoForge.EVENT_BUS.addListener(CyberwareEffects::onPlayerTick);
         NeoForge.EVENT_BUS.addListener(de.artemis.cyberneticenhancements.common.fabrication.SchematicKnowledge::onSync);
         NeoForge.EVENT_BUS.addListener(de.artemis.cyberneticenhancements.common.tarot.TarotKnowledge::onSync);
+        NeoForge.EVENT_BUS.addListener(de.artemis.cyberneticenhancements.common.origin.Origins::onSync);
+        NeoForge.EVENT_BUS.addListener(de.artemis.cyberneticenhancements.common.origin.Origins::onClone);
+        NeoForge.EVENT_BUS.addListener(de.artemis.cyberneticenhancements.common.origin.Origins::onRespawn);
+        NeoForge.EVENT_BUS.addListener(de.artemis.cyberneticenhancements.common.streetcred.StreetCred::onSync);
+        NeoForge.EVENT_BUS.addListener(de.artemis.cyberneticenhancements.common.streetcred.StreetCred::onClone);
+        NeoForge.EVENT_BUS.addListener(de.artemis.cyberneticenhancements.common.skills.Skills::onSync);
+        NeoForge.EVENT_BUS.addListener(de.artemis.cyberneticenhancements.common.skills.Skills::onClone);
         NeoForge.EVENT_BUS.addListener(de.artemis.cyberneticenhancements.common.tarot.TarotKnowledge::onClone);
         NeoForge.EVENT_BUS.addListener(de.artemis.cyberneticenhancements.common.tarot.TarotRewards::onRespawn);
         NeoForge.EVENT_BUS.addListener(de.artemis.cyberneticenhancements.common.tarot.TarotScanning::tick);
@@ -143,6 +155,7 @@ public class CyberneticEnhancements {
         NeoForge.EVENT_BUS.addListener(CombatStatusManager::onKnockback);
         NeoForge.EVENT_BUS.addListener(CirculatoryCyberwareManager::onKnockback);
         NeoForge.EVENT_BUS.addListener(ArmCyberwareManager::onBlockBreak);
+        NeoForge.EVENT_BUS.addListener(de.artemis.cyberneticenhancements.common.world.ShippingContainerLeaks::onBlockBreak);
         NeoForge.EVENT_BUS.addListener(HandsCyberwareManager::onBreakSpeed);
         NeoForge.EVENT_BUS.addListener(HandsCyberwareManager::onKnockback);
         NeoForge.EVENT_BUS.addListener(HandsCyberwareManager::onRightClickBlock);
@@ -152,6 +165,7 @@ public class CyberneticEnhancements {
         NeoForge.EVENT_BUS.addListener(CyberwareEffects::onLivingDeath);
         NeoForge.EVENT_BUS.addListener(EventPriority.LOWEST, de.artemis.cyberneticenhancements.common.cyberware.CyberstrainManager::onDeath);
         NeoForge.EVENT_BUS.addListener(PlayerQuestManager::onLivingDeath);
+        NeoForge.EVENT_BUS.addListener(EventPriority.LOWEST, de.artemis.cyberneticenhancements.common.streetcred.StreetCredRewards::onDeath);
         NeoForge.EVENT_BUS.addListener(de.artemis.cyberneticenhancements.common.journal.JournalEvents::onDamage);
         NeoForge.EVENT_BUS.addListener(EventPriority.LOWEST, de.artemis.cyberneticenhancements.common.journal.JournalEvents::onPlaced);
         NeoForge.EVENT_BUS.addListener(EventPriority.LOWEST, de.artemis.cyberneticenhancements.common.journal.JournalEvents::onBroken);
@@ -179,6 +193,9 @@ public class CyberneticEnhancements {
         NeoForge.EVENT_BUS.addListener(de.artemis.cyberneticenhancements.common.dialogue.NpcCallManager::onTick);
         NeoForge.EVENT_BUS.addListener(de.artemis.cyberneticenhancements.common.dialogue.NpcCallManager::onLogout);
         NeoForge.EVENT_BUS.addListener(de.artemis.cyberneticenhancements.common.dialogue.NpcCallManager::onStop);
+        NeoForge.EVENT_BUS.addListener(de.artemis.cyberneticenhancements.common.dialogue.FaceDialogue::onTick);
+        NeoForge.EVENT_BUS.addListener(de.artemis.cyberneticenhancements.common.dialogue.FaceDialogue::onLogout);
+        NeoForge.EVENT_BUS.addListener(de.artemis.cyberneticenhancements.common.dialogue.FaceDialogue::onStop);
         NeoForge.EVENT_BUS.addListener(de.artemis.cyberneticenhancements.common.dialogue.PlayerCallManager::onTick);
         NeoForge.EVENT_BUS.addListener(de.artemis.cyberneticenhancements.common.dialogue.PlayerCallManager::onLogout);
         NeoForge.EVENT_BUS.addListener(de.artemis.cyberneticenhancements.common.dialogue.PlayerCallManager::onClone);

@@ -59,7 +59,7 @@ import java.util.EnumSet;
 import java.util.List;
 import java.util.UUID;
 
-public abstract class AbstractCityNpcEntity extends PathfinderMob {
+public abstract class AbstractCityNpcEntity extends PathfinderMob implements de.artemis.cyberneticenhancements.common.dialogue.FaceTalker {
     private static final EntityDataAccessor<Long> COMBAT_MEDICINE = SynchedEntityData.defineId(AbstractCityNpcEntity.class, EntityDataSerializers.LONG);
     private final NpcCombatHealing combatHealing = new NpcCombatHealing(this, COMBAT_MEDICINE);
     public NpcCombatHealing combatHealing() { return combatHealing; }
@@ -93,7 +93,6 @@ public abstract class AbstractCityNpcEntity extends PathfinderMob {
     private static final String PLAYER_RELATION_SURCHARGE_UNTIL_TAG = "SurchargeUntil";
     private static final String PLAYER_RELATION_REFUSAL_UNTIL_TAG = "RefusalUntil";
     private static final String PLAYER_RELATION_PURGE_DAY_TAG = "PurgeDay";
-    private static final String PLAYER_RELATION_DIALOGUE_REWARDS_TAG = "DialogueRewards";
     private static final String LEGACY_PLAYER_SEEN_TAG = "cyberneticenhancements.fixer_seen";
     private static final String LEGACY_PLAYER_TRUST_TAG = "cyberneticenhancements.fixer_trust";
     private static final String LEGACY_PLAYER_PURGE_DAY_TAG = "cyberneticenhancements.fixer_purge_day";
@@ -162,6 +161,9 @@ public abstract class AbstractCityNpcEntity extends PathfinderMob {
         setPersistenceRequired();
     }
 
+    private @Nullable ServerPlayer listenTo;
+    private long listenUntil;
+
     public abstract NpcType npcType();
 
     public boolean canInteract(Player player) {
@@ -193,6 +195,7 @@ public abstract class AbstractCityNpcEntity extends PathfinderMob {
     protected void registerGoals() {
         goalSelector.addGoal(0, NpcCombatHealing.goal(this));
         goalSelector.addGoal(0, new FloatGoal(this));
+        goalSelector.addGoal(0, new ListenGoal(this));
         goalSelector.addGoal(1, new net.minecraft.world.entity.ai.goal.MeleeAttackGoal(this, 1.1, false));
         goalSelector.addGoal(2, new FixerPlayerFocusGoal(this));
         goalSelector.addGoal(3, new MoveTowardsRestrictionGoal(this, 0.9D));
@@ -272,6 +275,102 @@ public abstract class AbstractCityNpcEntity extends PathfinderMob {
             serverPlayer.stopUsingItem();
             return InteractionResult.CONSUME;
         }
+        serverPlayer.stopUsingItem();
+        // Talking needs no window and never starts by itself: a right-click begins it, and it then follows the crosshair.
+        if (!de.artemis.cyberneticenhancements.common.dialogue.FaceDialogue.active(serverPlayer.getUUID())) {
+            var node = greet(serverPlayer);
+            if (node != null) de.artemis.cyberneticenhancements.common.dialogue.FaceDialogue.open(serverPlayer, this, node);
+        }
+        return InteractionResult.CONSUME;
+    }
+
+    @Override
+    public void listening(ServerPlayer player) {
+        listenTo = player;
+        listenUntil = gameTime() + 6L;
+    }
+
+    @Override
+    public de.artemis.cyberneticenhancements.common.network.FaceDialogueStatePayload.Header header(ServerPlayer player) {
+        return new de.artemis.cyberneticenhancements.common.network.FaceDialogueStatePayload.Header(
+                this instanceof DevTestEntity ? Component.literal("Dev-Test") : npcType().displayName(),
+                Component.translatable("screen.cyberneticenhancements.fixer.trust." + Mth.clamp(trustLevel(player), 0, 4)),
+                de.artemis.cyberneticenhancements.common.menu.FixerDialogMenu.trustProgressPercentForPoints(trustPoints(player)),
+                holdsHandIn(player) ? 0 : windowMask(player, false), windowMask(player, true));
+    }
+
+    private boolean holdsHandIn(ServerPlayer player) {
+        return de.artemis.cyberneticenhancements.common.quest.PlayerQuestManager.canHandIn(player, this, player.getMainHandItem());
+    }
+
+    /** What they say to someone holding what their contract asks for: nothing to pick but handing it over, and then the usual talk. */
+    @Nullable
+    protected de.artemis.cyberneticenhancements.common.dialogue.FaceDialogue.Node handInNode(ServerPlayer player) {
+        if (!holdsHandIn(player)) return null;
+        return new de.artemis.cyberneticenhancements.common.dialogue.FaceDialogue.Node(getName(),
+                Component.translatable("dialogue.cyberneticenhancements.hand_in.line"),
+                java.util.List.of(de.artemis.cyberneticenhancements.common.dialogue.FaceDialogue.Option.of(
+                        Component.translatable("dialogue.cyberneticenhancements.hand_in"), this::handIn)), this::handIn);
+    }
+
+    /** Hands over what is held, then goes on to the whole conversation. A right click does the same, so it keeps working as it did. */
+    @Nullable
+    public de.artemis.cyberneticenhancements.common.dialogue.FaceDialogue.Node handIn(ServerPlayer player) {
+        de.artemis.cyberneticenhancements.common.quest.PlayerQuestManager.tryHandInHeldItem(player, this, player.getMainHandItem());
+        return greet(player);
+    }
+
+    private static final int WINDOW_SHOP = 1, WINDOW_SERVICES = 2, WINDOW_CONTRACTS = 3, WINDOW_CUSTOMIZE = 4;
+
+    /** Which windows they have and this player can use (or, when {@code locked}, which of those are closed: none, a closed window is not offered), one bit per window from 1. */
+    private int windowMask(ServerPlayer player, boolean locked) {
+        int mask = 0;
+        if (locked) return mask;
+        for (int view = WINDOW_SHOP; view <= WINDOW_CUSTOMIZE; view++)
+            if (opensWindow(player, view)) mask |= 1 << (view - 1);
+        return mask;
+    }
+
+    private boolean hasWindow(int view) {
+        var type = npcType();
+        return switch (view) {
+            case WINDOW_SHOP -> type.supportsShop();
+            case WINDOW_SERVICES -> !de.artemis.cyberneticenhancements.common.dialogue.NpcService.forNpc(type).isEmpty();
+            case WINDOW_CONTRACTS -> type.supportsContracts();
+            case WINDOW_CUSTOMIZE -> type != NpcType.STREET_RIPPERDOC && type != NpcType.WORLD_MED_TECH;
+            default -> false;
+        };
+    }
+
+    /** Whether this window exists for them and is open to this player. */
+    public boolean opensWindow(ServerPlayer player, int view) {
+        return hasWindow(view) && (view != WINDOW_CUSTOMIZE || hasMaxTrust(player));
+    }
+
+    @Override
+    public boolean willTalk(ServerPlayer player) {
+        return isAlive() && canTakeCall(player) && getTarget() != player
+                && !de.artemis.cyberneticenhancements.common.dialogue.NpcCallManager.isOccupiedByOther(player, this);
+    }
+
+    @Override
+    @Nullable
+    public de.artemis.cyberneticenhancements.common.dialogue.FaceDialogue.Node greet(ServerPlayer player) {
+        if (!willTalk(player)) return null;
+        if (!hasMet(player)) markMet(player);
+        var handIn = handInNode(player);
+        if (handIn != null) return handIn;
+        de.artemis.cyberneticenhancements.common.dialogue.NpcCallManager.endForInteraction(player, this);
+        de.artemis.cyberneticenhancements.common.journal.PlayerJournal.recordAt(player, blockPosition(), "contacts", "talked", getDisplayName());
+        return new de.artemis.cyberneticenhancements.common.dialogue.NpcFaceDialogue(this).greet(player);
+    }
+
+    /** Their shop, services and everything else that needs a window. */
+    public void openTradeMenu(ServerPlayer player) { openTradeMenu(player, 0); }
+
+    /** {@code view} is the window to start in, 0 for their dialogue. */
+    public void openTradeMenu(ServerPlayer player, int view) {
+        if (!willTalk(player)) return;
         setCurrentCustomer(player.getUUID());
         if (meetupCustomer != null && meetupCustomer.equals(player.getUUID())) {
             meetupReturnAt = 0L;
@@ -282,11 +381,8 @@ public abstract class AbstractCityNpcEntity extends PathfinderMob {
                 (containerId, inventory, menuPlayer) -> new FixerDialogMenu(containerId, inventory, this),
                 getDisplayName()
         );
-        serverPlayer.stopUsingItem();
-        de.artemis.cyberneticenhancements.common.dialogue.NpcCallManager.endForInteraction(serverPlayer, this);
-        serverPlayer.openMenu(provider, buffer -> buffer.writeVarInt(getId()));
-        de.artemis.cyberneticenhancements.common.journal.PlayerJournal.recordAt(serverPlayer, blockPosition(), "contacts", "talked", getDisplayName());
-        return InteractionResult.CONSUME;
+        de.artemis.cyberneticenhancements.common.dialogue.NpcCallManager.endForInteraction(player, this);
+        player.openMenu(provider, buffer -> { buffer.writeVarInt(getId()); buffer.writeVarInt(view); });
     }
 
     @Override
@@ -541,6 +637,8 @@ public abstract class AbstractCityNpcEntity extends PathfinderMob {
     }
 
     public void raiseTrust(Player player, int amount) {
+        amount = de.artemis.cyberneticenhancements.common.streetcred.StreetCredEffects.trustGain(player,
+                de.artemis.cyberneticenhancements.common.origin.Origins.trustGain(player, amount));
         int previous = trustPoints(player);
         int trust = previous + Mth.clamp(amount, 0, TRUST_MAX - previous);
         CompoundTag relation = relationTag(player, true);
@@ -582,7 +680,8 @@ public abstract class AbstractCityNpcEntity extends PathfinderMob {
         long day = level().getDayTime() / 24000L;
         int used = relation.getLong("CommerceTrustDay") == day ? relation.getInt("CommerceTrustEarned") : 0;
         int gain = Math.min(Math.max(0, amount), Math.max(0,
-                de.artemis.cyberneticenhancements.common.economy.EconomyBalance.value("trust.commerce_daily_cap") - used));
+                de.artemis.cyberneticenhancements.common.skills.SkillEffects.commerceCap(player,
+                        de.artemis.cyberneticenhancements.common.economy.EconomyBalance.value("trust.commerce_daily_cap")) - used));
         relation.putLong("CommerceTrustDay", day);
         relation.putInt("CommerceTrustEarned", used + gain);
         storeRelation(player, relation);
@@ -680,24 +779,6 @@ public abstract class AbstractCityNpcEntity extends PathfinderMob {
         CompoundTag relation = relationTag(player, true);
         relation.putLong(PLAYER_RELATION_PURGE_DAY_TAG, day);
         storeRelation(player, relation);
-    }
-
-    public boolean grantDialogueTrustOnce(Player player, String rewardKey, int amount) {
-        if (amount <= 0 || rewardKey == null || rewardKey.isBlank()) {
-            return false;
-        }
-        CompoundTag relation = relationTag(player, true);
-        CompoundTag rewards = relation.contains(PLAYER_RELATION_DIALOGUE_REWARDS_TAG, Tag.TAG_COMPOUND)
-                ? relation.getCompound(PLAYER_RELATION_DIALOGUE_REWARDS_TAG)
-                : new CompoundTag();
-        if (rewards.getBoolean(rewardKey)) {
-            return false;
-        }
-        rewards.putBoolean(rewardKey, true);
-        relation.put(PLAYER_RELATION_DIALOGUE_REWARDS_TAG, rewards);
-        storeRelation(player, relation);
-        raiseTrust(player, amount);
-        return true;
     }
 
     public void applyDialoguePenalty(ServerPlayer player, int trustLoss, int annoyance, boolean closeConversation) {
@@ -1289,6 +1370,19 @@ public abstract class AbstractCityNpcEntity extends PathfinderMob {
         PacketDistributor.sendToPlayer(player, de.artemis.cyberneticenhancements.common.network.ArchiveContactsPayload.capture(player));
     }
 
+    /** Contacts the player has made for good and can reach right now; temporary quest contacts are left out. */
+    public static List<AbstractCityNpcEntity> reachablePermanentContacts(ServerPlayer player) {
+        var result = new ArrayList<AbstractCityNpcEntity>();
+        for (var contact : archiveContacts(player)) {
+            if (contact.deceased() || contact.refusing()) continue;
+            CompoundTag relation = archiveRelationTag(player, contact.npcId(), false);
+            if (relation == null || relation.getBoolean(PLAYER_RELATION_TEMPORARY_TAG)) continue;
+            var npc = resolveCallContact(player, contact.npcId());
+            if (npc != null) result.add(npc);
+        }
+        return result;
+    }
+
     public static AbstractCityNpcEntity resolveCallContact(ServerPlayer player, UUID npcId) {
         if (FixerIdentitySavedData.get(player.serverLevel()).isDeceased(npcId)) return null;
         CompoundTag relation = archiveRelationTag(player, npcId, false);
@@ -1460,6 +1554,30 @@ public abstract class AbstractCityNpcEntity extends PathfinderMob {
 
         score -= Mth.floor(distanceToSqr(candidate) * 0.75D);
         return score;
+    }
+
+    /** Whoever is talking to them gets their attention: they stop where they are and face the speaker. */
+    private static final class ListenGoal extends Goal {
+        private final AbstractCityNpcEntity npc;
+
+        private ListenGoal(AbstractCityNpcEntity npc) {
+            this.npc = npc;
+            setFlags(EnumSet.of(Flag.MOVE, Flag.LOOK, Flag.JUMP));
+        }
+
+        @Override
+        public boolean canUse() {
+            return npc.listenTo != null && npc.listenUntil > npc.gameTime() && npc.listenTo.isAlive() && npc.getTarget() == null;
+        }
+
+        @Override
+        public void start() { npc.getNavigation().stop(); }
+
+        @Override
+        public void tick() {
+            npc.getNavigation().stop();
+            npc.getLookControl().setLookAt(npc.listenTo, 40.0F, 40.0F);
+        }
     }
 
     protected static final class FixerPlayerFocusGoal extends Goal {

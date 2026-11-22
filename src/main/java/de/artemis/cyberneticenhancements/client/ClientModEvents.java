@@ -7,6 +7,7 @@ import de.artemis.cyberneticenhancements.client.render.RelicCacheBlockEntityRend
 import de.artemis.cyberneticenhancements.client.render.RipperStationBlockEntityRenderer;
 import de.artemis.cyberneticenhancements.client.screen.CyberwareWikiScreen;
 import de.artemis.cyberneticenhancements.client.screen.FixerDialogScreen;
+import de.artemis.cyberneticenhancements.client.screen.MapSettings;
 import de.artemis.cyberneticenhancements.client.screen.RelicCacheHackScreen;
 import de.artemis.cyberneticenhancements.client.screen.RecyclerStationScreen;
 import de.artemis.cyberneticenhancements.client.screen.RipperStationScreen;
@@ -101,6 +102,8 @@ public final class ClientModEvents {
     }
 
     public static void registerParticles(net.neoforged.neoforge.client.event.RegisterParticleProvidersEvent event) {
+        event.registerSpriteSet(de.artemis.cyberneticenhancements.common.registry.ModParticles.RISING_BUBBLE.get(),
+                de.artemis.cyberneticenhancements.client.particle.RisingBubbleParticle.Provider::new);
         event.registerSpriteSet(de.artemis.cyberneticenhancements.common.registry.ModParticles.VENT_SMOKE.get(),
                 de.artemis.cyberneticenhancements.client.particle.VentSmokeParticle.Provider::new);
     }
@@ -108,8 +111,11 @@ public final class ClientModEvents {
     public static void registerRenderers(EntityRenderersEvent.RegisterRenderers event) {
         event.registerBlockEntityRenderer(ModBlockEntities.HOLO_BARRIER.get(), de.artemis.cyberneticenhancements.client.render.HoloBarrierRenderer::new);
         event.registerBlockEntityRenderer(ModBlockEntities.DROPOFF_POINT.get(), de.artemis.cyberneticenhancements.client.render.DropoffPointBlockEntityRenderer::new);
+        event.registerBlockEntityRenderer(ModBlockEntities.FAST_TRAVEL.get(), de.artemis.cyberneticenhancements.client.render.FastTravelBlockEntityRenderer::new);
+        event.registerBlockEntityRenderer(ModBlockEntities.CRATE.get(), de.artemis.cyberneticenhancements.client.render.CrateBlockEntityRenderer::new);
         event.registerBlockEntityRenderer(ModBlockEntities.RIPPER_STATION.get(), RipperStationBlockEntityRenderer::new);
         event.registerBlockEntityRenderer(ModBlockEntities.RELIC_CACHE.get(), RelicCacheBlockEntityRenderer::new);
+        event.registerEntityRenderer(ModEntityTypes.HANGING_WIRE.get(), de.artemis.cyberneticenhancements.client.render.HangingWireRenderer::new);
         event.registerEntityRenderer(ModEntityTypes.FIXER.get(), FixerEntityRenderer::new);
         event.registerEntityRenderer(ModEntityTypes.RIPPERDOC.get(), FixerEntityRenderer::new);
         event.registerEntityRenderer(ModEntityTypes.STREET_RIPPERDOC.get(), FixerEntityRenderer::new);
@@ -133,6 +139,7 @@ public final class ClientModEvents {
         event.register(ModMenuTypes.TECH_STATION.get(), TechStationScreen::new);
         event.register(ModMenuTypes.UPGRADE_STATION.get(), TechStationScreen::new);
         event.register(ModMenuTypes.RECYCLER_STATION.get(), RecyclerStationScreen::new);
+        event.register(ModMenuTypes.CRATE.get(), net.minecraft.client.gui.screens.inventory.ContainerScreen::new);
         event.register(ModMenuTypes.FIXER_DIALOG.get(), FixerDialogScreen::new);
         event.register(ModMenuTypes.RELIC_CACHE_HACK.get(), RelicCacheHackScreen::new);
     }
@@ -148,12 +155,14 @@ public final class ClientModEvents {
         SandevistanClientEffects.tick();
         NpcContactsOverlay.tick();
         NpcCallOverlay.tick();
+        FaceDialogueOverlay.tick();
         QuestProgressOverlay.tick();
         QuestCursorTracker.tick();
         if (minecraft.player == null) {
             return;
         }
 
+        WorldMapCache.tick();
         FaceHazardHighlightClientState.prune();
 
         if (CyberpsychosisClientState.isControlLocked()) {
@@ -232,9 +241,18 @@ public final class ClientModEvents {
                     true
             );
         }
+        while (ModKeyMappings.TOGGLE_MINIMAP.consumeClick()) {
+            boolean shown = de.artemis.cyberneticenhancements.client.screen.MapSettings.toggleMinimap();
+            minecraft.player.displayClientMessage(Icons.INFO.withText(Component.translatable(shown
+                    ? "message.cyberneticenhancements.minimap.enabled" : "message.cyberneticenhancements.minimap.disabled")), true);
+        }
         while (ModKeyMappings.OPEN_ARCHIVE.consumeClick()) {
             if (!TutorialClient.shows("archive")) continue;
             openArchiveScreen(minecraft, minecraft.screen, resolveArchiveEntryId(minecraft));
+        }
+        while (ModKeyMappings.OPEN_MAP.consumeClick()) {
+            if (!TutorialClient.shows("archive") || minecraft.screen != null) continue;
+            openMapScreen(minecraft);
         }
     }
 
@@ -318,12 +336,19 @@ public final class ClientModEvents {
         }
         if (TutorialClient.shows("contacts") && GameplayHudVisibility.shows(Element.CONTACTS, true)) NpcContactsOverlay.render(graphics);
         if (GameplayHudVisibility.shows(Element.CALLS, true)) NpcCallOverlay.render(graphics);
+        GameplayHudVisibility.renderToggleable(Element.MINIMAP, MapSettings.MINIMAP.on(), graphics,
+                () -> MinimapHud.render(graphics, Minecraft.getInstance().getTimer().getGameTimeDeltaPartialTick(false)));
         if (TutorialClient.shows("quests")) GameplayHudVisibility.renderToggleable(Element.QUESTS, true, graphics, () -> QuestProgressOverlay.render(graphics));
+        if (!OriginClient.hidesHud()) {
+            FaceDialogueOverlay.render(graphics);
+            StreetCredHud.render(graphics);
+        }
         if (GameplayHudVisibility.shows(Element.TUTORIAL, true)) TutorialClient.render(graphics);
         if (TutorialClient.shows("cyberware")) GameplayHudVisibility.renderToggleable(Element.CYBERWARE, true, graphics, () -> CyberwareHudOverlay.render(graphics));
     }
 
     public static void onRenderLevelStage(RenderLevelStageEvent event) {
+        de.artemis.cyberneticenhancements.client.render.CrateBlockEntityRenderer.drawMarks(event);
         if (event.getStage() == RenderLevelStageEvent.Stage.AFTER_LEVEL) {
             de.artemis.cyberneticenhancements.client.render.DropoffPointBlockEntityRenderer.flushProjections();
         }
@@ -400,12 +425,14 @@ public final class ClientModEvents {
     }
 
     public static void onClientLogout(ClientPlayerNetworkEvent.LoggingOut event) {
+        WorldMapCache.flush();
         PlayerCallClient.clear();
         de.artemis.cyberneticenhancements.client.BarredSitesClientState.clear();
         JournalClientState.clear();
         NpcContactsOverlay.reset();
         NpcCallOverlay.close();
         NpcCallOverlay.reset();
+        FaceDialogueOverlay.clear();
         de.artemis.cyberneticenhancements.client.render.RipperStationBlockEntityRenderer.clearPending();
         de.artemis.cyberneticenhancements.client.render.DropoffPointBlockEntityRenderer.clearPending();
         de.artemis.cyberneticenhancements.common.fabrication.SchematicKnowledge.clearClient();
@@ -455,6 +482,7 @@ public final class ClientModEvents {
         WikiLaunchButton.updateForScreen(event.getScreen());
         if (event.getScreen() instanceof net.minecraft.client.gui.screens.DeathScreen
                 || event.getScreen() instanceof net.minecraft.client.gui.screens.DeathScreen.TitleConfirmScreen) {
+            CustomCompassMarkers.died();
             TraumaRescueClient.render(event.getGuiGraphics());
         }
         FlatlinedScreenTransition.render(event.getGuiGraphics(), event.getScreen());
@@ -605,7 +633,19 @@ public final class ClientModEvents {
         minecraft.player.hasImpulse = true;
     }
 
+    public static void openArchive(Minecraft minecraft, Screen parent, String entryId, String anchor) {
+        openArchiveScreen(minecraft, parent, entryId, anchor);
+    }
+
     private static void openArchiveScreen(Minecraft minecraft, Screen parent, String entryId) {
+        openArchiveScreen(minecraft, parent, entryId, null);
+    }
+
+    private static void openArchiveScreen(Minecraft minecraft, Screen parent, String entryId, String anchor) {
+        openArchiveScreen(minecraft, parent, entryId, anchor, null);
+    }
+
+    private static void openArchiveScreen(Minecraft minecraft, Screen parent, String entryId, String anchor, String tab) {
         if (minecraft == null || minecraft.level == null || minecraft.screen instanceof CyberwareWikiScreen) {
             return;
         }
@@ -614,7 +654,18 @@ public final class ClientModEvents {
             PacketDistributor.sendToServer(new ArchiveContactsRequestPayload());
             PacketDistributor.sendToServer(new ArchiveQuestsRequestPayload());
         }
-        minecraft.setScreen(entryId == null ? new CyberwareWikiScreen(parent) : new CyberwareWikiScreen(parent, entryId));
+        var screen = entryId == null ? new CyberwareWikiScreen(parent) : new CyberwareWikiScreen(parent, entryId);
+        if (anchor != null) screen.jumpTo(anchor);
+        if (tab != null) screen.selectTab(tab);
+        minecraft.setScreen(screen);
+    }
+
+    private static void openMapScreen(Minecraft minecraft) {
+        if (minecraft == null || minecraft.level == null || minecraft.player == null || minecraft.screen != null) return;
+        PacketDistributor.sendToServer(new ArchiveBankingRequestPayload());
+        PacketDistributor.sendToServer(new ArchiveContactsRequestPayload());
+        PacketDistributor.sendToServer(new ArchiveQuestsRequestPayload());
+        minecraft.setScreen(CyberwareWikiScreen.forMap(null));
     }
 
     private static String resolveArchiveEntryId(Minecraft minecraft) {

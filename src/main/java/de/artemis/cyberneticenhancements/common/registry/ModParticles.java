@@ -13,6 +13,9 @@ public final class ModParticles {
     /** Smoke that is pushed out of an engine vent and fades away a few blocks from it. */
     public static final DeferredHolder<ParticleType<?>, SimpleParticleType> VENT_SMOKE = PARTICLES.register("vent_smoke", () -> new SimpleParticleType(false));
 
+    /** An air bubble that rises all the way to the surface. */
+    public static final DeferredHolder<ParticleType<?>, SimpleParticleType> RISING_BUBBLE = PARTICLES.register("rising_bubble", () -> new SimpleParticleType(false));
+
     private ModParticles() {}
 
     public static void register(IEventBus modEventBus) {

@@ -105,6 +105,7 @@ public final class SchematicKnowledge {
             records.put(id, unlock.save());
             player.getPersistentData().put(DETAILS, records);
             player.giveExperiencePoints(de.artemis.cyberneticenhancements.common.progression.ExperienceRewards.SCHEMATIC);
+            de.artemis.cyberneticenhancements.common.streetcred.StreetCred.gain(player, de.artemis.cyberneticenhancements.common.streetcred.StreetCredRewards.SCHEMATIC);
             de.artemis.cyberneticenhancements.common.journal.PlayerJournal.recordAt(player, location, "workshop", "schematic", FabricationContent.schematicName(id));
         }
         sync(player);

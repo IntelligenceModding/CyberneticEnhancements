@@ -416,9 +416,14 @@ public final class CyberstrainManager {
     }
 
     public static void addInstability(Player player, double amount) {
+        addInstability(player, amount, false);
+    }
+
+    private static void addInstability(Player player, double amount, boolean fromStrain) {
         if (amount <= 0.0D) {
             return;
         }
+        amount = de.artemis.cyberneticenhancements.common.skills.SkillEffects.instability(player, amount, fromStrain);
         CompoundTag persistentData = player.getPersistentData();
         persistentData.putDouble(PSYCHOSIS_INSTABILITY_KEY, Mth.clamp(persistentData.getDouble(PSYCHOSIS_INSTABILITY_KEY) + amount, 0.0D, MAX_INSTABILITY));
     }
@@ -442,7 +447,7 @@ public final class CyberstrainManager {
 
     private static void passivelyBuildInstability(Player player, int effectiveCyberstrain) {
         if (effectiveCyberstrain >= PSYCHOSIS_THRESHOLD) {
-            addInstability(player, 0.05D + Math.max(0, effectiveCyberstrain - PSYCHOSIS_THRESHOLD) * 0.010D);
+            addInstability(player, 0.05D + Math.max(0, effectiveCyberstrain - PSYCHOSIS_THRESHOLD) * 0.010D, true);
         }
     }
 

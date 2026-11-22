@@ -45,6 +45,7 @@ public final class TarotScanning {
             de.artemis.cyberneticenhancements.common.journal.PlayerJournal.recordAt(player, card.blockPosition(), "lore", "tarot", TarotCatalog.find(card.cardId()).name());
             player.displayClientMessage(Component.translatable("tarot.cyberneticenhancements.archived", TarotCatalog.find(card.cardId()).name()), true);
             player.playNotifySound(net.minecraft.sounds.SoundEvents.ENCHANTMENT_TABLE_USE, net.minecraft.sounds.SoundSource.PLAYERS, .25F, 1.3F);
+            de.artemis.cyberneticenhancements.common.streetcred.StreetCred.gain(player, de.artemis.cyberneticenhancements.common.streetcred.StreetCredRewards.TAROT_CARD);
             card.collect();
         }
     }

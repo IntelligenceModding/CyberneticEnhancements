@@ -52,6 +52,21 @@ public final class ModSounds {
     public static final DeferredHolder<SoundEvent, SoundEvent> TITLE_SCREEN_MUSIC = SOUNDS.register("menu.title_screen_music",
             () -> SoundEvent.createVariableRangeEvent(ResourceLocation.fromNamespaceAndPath(CyberneticEnhancements.MOD_ID, "menu.title_screen_music")));
 
+    public static final DeferredHolder<SoundEvent, SoundEvent> FAST_TRAVEL_ACTIVATE = SOUNDS.register("fast_travel.activate",
+            () -> SoundEvent.createVariableRangeEvent(ResourceLocation.fromNamespaceAndPath(CyberneticEnhancements.MOD_ID, "fast_travel.activate")));
+
+    public static final DeferredHolder<SoundEvent, SoundEvent> FAST_TRAVEL_OPEN = SOUNDS.register("fast_travel.open",
+            () -> SoundEvent.createVariableRangeEvent(ResourceLocation.fromNamespaceAndPath(CyberneticEnhancements.MOD_ID, "fast_travel.open")));
+
+    public static final DeferredHolder<SoundEvent, SoundEvent> FAST_TRAVEL_DEPART = SOUNDS.register("fast_travel.depart",
+            () -> SoundEvent.createVariableRangeEvent(ResourceLocation.fromNamespaceAndPath(CyberneticEnhancements.MOD_ID, "fast_travel.depart")));
+
+    public static final DeferredHolder<SoundEvent, SoundEvent> FAST_TRAVEL_ARRIVE = SOUNDS.register("fast_travel.arrive",
+            () -> SoundEvent.createVariableRangeEvent(ResourceLocation.fromNamespaceAndPath(CyberneticEnhancements.MOD_ID, "fast_travel.arrive")));
+
+    public static final DeferredHolder<SoundEvent, SoundEvent> FAST_TRAVEL_DENIED = SOUNDS.register("fast_travel.denied",
+            () -> SoundEvent.createVariableRangeEvent(ResourceLocation.fromNamespaceAndPath(CyberneticEnhancements.MOD_ID, "fast_travel.denied")));
+
     public static final DeferredHolder<SoundEvent, SoundEvent> JOIN_LINK = SOUNDS.register("calls.join_link",
             () -> SoundEvent.createVariableRangeEvent(ResourceLocation.fromNamespaceAndPath(CyberneticEnhancements.MOD_ID, "calls.join_link")));
 
@@ -75,6 +90,12 @@ public final class ModSounds {
 
     public static final DeferredHolder<SoundEvent, SoundEvent> CASH_TRANSFER = SOUNDS.register("player.cash_transfer",
             () -> SoundEvent.createVariableRangeEvent(ResourceLocation.fromNamespaceAndPath(CyberneticEnhancements.MOD_ID, "player.cash_transfer")));
+
+    public static final DeferredHolder<SoundEvent, SoundEvent> SANDEVISTAN_START = SOUNDS.register("sandevistan.start",
+            () -> SoundEvent.createVariableRangeEvent(ResourceLocation.fromNamespaceAndPath(CyberneticEnhancements.MOD_ID, "sandevistan.start")));
+
+    public static final DeferredHolder<SoundEvent, SoundEvent> SANDEVISTAN_END = SOUNDS.register("sandevistan.end",
+            () -> SoundEvent.createVariableRangeEvent(ResourceLocation.fromNamespaceAndPath(CyberneticEnhancements.MOD_ID, "sandevistan.end")));
 
     private ModSounds() {
     }

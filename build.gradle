@@ -133,6 +133,10 @@ tasks.named('processResources', ProcessResources).configure {
             mod_authors            : mod_authors,
             mod_description        : mod_description
     ]
+    // The changelogs are shown in the game, once per release, so they travel with the mod as they are written.
+    from('changelogs') {
+        into 'assets/' + mod_id + '/changelog'
+    }
     inputs.properties replaceProperties
     filesMatching('META-INF/neoforge.mods.toml') {
         expand replaceProperties

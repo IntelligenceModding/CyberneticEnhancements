@@ -1,0 +1,27 @@
+{
+  "variants": {
+    "facing=down": {
+      "model": "cyberneticenhancements:block/hvac_vent",
+      "x": 90
+    },
+    "facing=east": {
+      "model": "cyberneticenhancements:block/hvac_vent",
+      "y": 90
+    },
+    "facing=north": {
+      "model": "cyberneticenhancements:block/hvac_vent"
+    },
+    "facing=south": {
+      "model": "cyberneticenhancements:block/hvac_vent",
+      "y": 180
+    },
+    "facing=up": {
+      "model": "cyberneticenhancements:block/hvac_vent",
+      "x": 270
+    },
+    "facing=west": {
+      "model": "cyberneticenhancements:block/hvac_vent",
+      "y": 270
+    }
+  }
+}

@@ -57,6 +57,9 @@ public final class PlayerQuestManager {
     private static final String BOARD_REFRESH_DAY_TAG = "RefreshDay";
     private static final String BOARD_OFFERS_TAG = "Offers";
     private static final String BOARD_ACTIVE_TAG = "Active";
+    private static final String[] ACTIVE_TAGS = {BOARD_ACTIVE_TAG, "Active2", "Active3"};
+    /** How many contracts one issuer may have open with the player at once. */
+    public static final int MAX_ACTIVE_PER_ISSUER = ACTIVE_TAGS.length;
     private static final String BOARD_HISTORY_TAG = "History";
     public static final int DEV_OFFER_COUNT = QuestType.values().length + 1;
     private static final int MAX_OFFERS = 3;
@@ -68,6 +71,7 @@ public final class PlayerQuestManager {
     private static final String QUEST_ITEM_TYPE_REVIVE = "revive_injector", QUEST_ITEM_TYPE_BEACON = "signal_beacon";
     private static final String QUEST_ITEM_TYPE_EXTRACTION = "exfil_shard";
     private static final String QUEST_ITEM_TYPE_PSYCHO = "cyberpsycho_dossier";
+    private static final String QUEST_ITEM_TYPE_SALVAGE = "salvage_cargo";
     private static final Set<String> LEGACY_COMPASS_TYPES = Set.of("hidden_stash_compass", "extraction_compass",
             "investigation_compass", "breach_compass", "hunt_compass");
     private static final int DELIVERY_MIN_DISTANCE = 220;
@@ -151,6 +155,7 @@ public final class PlayerQuestManager {
             return;
         }
         sanitizeQuestItems(player);
+        if (player.tickCount % 20 == 7) claimFoundCargo(player);
         tickActiveContracts(player);
         if (player.tickCount % 20 == 0) tickLostItemCalls(player);
         if (player.tickCount % 20 == 0) QuestFailureCalls.tick(player);
@@ -188,12 +193,10 @@ public final class PlayerQuestManager {
         }
         boolean dirty = false;
         String dimensionId = player.serverLevel().dimension().location().toString();
-        for (String issuerKey : boards.getAllKeys()) {
+        for (var ref : activeSlots(boards)) {
+            String issuerKey = ref.key();
             CompoundTag board = boards.getCompound(issuerKey);
-            if (!board.contains(BOARD_ACTIVE_TAG, Tag.TAG_COMPOUND)) {
-                continue;
-            }
-            QuestContract contract = QuestContract.fromTag(board.getCompound(BOARD_ACTIVE_TAG));
+            QuestContract contract = QuestContract.fromTag(board.getCompound(ref.slot()));
             boolean investigationSource = contract.type() == QuestType.INVESTIGATION && !contract.chromiumSurvey()
                     && contract.investigation() != null && contract.investigation().located();
             if ((contract.type() != QuestType.BREACH && !investigationSource) || contract.status() != QuestStatus.ACTIVE
@@ -239,10 +242,10 @@ public final class PlayerQuestManager {
         if (root == null) return;
         var boards = issuerBoards(root);
         boolean dirty = false;
-        for (String key : boards.getAllKeys()) {
+        for (var ref : activeSlots(boards)) {
+            String key = ref.key();
             var board = boards.getCompound(key);
-            if (!board.contains(BOARD_ACTIVE_TAG, Tag.TAG_COMPOUND)) continue;
-            var contract = QuestContract.fromTag(board.getCompound(BOARD_ACTIVE_TAG));
+            var contract = QuestContract.fromTag(board.getCompound(ref.slot()));
             if (contract.status() != QuestStatus.ACTIVE || !isQuestCacheObjective(contract)
                     || !pos.equals(contract.targetPos()) || !player.level().dimension().location().toString().equals(contract.dimensionId())) continue;
             if (failed) finishFailedBreach(player, board, contract);
@@ -264,10 +267,10 @@ public final class PlayerQuestManager {
         contract.setStatus(QuestStatus.FAILED);
         contract.setResolvedDay(currentDay(player.level()));
         cleanupContractArtifacts(player, contract);
-        board.remove(BOARD_ACTIVE_TAG);
+        removeActive(board, contract.id());
         appendHistory(player, board, contract);
         QuestFailureCalls.queue(player, contract);
-        int loss = Math.max(2, contract.rewardTrust() + 2);
+        int loss = de.artemis.cyberneticenhancements.common.skills.SkillEffects.trustLoss(player, Math.max(2, contract.rewardTrust() + 2));
         AbstractCityNpcEntity.lowerTrustFromArchive(player, contract.issuerId(), loss);
         var feedback = Component.translatable("message.cyberneticenhancements.quest.breach_failed", contract.title(), contract.issuerName(), loss)
                 .withStyle(net.minecraft.ChatFormatting.RED);
@@ -297,7 +300,7 @@ public final class PlayerQuestManager {
         contract.setResolvedDay(currentDay(player.level()));
         QuestFailureCalls.queue(player, contract); // Before the cleanup, which would otherwise close the contact the call needs.
         cleanupContractArtifacts(player, contract);
-        board.remove(BOARD_ACTIVE_TAG);
+        removeActive(board, contract.id());
         appendHistory(player, board, contract);
         var feedback = Component.translatable("message.cyberneticenhancements.quest.locate_failed", contract.title(), contract.issuerName())
                 .withStyle(net.minecraft.ChatFormatting.RED);
@@ -363,7 +366,7 @@ public final class PlayerQuestManager {
         contract.setStatus(QuestStatus.FAILED);
         lockOutEncounter(player, contract);
         contract.setResolvedDay(currentDay(player.level()));
-        board.remove(BOARD_ACTIVE_TAG);
+        removeActive(board, contract.id());
         appendHistory(player, board, contract);
         storeIssuerBoard(player, issuer, board);
         var feedback = Component.translatable("message.cyberneticenhancements.quest.locate.false_report", contract.issuerName())
@@ -399,27 +402,33 @@ public final class PlayerQuestManager {
     }
 
     public static BoardSnapshot snapshotForIssuer(ServerPlayer player, AbstractCityNpcEntity issuer) {
-        if (!issuer.canInteract(player)) return new BoardSnapshot(null, List.of());
+        if (!issuer.canInteract(player)) return new BoardSnapshot(List.of(), List.of());
         ensureIssuerBoard(player, issuer);
         CompoundTag board = issuerBoardTag(player, issuer, true);
         List<QuestContract> offers = readContracts(board.getList(BOARD_OFFERS_TAG, Tag.TAG_COMPOUND));
-        QuestContract active = board.contains(BOARD_ACTIVE_TAG, Tag.TAG_COMPOUND)
-                ? QuestContract.fromTag(board.getCompound(BOARD_ACTIVE_TAG))
-                : null;
-        if (active != null) {
-            active = CyberpsychoEncounter.repairRepeatedContract(player, active);
+        List<QuestContract> actives = new ArrayList<>();
+        boolean expired = false;
+        for (QuestContract active : boardActives(board)) {
+            var repaired = CyberpsychoEncounter.repairRepeatedContract(player, active);
+            if (repaired != active) {
+                removeActive(board, active.id());
+                active = repaired;
+            }
             active.initializeUrgentDeadline(NpcIncomingCalls.playTicks(player));
             if (active.urgentTimeIsUp(NpcIncomingCalls.playTicks(player))) {
                 expireUrgentContract(player, board, active);
-                active = null;
+                expired = true;
             } else {
                 refreshContractProgress(player, active);
                 writeActive(board, active);
+                actives.add(active);
             }
-            storeIssuerBoard(player, issuer, board);
-            if (active == null) QuestNavigation.sync(player);
         }
-        return new BoardSnapshot(active, withholdsOffers(player, issuer) ? List.of() : List.copyOf(offers));
+        if (!actives.isEmpty() || expired) {
+            storeIssuerBoard(player, issuer, board);
+            if (expired) QuestNavigation.sync(player);
+        }
+        return new BoardSnapshot(List.copyOf(actives), withholdsOffers(player, issuer) ? List.of() : List.copyOf(offers));
     }
 
     /** A world encounter's leader gives nothing more to someone who struck their people or broke their site. */
@@ -435,7 +444,7 @@ public final class PlayerQuestManager {
     public static boolean canReceiveUrgentOffer(ServerPlayer player, AbstractCityNpcEntity issuer) {
         if (!issuer.npcType().supportsContracts()) return false;
         var board = snapshotForIssuer(player, issuer);
-        return board.active() == null && !board.offers().isEmpty();
+        return board.actives().size() < MAX_ACTIVE_PER_ISSUER && !board.offers().isEmpty();
     }
 
     public static Result acceptUrgentIssuerOffer(ServerPlayer player, AbstractCityNpcEntity issuer, String offerId) {
@@ -448,7 +457,7 @@ public final class PlayerQuestManager {
     public static boolean declineUrgentIssuerOffer(ServerPlayer player, AbstractCityNpcEntity issuer, String offerId) {
         ensureIssuerBoard(player, issuer);
         var board = issuerBoardTag(player, issuer, true);
-        if (board.contains(BOARD_ACTIVE_TAG, Tag.TAG_COMPOUND)) return false;
+        if (activeFull(board)) return false;
         var offers = readContracts(board.getList(BOARD_OFFERS_TAG, Tag.TAG_COMPOUND));
         if (!offers.removeIf(offer -> offer.id().equals(offerId))) return false;
         writeOffers(board, offers);
@@ -470,7 +479,7 @@ public final class PlayerQuestManager {
             de.artemis.cyberneticenhancements.common.entity.DevTestEntity issuer, QuestType type, boolean survey) {
         if (!issuer.canInteract(player) || !issuer.isAlive() || player.level() != issuer.level() || survey && type != QuestType.INVESTIGATION) return Result.INVALID;
         CompoundTag board = issuerBoardTag(player, issuer, true);
-        if (board.contains(BOARD_ACTIVE_TAG, Tag.TAG_COMPOUND)) return Result.HAS_ACTIVE;
+        if (activeFull(board)) return Result.HAS_ACTIVE;
         long day = currentDay(player.level());
         int index = survey ? QuestType.values().length : type.ordinal();
         RandomSource random = RandomSource.create(seedFor(player, issuer, day) ^ (index + 1L) * 341873128712L);
@@ -491,7 +500,7 @@ public final class PlayerQuestManager {
                 || slot < 0 || slot >= DEV_OFFER_COUNT || route != QuestDimension.STANDARD && slot == QuestType.values().length)
             return DevQuestResult.UNAVAILABLE;
         CompoundTag board = issuerBoardTag(player, issuer, true);
-        if (board.contains(BOARD_ACTIVE_TAG, Tag.TAG_COMPOUND)) return DevQuestResult.UNAVAILABLE;
+        if (activeFull(board)) return DevQuestResult.UNAVAILABLE;
         long day = currentDay(player.server.overworld());
         QuestType type = slot == QuestType.values().length ? QuestType.INVESTIGATION : QuestType.values()[slot];
         var random = RandomSource.create(requestId.getMostSignificantBits() ^ requestId.getLeastSignificantBits());
@@ -512,7 +521,7 @@ public final class PlayerQuestManager {
     }
 
     private static Result acceptPreparedOffer(ServerPlayer player, AbstractCityNpcEntity issuer, CompoundTag board, int offerIndex, boolean urgent) {
-        if (board.contains(BOARD_ACTIVE_TAG, Tag.TAG_COMPOUND)) {
+        if (activeFull(board)) {
             return Result.HAS_ACTIVE;
         }
         List<QuestContract> offers = readContracts(board.getList(BOARD_OFFERS_TAG, Tag.TAG_COMPOUND));
@@ -565,6 +574,17 @@ public final class PlayerQuestManager {
             case BREACH -> {
                 ensureBreachSite(resolveContractLevel(player, offer), offer, player.getUUID());
             }
+            case SALVAGE -> {
+                var cargo = createSalvageCargo(offer);
+                QuestItemVersions.get(player.serverLevel()).issue(cargo);
+                boolean dev = issuer instanceof de.artemis.cyberneticenhancements.common.entity.DevTestEntity;
+                boolean stashed = !dev && offer.targetPos() != null && SalvageQuests.stash(resolveContractLevel(player, offer), offer.targetPos(), cargo);
+                if (dev) giveQuestItem(player, cargo);
+                else if (!stashed) {
+                    QuestItemVersions.get(player.serverLevel()).retire(offer.id());
+                    return Result.INVALID;
+                }
+            }
             case LOCATE -> {
                 giveQuestItem(player, createReviveInjector(offer));
                 giveQuestItem(player, createSignalBeacon(offer));
@@ -582,11 +602,16 @@ public final class PlayerQuestManager {
     }
 
     public static Result abandonIssuerActive(ServerPlayer player, AbstractCityNpcEntity issuer) {
+        return abandonIssuerActive(player, issuer, "");
+    }
+
+    /** Drops one of the issuer's open contracts; an empty id means the first. */
+    public static Result abandonIssuerActive(ServerPlayer player, AbstractCityNpcEntity issuer, String questId) {
         CompoundTag board = issuerBoardTag(player, issuer, false);
-        if (board == null || !board.contains(BOARD_ACTIVE_TAG, Tag.TAG_COMPOUND)) {
+        QuestContract active = board == null ? null : boardActive(board, questId);
+        if (active == null) {
             return Result.INVALID;
         }
-        QuestContract active = QuestContract.fromTag(board.getCompound(BOARD_ACTIVE_TAG));
         String issue = QuestRecovery.immediateIssue(player, active);
         if (issue != null) {
             cancelUnfinishableContract(player, board, active, issue);
@@ -596,7 +621,7 @@ public final class PlayerQuestManager {
         cleanupContractArtifacts(player, active);
         active.setStatus(QuestStatus.ABANDONED);
         active.setResolvedDay(currentDay(player.level()));
-        board.remove(BOARD_ACTIVE_TAG);
+        removeActive(board, active.id());
         appendHistory(player, board, active);
         storeIssuerBoard(player, issuer, board);
         applyAbandonPenalty(player, active);
@@ -612,10 +637,12 @@ public final class PlayerQuestManager {
         if (root == null) return false;
         CompoundTag boards = issuerBoards(root);
         CompoundTag board = boards.getCompound(issuerId.toString());
-        if (board == null || !board.contains(BOARD_ACTIVE_TAG, Tag.TAG_COMPOUND)) return false;
-        QuestContract active = QuestContract.fromTag(board.getCompound(BOARD_ACTIVE_TAG));
-        active.setAcceptedPlayTicks(ticks);
-        writeActive(board, active);
+        var actives = boardActives(board);
+        if (actives.isEmpty()) return false;
+        for (QuestContract active : actives) {
+            active.setAcceptedPlayTicks(ticks);
+            writeActive(board, active);
+        }
         boards.put(issuerId.toString(), board);
         root.put(ISSUER_BOARDS_TAG, boards);
         player.getPersistentData().put(ROOT_TAG, root);
@@ -629,7 +656,7 @@ public final class PlayerQuestManager {
         CompoundTag boards = issuerBoards(root);
         for (String key : boards.getAllKeys()) {
             CompoundTag board = boards.getCompound(key);
-            if (board.contains(BOARD_ACTIVE_TAG, Tag.TAG_COMPOUND)) result.add(QuestContract.fromTag(board.getCompound(BOARD_ACTIVE_TAG)));
+            result.addAll(boardActives(board));
         }
         return List.copyOf(result);
     }
@@ -646,12 +673,10 @@ public final class PlayerQuestManager {
         if (boards.isEmpty()) {
             return Result.INVALID;
         }
-        for (String issuerKey : boards.getAllKeys()) {
+        for (var ref : activeSlots(boards)) {
+            String issuerKey = ref.key();
             CompoundTag board = boards.getCompound(issuerKey);
-            if (!board.contains(BOARD_ACTIVE_TAG, Tag.TAG_COMPOUND)) {
-                continue;
-            }
-            QuestContract active = QuestContract.fromTag(board.getCompound(BOARD_ACTIVE_TAG));
+            QuestContract active = QuestContract.fromTag(board.getCompound(ref.slot()));
             if (!questId.equals(active.id())) {
                 continue;
             }
@@ -667,7 +692,7 @@ public final class PlayerQuestManager {
             cleanupContractArtifacts(player, active);
             active.setStatus(QuestStatus.ABANDONED);
             active.setResolvedDay(currentDay(player.level()));
-            board.remove(BOARD_ACTIVE_TAG);
+            removeActive(board, active.id());
             appendHistory(player, board, active);
             boards.put(issuerKey, board);
             root.put(ISSUER_BOARDS_TAG, boards);
@@ -712,11 +737,10 @@ public final class PlayerQuestManager {
         for (String issuerKey : boards.getAllKeys()) {
             CompoundTag board = boards.getCompound(issuerKey);
 
-            if (board.contains(BOARD_ACTIVE_TAG, Tag.TAG_COMPOUND)) {
-                QuestContract active = QuestContract.fromTag(board.getCompound(BOARD_ACTIVE_TAG));
+            for (QuestContract active : boardActives(board)) {
                 if (questId.equals(active.id())) {
                     cleanupContractArtifacts(player, active);
-                    board.remove(BOARD_ACTIVE_TAG);
+                    removeActive(board, active.id());
                     removedCount++;
                 }
             }
@@ -742,7 +766,7 @@ public final class PlayerQuestManager {
             }
 
             boolean hasOffers = board.contains(BOARD_OFFERS_TAG, Tag.TAG_LIST) && !board.getList(BOARD_OFFERS_TAG, Tag.TAG_COMPOUND).isEmpty();
-            boolean hasActive = board.contains(BOARD_ACTIVE_TAG, Tag.TAG_COMPOUND);
+            boolean hasActive = hasActive(board);
             boolean hasHistory = board.contains(BOARD_HISTORY_TAG, Tag.TAG_LIST) && !board.getList(BOARD_HISTORY_TAG, Tag.TAG_COMPOUND).isEmpty();
             if (!hasOffers && !hasActive && !hasHistory) {
                 emptyBoards.add(issuerKey);
@@ -773,23 +797,15 @@ public final class PlayerQuestManager {
         return turnInIssuerActive(player, issuer, false, "");
     }
 
+    /** Hands in one specific open contract of this issuer. */
+    public static TurnInResult turnInIssuerActive(ServerPlayer player, AbstractCityNpcEntity issuer, String questId) {
+        return turnInIssuerActive(player, issuer, false, questId);
+    }
+
     /** True means this interaction attempted a matching item handover, including an incomplete quantity. */
     public static boolean tryHandInHeldItem(ServerPlayer player, AbstractCityNpcEntity issuer, ItemStack held) {
-        if (!issuer.canInteract(player) || held.isEmpty()) return false;
-        var board = issuerBoardTag(player, issuer, false);
-        if (board == null || !board.contains(BOARD_ACTIVE_TAG, Tag.TAG_COMPOUND)) return false;
-        var contract = QuestContract.fromTag(board.getCompound(BOARD_ACTIVE_TAG));
-        boolean matches = switch (contract.type()) {
-            case RECOVERY -> held.is(contract.recoveryItem());
-            case EXTRACTION -> matchesQuestItem(held, contract, QUEST_ITEM_TYPE_EXTRACTION)
-                    && QuestItemVersions.get(player.serverLevel()).current(held);
-            case CYBERPSYCHO -> matchesQuestItem(held, contract, QUEST_ITEM_TYPE_PSYCHO)
-                    && QuestItemVersions.get(player.serverLevel()).current(held);
-            case LOCATE -> matchesQuestItem(held, contract, QUEST_ITEM_TYPE_BEACON)
-                    && QuestItemVersions.get(player.serverLevel()).current(held);
-            default -> false;
-        };
-        if (!matches) return false;
+        var contract = handInContract(player, issuer, held);
+        if (contract == null) return false;
         var result = turnInIssuerActive(player, issuer, false, contract.id());
         if (result != TurnInResult.OK) {
             Component feedback = contract.type() == QuestType.RECOVERY
@@ -800,6 +816,34 @@ public final class PlayerQuestManager {
             player.displayClientMessage(feedback, true);
         }
         return true;
+    }
+
+    /** Whether what is held is something this issuer's open contract asks for, so that handing it over means something. */
+    public static boolean canHandIn(ServerPlayer player, AbstractCityNpcEntity issuer, ItemStack held) {
+        return handInContract(player, issuer, held) != null;
+    }
+
+    private static QuestContract handInContract(ServerPlayer player, AbstractCityNpcEntity issuer, ItemStack held) {
+        if (!issuer.canInteract(player) || held.isEmpty()) return null;
+        var board = issuerBoardTag(player, issuer, false);
+        if (board == null) return null;
+        for (var contract : boardActives(board)) if (handInMatches(player, contract, held)) return contract;
+        return null;
+    }
+
+    private static boolean handInMatches(ServerPlayer player, QuestContract contract, ItemStack held) {
+        return switch (contract.type()) {
+            case RECOVERY -> held.is(contract.recoveryItem());
+            case EXTRACTION -> matchesQuestItem(held, contract, QUEST_ITEM_TYPE_EXTRACTION)
+                    && QuestItemVersions.get(player.serverLevel()).current(held);
+            case CYBERPSYCHO -> matchesQuestItem(held, contract, QUEST_ITEM_TYPE_PSYCHO)
+                    && QuestItemVersions.get(player.serverLevel()).current(held);
+            case LOCATE -> matchesQuestItem(held, contract, QUEST_ITEM_TYPE_BEACON)
+                    && QuestItemVersions.get(player.serverLevel()).current(held);
+            case SALVAGE -> matchesQuestItem(held, contract, QUEST_ITEM_TYPE_SALVAGE)
+                    && QuestItemVersions.get(player.serverLevel()).current(held);
+            default -> false;
+        };
     }
 
     public static TurnInResult turnInRemotely(ServerPlayer player, String questId) {
@@ -814,11 +858,10 @@ public final class PlayerQuestManager {
     private static TurnInResult turnInIssuerActive(ServerPlayer player, AbstractCityNpcEntity issuer, boolean remote, String expectedId) {
         if (!issuer.canInteract(player) || !issuer.isAlive() || de.artemis.cyberneticenhancements.common.world.FixerIdentitySavedData.get(player.serverLevel()).isDeceased(issuer.getUUID())) return TurnInResult.UNAVAILABLE;
         CompoundTag board = issuerBoardTag(player, issuer, false);
-        if (board == null || !board.contains(BOARD_ACTIVE_TAG, Tag.TAG_COMPOUND)) {
+        QuestContract active = board == null ? null : boardActive(board, expectedId);
+        if (active == null) {
             return TurnInResult.NOT_READY;
         }
-        QuestContract active = QuestContract.fromTag(board.getCompound(BOARD_ACTIVE_TAG));
-        if (!expectedId.isEmpty() && !expectedId.equals(active.id())) return TurnInResult.NOT_READY;
         if (active.type().requiresInPersonTurnIn()) {
             if (remote) return TurnInResult.IN_PERSON_REQUIRED;
             if (player.level() != issuer.level() || issuer.distanceToSqr(player) > 64) return TurnInResult.UNAVAILABLE;
@@ -847,6 +890,8 @@ public final class PlayerQuestManager {
             return TurnInResult.MISSING_ITEMS;
         }
         if (active.type() == QuestType.CYBERPSYCHO && !consumeTaggedQuestItem(player, active, QUEST_ITEM_TYPE_PSYCHO))
+            return TurnInResult.MISSING_ITEMS;
+        if (active.type() == QuestType.SALVAGE && !consumeTaggedQuestItem(player, active, QUEST_ITEM_TYPE_SALVAGE))
             return TurnInResult.MISSING_ITEMS;
         if (active.type() == QuestType.LOCATE && !consumeTaggedQuestItem(player, active, QUEST_ITEM_TYPE_BEACON))
             return TurnInResult.MISSING_ITEMS;
@@ -884,8 +929,10 @@ public final class PlayerQuestManager {
             }
         }
         active.setStatus(QuestStatus.COMPLETED);
+        de.artemis.cyberneticenhancements.common.streetcred.StreetCred.gain(player,
+                de.artemis.cyberneticenhancements.common.streetcred.StreetCredRewards.contract(active.type(), active.tier()));
         active.setResolvedDay(currentDay(player.level()));
-        board.remove(BOARD_ACTIVE_TAG);
+        removeActive(board, active.id());
         appendHistory(player, board, active);
         storeIssuerBoard(player, issuer, board);
         if (active.chromiumSurvey())
@@ -915,8 +962,7 @@ public final class PlayerQuestManager {
                 continue;
             }
             CompoundTag board = boards.getCompound(issuerKey);
-            if (board.contains(BOARD_ACTIVE_TAG, Tag.TAG_COMPOUND)) {
-                QuestContract contract = QuestContract.fromTag(board.getCompound(BOARD_ACTIVE_TAG));
+            for (QuestContract contract : boardActives(board)) {
                 refreshContractProgress(player, contract);
                 entries.add(toLogEntry(player, contract, pending.contains(contract.id())));
                 writeActive(board, contract);
@@ -991,14 +1037,12 @@ public final class PlayerQuestManager {
         boolean dirty = false, historyChanged = false;
         long playTicks = NpcIncomingCalls.playTicks(player);
         Set<String> activeIds = new HashSet<>();
-        for (String issuerKey : boards.getAllKeys()) {
+        for (var ref : activeSlots(boards)) {
+            String issuerKey = ref.key();
             CompoundTag board = boards.getCompound(issuerKey);
-            if (!board.contains(BOARD_ACTIVE_TAG, Tag.TAG_COMPOUND)) {
-                continue;
-            }
-            QuestContract contract = QuestContract.fromTag(board.getCompound(BOARD_ACTIVE_TAG));
+            QuestContract contract = QuestContract.fromTag(board.getCompound(ref.slot()));
             QuestContract repaired = CyberpsychoEncounter.repairRepeatedContract(player, contract);
-            if (repaired != contract) { contract = repaired; dirty = true; }
+            if (repaired != contract) { removeActive(board, contract.id()); contract = repaired; dirty = true; }
             dirty |= contract.initializeUrgentDeadline(playTicks);
             if (contract.urgentTimeIsUp(playTicks) && QuestRecovery.immediateIssue(player, contract) == null) {
                 expireUrgentContract(player, board, contract);
@@ -1007,6 +1051,10 @@ public final class PlayerQuestManager {
             } else if (questCacheAttemptLost(player, contract)) {
                 finishFailedBreach(player, board, contract);
                 dirty = true;
+            } else if (salvageCargoLost(player, contract)) {
+                cancelUnfinishableContract(player, board, contract, "cargo_lost");
+                dirty = true;
+                historyChanged = true;
             } else if (patientQuestItemLost(player, contract)) {
                 failPatientQuest(player, board, contract);
                 dirty = true;
@@ -1056,7 +1104,90 @@ public final class PlayerQuestManager {
             case ELIMINATION -> updateEliminationRuntime(player, contract);
             case CYBERPSYCHO -> updateCyberpsychoProgress(player, contract);
             case LOCATE -> PatientSearch.update(player, contract);
+            case SALVAGE -> updateSalvageProgress(player, contract);
         };
+    }
+
+    private static boolean updateSalvageProgress(ServerPlayer player, QuestContract contract) {
+        if (!hasTaggedQuestItem(player, contract, QUEST_ITEM_TYPE_SALVAGE)) {
+            if (contract.status() != QuestStatus.ACTIVE || player.tickCount % 40 != 3) return false;
+            var level = resolveContractLevel(player, contract);
+            var versions = QuestItemVersions.get(player.serverLevel());
+            if (level == null || contract.targetPos() == null || !level.hasChunkAt(contract.targetPos()) || versions.issued(contract.id(), QUEST_ITEM_TYPE_SALVAGE)) return false;
+            var cargo = createSalvageCargo(contract);
+            versions.issue(cargo);
+            SalvageQuests.stash(level, contract.targetPos(), cargo);
+            return false;
+        }
+        if (contract.destinationReached() && contract.status() == QuestStatus.READY) return false;
+        contract.setDestinationReached(true);
+        contract.setProgress(contract.targetCount());
+        markQuestReady(player, contract);
+        return true;
+    }
+
+    /** A cargo that is gone once found is simply written off: it was lost before, and nobody is blamed. */
+    private static boolean salvageCargoLost(ServerPlayer player, QuestContract contract) {
+        if (contract.type() != QuestType.SALVAGE || contract.status() != QuestStatus.READY) return false;
+        var recovery = ITEM_RECOVERY.computeIfAbsent(player, ignored -> new QuestItemRecovery());
+        return recovery.missingLongEnough(contract.id(), QUEST_ITEM_TYPE_SALVAGE,
+                hasTaggedQuestItem(player, contract, QUEST_ITEM_TYPE_SALVAGE), player.isCreative(), player.tickCount);
+    }
+
+    /** A cargo picked up from a lost container turns out to belong to one of the player's contacts. */
+    private static void claimFoundCargo(ServerPlayer player) {
+        var cargos = ModItems.LOST_CARGO.get();
+        ItemStack found = ItemStack.EMPTY;
+        var stacks = new ArrayList<ItemStack>(player.getInventory().items);
+        stacks.addAll(player.getInventory().offhand);
+        for (var stack : stacks)
+            if (stack.is(cargos) && QuestItemVersions.key(stack).isEmpty()) { found = stack; break; }
+        if (found.isEmpty()) return;
+        var owners = new ArrayList<AbstractCityNpcEntity>();
+        for (var contact : AbstractCityNpcEntity.reachablePermanentContacts(player)) {
+            var board = issuerBoardTag(player, contact, false);
+            if (board == null || !activeFull(board)) owners.add(contact);
+        }
+        if (owners.isEmpty()) return; // The cargo stays as it is until somebody can be told about it.
+        var issuer = owners.get(player.getRandom().nextInt(owners.size()));
+        int tier = 1 + player.getRandom().nextInt(3);
+        long day = currentDay(player.level());
+        int money = de.artemis.cyberneticenhancements.common.economy.EconomyBalance.tier("quest.salvage.base", tier)
+                + player.getRandom().nextInt(de.artemis.cyberneticenhancements.common.economy.EconomyBalance.tier("quest.salvage.spread", tier) + 1);
+        money = Math.max(1, Math.round(money * moneyProfileMultiplier(issuer.npcType())));
+        money = de.artemis.cyberneticenhancements.common.streetcred.StreetCredEffects.questPay(player,
+                de.artemis.cyberneticenhancements.common.origin.Origins.questPay(player, QuestType.SALVAGE, money));
+        int trust = de.artemis.cyberneticenhancements.common.economy.EconomyBalance.tier("trust.quest.salvage", tier);
+        int rewardKind = QuestContract.rewardItemKindForTier(tier, QuestType.SALVAGE);
+        var contract = new QuestContract(UUID.randomUUID().toString(), issuer.getUUID(), issuer.getName().getString(), issuer.npcTypeId(),
+                QuestType.SALVAGE, tier, QuestStatus.READY, 0, 1, 1, true, player.level().dimension().location().toString(),
+                null, 1, money, trust, rewardKind, QuestContract.rewardItemCountFor(rewardKind), day, 0L);
+        contract.setAcceptedPlayTicks(NpcIncomingCalls.playTicks(player));
+        found.set(DataComponents.CUSTOM_DATA, CustomData.of(questItemTag(contract, QUEST_ITEM_TYPE_SALVAGE)));
+        decorateSalvageCargo(found, contract);
+        QuestItemVersions.get(player.serverLevel()).issue(found);
+        var board = issuerBoardTag(player, issuer, true);
+        writeActive(board, contract);
+        storeIssuerBoard(player, issuer, board);
+        player.inventoryMenu.broadcastChanges();
+        de.artemis.cyberneticenhancements.common.journal.PlayerJournal.record(player, "quests", "quest_ready", contract.title(), contract.issuerName());
+        de.artemis.cyberneticenhancements.common.feedback.GameplayMessages.chat(player,
+                Component.translatable("message.cyberneticenhancements.quest.salvage_found", contract.issuerName()).withStyle(net.minecraft.ChatFormatting.AQUA),
+                PlayerActionFeedback.READY);
+    }
+
+    private static ItemStack createSalvageCargo(QuestContract contract) {
+        var stack = new ItemStack(ModItems.LOST_CARGO.get());
+        stack.set(DataComponents.CUSTOM_DATA, CustomData.of(questItemTag(contract, QUEST_ITEM_TYPE_SALVAGE)));
+        decorateSalvageCargo(stack, contract);
+        return stack;
+    }
+
+    private static void decorateSalvageCargo(ItemStack stack, QuestContract contract) {
+        stack.set(DataComponents.CUSTOM_NAME, Component.translatable("item.cyberneticenhancements.lost_cargo.owned", contract.issuerName()));
+        stack.set(DataComponents.LORE, new net.minecraft.world.item.component.ItemLore(List.of(
+                Component.translatable("tooltip.cyberneticenhancements.lost_cargo.return", contract.issuerName()),
+                Component.translatable("tooltip.cyberneticenhancements.lost_cargo.lost").withStyle(net.minecraft.ChatFormatting.GRAY))));
     }
 
     private static boolean updateEliminationRuntime(ServerPlayer player, QuestContract contract) {
@@ -1145,19 +1276,24 @@ public final class PlayerQuestManager {
 
     public static boolean canRequestDeliveryReplacement(ServerPlayer player, AbstractCityNpcEntity issuer) {
         if (!issuer.canInteract(player)) return false;
-        var board = issuerBoardTag(player, issuer, false);
-        if (board == null || !board.contains(BOARD_ACTIVE_TAG, Tag.TAG_COMPOUND)) return false;
-        var contract = QuestContract.fromTag(board.getCompound(BOARD_ACTIVE_TAG));
-        var level = resolveContractLevel(player, contract);
-        return contract.type() == QuestType.DELIVERY && !contract.destinationReached() && !contract.isReady()
-                && !hasTaggedQuestItem(player, contract, QUEST_ITEM_TYPE_PACKAGE)
-                && (level == null || !courierStashContainsPackage(level, contract));
+        return replaceableDelivery(player, issuerBoardTag(player, issuer, false)) != null;
+    }
+
+    private static @Nullable QuestContract replaceableDelivery(ServerPlayer player, @Nullable CompoundTag board) {
+        if (board == null) return null;
+        for (var contract : boardActives(board)) {
+            var level = resolveContractLevel(player, contract);
+            if (contract.type() == QuestType.DELIVERY && !contract.destinationReached() && !contract.isReady()
+                    && !hasTaggedQuestItem(player, contract, QUEST_ITEM_TYPE_PACKAGE)
+                    && (level == null || !courierStashContainsPackage(level, contract))) return contract;
+        }
+        return null;
     }
 
     public static boolean requestDeliveryReplacement(ServerPlayer player, AbstractCityNpcEntity issuer) {
         if (!canRequestDeliveryReplacement(player, issuer)) return false;
         var board = issuerBoardTag(player, issuer, false);
-        var contract = QuestContract.fromTag(board.getCompound(BOARD_ACTIVE_TAG));
+        var contract = replaceableDelivery(player, board);
         issueCourierPackage(player, contract);
         contract.markReplacementPenalty();
         ITEM_RECOVERY.computeIfAbsent(player, ignored -> new QuestItemRecovery()).missingLongEnough(
@@ -1171,9 +1307,8 @@ public final class PlayerQuestManager {
     public static boolean confirmLostReturnItem(ServerPlayer player, AbstractCityNpcEntity issuer, String questId) {
         if (!issuer.canInteract(player)) return false;
         var board = issuerBoardTag(player, issuer, false);
-        if (board == null || !board.contains(BOARD_ACTIVE_TAG, Tag.TAG_COMPOUND)) return false;
-        var contract = QuestContract.fromTag(board.getCompound(BOARD_ACTIVE_TAG));
-        if (!contract.id().equals(questId) || !contract.itemLossPending()) return false;
+        var contract = board == null ? null : boardActive(board, questId);
+        if (contract == null || !contract.id().equals(questId) || !contract.itemLossPending()) return false;
         contract.confirmExternalItem();
         writeActive(board, contract);
         storeIssuerBoard(player, issuer, board);
@@ -1183,17 +1318,16 @@ public final class PlayerQuestManager {
 
     public static boolean failLostReturnItem(ServerPlayer player, AbstractCityNpcEntity issuer, String questId) {
         var board = issuerBoardTag(player, issuer, false);
-        if (board == null || !board.contains(BOARD_ACTIVE_TAG, Tag.TAG_COMPOUND)) return false;
-        var contract = QuestContract.fromTag(board.getCompound(BOARD_ACTIVE_TAG));
-        if (!contract.id().equals(questId) || !contract.itemLossPending()) return false;
+        var contract = board == null ? null : boardActive(board, questId);
+        if (contract == null || !contract.id().equals(questId) || !contract.itemLossPending()) return false;
         contract.setStatus(QuestStatus.FAILED);
         lockOutEncounter(player, contract);
         contract.setResolvedDay(currentDay(player.level()));
         cleanupContractArtifacts(player, contract);
-        board.remove(BOARD_ACTIVE_TAG);
+        removeActive(board, contract.id());
         appendHistory(player, board, contract);
         storeIssuerBoard(player, issuer, board);
-        int loss = Math.max(2, contract.rewardTrust() + 2);
+        int loss = de.artemis.cyberneticenhancements.common.skills.SkillEffects.trustLoss(player, Math.max(2, contract.rewardTrust() + 2));
         AbstractCityNpcEntity.lowerTrustFromArchive(player, contract.issuerId(), loss);
         notifyQuestAction(player, Component.translatable("message.cyberneticenhancements.quest.item_lost_failed",
                 contract.title(), contract.issuerName(), loss).withStyle(net.minecraft.ChatFormatting.RED), PlayerActionFeedback.CANCELLED);
@@ -1204,9 +1338,8 @@ public final class PlayerQuestManager {
 
     public static void deferLostReturnItemCall(ServerPlayer player, AbstractCityNpcEntity issuer, String questId) {
         var board = issuerBoardTag(player, issuer, false);
-        if (board == null || !board.contains(BOARD_ACTIVE_TAG, Tag.TAG_COMPOUND)) return;
-        var contract = QuestContract.fromTag(board.getCompound(BOARD_ACTIVE_TAG));
-        if (!contract.id().equals(questId) || !contract.itemLossPending()) return;
+        var contract = board == null ? null : boardActive(board, questId);
+        if (contract == null || !contract.id().equals(questId) || !contract.itemLossPending()) return;
         contract.deferItemLossCall();
         writeActive(board, contract);
         storeIssuerBoard(player, issuer, board);
@@ -1419,12 +1552,10 @@ public final class PlayerQuestManager {
             return;
         }
         boolean dirty = false;
-        for (String issuerKey : boards.getAllKeys()) {
+        for (var ref : activeSlots(boards)) {
+            String issuerKey = ref.key();
             CompoundTag board = boards.getCompound(issuerKey);
-            if (!board.contains(BOARD_ACTIVE_TAG, Tag.TAG_COMPOUND)) {
-                continue;
-            }
-            QuestContract contract = QuestContract.fromTag(board.getCompound(BOARD_ACTIVE_TAG));
+            QuestContract contract = QuestContract.fromTag(board.getCompound(ref.slot()));
             if (contract.type() != QuestType.ELIMINATION || contract.status() != QuestStatus.ACTIVE) {
                 continue;
             }
@@ -1544,7 +1675,7 @@ public final class PlayerQuestManager {
         boolean current = board.getLong(BOARD_REFRESH_DAY_TAG) == currentDay && board.contains(BOARD_OFFERS_TAG, Tag.TAG_LIST);
         boolean dev = issuer instanceof de.artemis.cyberneticenhancements.common.entity.DevTestEntity;
         var existing = current ? readContracts(board.getList(BOARD_OFFERS_TAG, Tag.TAG_COMPOUND)) : List.<QuestContract>of();
-        if (current && !board.getBoolean("OffersPreparing") && (!dev || board.contains(BOARD_ACTIVE_TAG)
+        if (current && !board.getBoolean("OffersPreparing") && (!dev || hasActive(board)
                 || existing.size() == DEV_OFFER_COUNT)) return;
         long now = player.server.overworld().getGameTime();
         if (board.getLong("NextOfferPreparation") > now) return;
@@ -1560,7 +1691,7 @@ public final class PlayerQuestManager {
     private static List<QuestContract> generateOffers(ServerPlayer player, AbstractCityNpcEntity issuer, long day, List<QuestContract> existing) {
         RandomSource random = RandomSource.create(seedFor(player, issuer, day));
         int trust = issuer.trustLevel(player);
-        int maxTier = trust >= 3 ? 3 : trust >= 1 ? 2 : 1;
+        int maxTier = Math.max(trust >= 3 ? 3 : trust >= 1 ? 2 : 1, de.artemis.cyberneticenhancements.common.streetcred.StreetCredEffects.contractTier(player));
         List<QuestContract> offers = new ArrayList<>(existing);
         Set<QuestType> used = new HashSet<>();
         boolean devTest = issuer instanceof de.artemis.cyberneticenhancements.common.entity.DevTestEntity;
@@ -1622,14 +1753,17 @@ public final class PlayerQuestManager {
                 addWeighted(base, QuestType.EXTRACTION, 2);
                 addWeighted(base, QuestType.RECOVERY, 2);
                 addWeighted(base, QuestType.ELIMINATION, trust >= 2 ? 2 : 1);
+                addWeighted(base, QuestType.SALVAGE, 2);
             }
             case RIPPERDOC, STREET_RIPPERDOC -> {
                 addWeighted(base, QuestType.RECOVERY, 4);
                 addWeighted(base, QuestType.DELIVERY, 3);
                 addWeighted(base, QuestType.EXTRACTION, 2);
                 addWeighted(base, QuestType.INVESTIGATION, trust >= 2 ? 2 : 1);
+                addWeighted(base, QuestType.SALVAGE, 1);
             }
             case TECHIE -> {
+                addWeighted(base, QuestType.SALVAGE, 2);
                 addWeighted(base, QuestType.CYBERPSYCHO, 1);
                 addWeighted(base, QuestType.RECOVERY, 4);
                 addWeighted(base, QuestType.EXTRACTION, 3);
@@ -1645,6 +1779,7 @@ public final class PlayerQuestManager {
             }
             case WORLD_MED_TECH -> addWeighted(base, QuestType.LOCATE, 1);
             case MERC -> {
+                addWeighted(base, QuestType.SALVAGE, 1);
                 addWeighted(base, QuestType.CYBERPSYCHO, 2);
                 addWeighted(base, QuestType.ELIMINATION, 5);
                 addWeighted(base, QuestType.EXTRACTION, 3);
@@ -1680,7 +1815,7 @@ public final class PlayerQuestManager {
             case ELIMINATION -> random.nextInt(Math.min(6, 2 + tier * 2));
             case RECOVERY -> random.nextInt(Math.min(5, 2 + tier));
             case CYBERPSYCHO -> random.nextInt(de.artemis.cyberneticenhancements.common.entity.CyberpsychoLoadout.values().length);
-            case LOCATE -> 0;
+            case LOCATE, SALVAGE -> 0;
         };
         BlockPos targetPos = null;
         String dimensionId = "";
@@ -1721,6 +1856,11 @@ public final class PlayerQuestManager {
                 case ELIMINATION -> generateHuntTarget(preferred, issuer, player, tier, random);
                 case CYBERPSYCHO -> generateCyberpsychoTarget(preferred, issuer, player, tier, random);
                 case LOCATE -> generateCyberpsychoTarget(preferred, issuer, player, tier, random);
+                case SALVAGE -> {
+                    var container = generateSalvageTarget(preferred, issuer);
+                    // Test contacts have no ocean to search, so their cargo waits at an ordinary site and is handed over directly.
+                    yield container != null || !dev ? container : generateExtractionTarget(preferred, issuer, player, tier, random);
+                }
                 case RECOVERY -> null;
             };
             if (target != null && target.pos() != null) {
@@ -1728,6 +1868,7 @@ public final class PlayerQuestManager {
                 dimensionId = target.level().dimension().location().toString();
             }
         }
+        if (type == QuestType.SALVAGE && targetPos == null) return null; // No lost container within reach.
         var rewardDimension = QuestDimension.of(dimensionId);
         if (rewardDimension != QuestDimension.STANDARD) {
             if (type == QuestType.RECOVERY) targetIndex = rewardDimension == QuestDimension.NETHER ? 5 : 6;
@@ -1747,6 +1888,10 @@ public final class PlayerQuestManager {
                 + random.nextInt(de.artemis.cyberneticenhancements.common.economy.EconomyBalance.tier("quest." + type.id() + ".spread", tier) + 1);
         if (type == QuestType.RECOVERY) rewardMoney += targetCount * de.artemis.cyberneticenhancements.common.economy.EconomyBalance.value("recovery.unit." + targetIndex);
         rewardMoney = Math.max(1, Math.round(rewardMoney * moneyProfileMultiplier(issuer.npcType())));
+        rewardMoney = de.artemis.cyberneticenhancements.common.streetcred.StreetCredEffects.questPay(player,
+                de.artemis.cyberneticenhancements.common.origin.Origins.questPay(player, type, rewardMoney));
+        rewardMoney = de.artemis.cyberneticenhancements.common.skills.SkillEffects.combatPay(player,
+                type == QuestType.ELIMINATION || type == QuestType.CYBERPSYCHO || type == QuestType.BREACH, rewardMoney);
         int rewardTrust = de.artemis.cyberneticenhancements.common.economy.EconomyBalance.tier("trust.quest." + type.id(), tier);
         int rewardItemKind = geology ? QuestContract.REWARD_CHROMIUM : QuestContract.rewardItemKindForTier(tier, type);
         if (type == QuestType.LOCATE && random.nextInt(4) == 0) rewardItemKind = QuestContract.REWARD_COVERAGE; // A quarter of saved patients come with a year of cover.
@@ -1785,6 +1930,12 @@ public final class PlayerQuestManager {
             case NETRUNNER -> 1.04F;
             case MERC, MAXTEC -> 1.08F;
         };
+    }
+
+    private static @Nullable DeliveryTarget generateSalvageTarget(ServerLevel level, AbstractCityNpcEntity issuer) {
+        if (level.dimension() != Level.OVERWORLD) return null;
+        BlockPos container = SalvageQuests.nearest(level, issuer.blockPosition());
+        return container == null ? null : new DeliveryTarget(level, container);
     }
 
     private static DeliveryTarget generateDeliveryTarget(ServerLevel preferredLevel, AbstractCityNpcEntity issuer, ServerPlayer player, int tier, RandomSource random) {
@@ -1900,10 +2051,8 @@ public final class PlayerQuestManager {
             CompoundTag root = rootTag(online, false);
             if (root == null) continue;
             CompoundTag boards = issuerBoards(root);
-            for (String key : boards.getAllKeys()) {
-                CompoundTag board = boards.getCompound(key);
-                if (!board.contains(BOARD_ACTIVE_TAG, Tag.TAG_COMPOUND)) continue;
-                QuestContract active = QuestContract.fromTag(board.getCompound(BOARD_ACTIVE_TAG));
+            for (var ref : activeSlots(boards)) {
+                QuestContract active = QuestContract.fromTag(boards.getCompound(ref.key()).getCompound(ref.slot()));
                 if (level.dimension().location().toString().equals(active.dimensionId())) {
                     QuestSiteReservations.get(level).reserve(active, true, level.getGameTime());
                 }
@@ -2229,6 +2378,7 @@ public final class PlayerQuestManager {
                 CyberpsychoEncounter.cleanup(player, contract);
                 removeTaggedQuestItems(player, contract, QUEST_ITEM_TYPE_PSYCHO);
             }
+            case SALVAGE -> removeTaggedQuestItems(player, contract, QUEST_ITEM_TYPE_SALVAGE);
             case LOCATE -> {
                 PatientSearch.cleanup(player, contract);
                 removeTaggedQuestItems(player, contract, QUEST_ITEM_TYPE_REVIVE);
@@ -2362,9 +2512,7 @@ public final class PlayerQuestManager {
         int count = 0;
         for (String issuerKey : boards.getAllKeys()) {
             CompoundTag board = boards.getCompound(issuerKey);
-            if (board.contains(BOARD_ACTIVE_TAG, Tag.TAG_COMPOUND)) {
-                count++;
-            }
+            count += boardActives(board).size();
             count += board.getList(BOARD_OFFERS_TAG, Tag.TAG_COMPOUND).size();
             count += board.getList(BOARD_HISTORY_TAG, Tag.TAG_COMPOUND).size();
         }
@@ -2372,7 +2520,7 @@ public final class PlayerQuestManager {
     }
 
     private static void applyAbandonPenalty(ServerPlayer player, QuestContract contract) {
-        int trustLoss = Math.max(2, contract.rewardTrust() + 2);
+        int trustLoss = de.artemis.cyberneticenhancements.common.skills.SkillEffects.trustLoss(player, Math.max(2, contract.rewardTrust() + 2));
         if (!contract.issuerType().isBlank()) {
             AbstractCityNpcEntity.lowerTrustFromArchive(player, contract.issuerId(), trustLoss);
         }
@@ -2391,7 +2539,7 @@ public final class PlayerQuestManager {
         cleanupContractArtifacts(player, contract);
         contract.cancel(reason);
         contract.setResolvedDay(currentDay(player.level()));
-        board.remove(BOARD_ACTIVE_TAG);
+        removeActive(board, contract.id());
         board.put(BOARD_OFFERS_TAG, new ListTag());
         appendHistory(player, board, contract);
         notifyQuestAction(player, Component.translatable("message.cyberneticenhancements.quest.cancelled", contract.title(), contract.cancellationReason())
@@ -2405,7 +2553,7 @@ public final class PlayerQuestManager {
         lockOutEncounter(player, contract);
         contract.setResolvedDay(currentDay(player.level()));
         cleanupContractArtifacts(player, contract);
-        board.remove(BOARD_ACTIVE_TAG);
+        removeActive(board, contract.id());
         appendHistory(player, board, contract);
         notifyQuestAction(player, Component.translatable("message.cyberneticenhancements.quest.urgent_expired", contract.title())
                 .withStyle(net.minecraft.ChatFormatting.RED), PlayerActionFeedback.FAILED);
@@ -2441,12 +2589,57 @@ public final class PlayerQuestManager {
         board.put(BOARD_OFFERS_TAG, offersTag);
     }
 
-    private static void writeActive(CompoundTag board, @Nullable QuestContract active) {
-        if (active == null) {
-            board.remove(BOARD_ACTIVE_TAG);
-        } else {
-            board.put(BOARD_ACTIVE_TAG, active.toTag());
+    /** Updates the open contract with the same id, or takes the first free slot. */
+    private static void writeActive(CompoundTag board, QuestContract active) {
+        String free = null;
+        for (String slot : ACTIVE_TAGS) {
+            if (!board.contains(slot, Tag.TAG_COMPOUND)) {
+                if (free == null) free = slot;
+            } else if (board.getCompound(slot).getString("Id").equals(active.id())) {
+                board.put(slot, active.toTag());
+                return;
+            }
         }
+        board.put(free == null ? BOARD_ACTIVE_TAG : free, active.toTag());
+    }
+
+    private static void removeActive(CompoundTag board, String id) {
+        for (String slot : ACTIVE_TAGS)
+            if (board.contains(slot, Tag.TAG_COMPOUND) && board.getCompound(slot).getString("Id").equals(id)) board.remove(slot);
+    }
+
+    private static List<QuestContract> boardActives(CompoundTag board) {
+        List<QuestContract> result = new ArrayList<>();
+        for (String slot : ACTIVE_TAGS)
+            if (board.contains(slot, Tag.TAG_COMPOUND)) result.add(QuestContract.fromTag(board.getCompound(slot)));
+        return result;
+    }
+
+    /** The open contract with this id, or the first one when the id is empty. */
+    private static @Nullable QuestContract boardActive(CompoundTag board, String id) {
+        for (var contract : boardActives(board)) if (id.isEmpty() || id.equals(contract.id())) return contract;
+        return null;
+    }
+
+    private static boolean hasActive(CompoundTag board) {
+        for (String slot : ACTIVE_TAGS) if (board.contains(slot, Tag.TAG_COMPOUND)) return true;
+        return false;
+    }
+
+    private static boolean activeFull(CompoundTag board) {
+        return boardActives(board).size() >= MAX_ACTIVE_PER_ISSUER;
+    }
+
+    private record ActiveRef(String key, String slot) {}
+
+    private static List<ActiveRef> activeSlots(CompoundTag boards) {
+        List<ActiveRef> result = new ArrayList<>();
+        for (String key : boards.getAllKeys()) {
+            if (!boards.contains(key, Tag.TAG_COMPOUND)) continue;
+            var board = boards.getCompound(key);
+            for (String slot : ACTIVE_TAGS) if (board.contains(slot, Tag.TAG_COMPOUND)) result.add(new ActiveRef(key, slot));
+        }
+        return result;
     }
 
     private static List<QuestContract> readContracts(ListTag listTag) {
@@ -2513,7 +2706,11 @@ public final class PlayerQuestManager {
         return level.getDayTime() / 24000L;
     }
 
-    public record BoardSnapshot(@Nullable QuestContract active, List<QuestContract> offers) {
+    public record BoardSnapshot(List<QuestContract> actives, List<QuestContract> offers) {
+        /** The first open contract, for callers that only care whether there is one. */
+        public @Nullable QuestContract active() {
+            return actives.isEmpty() ? null : actives.get(0);
+        }
     }
 
     public enum Result {

@@ -26,13 +26,15 @@ public final class QuestNavigation {
         var turnIns = new ArrayList<TurnIn>();
         for (var quest : PlayerQuestManager.activeContracts(player)) {
             if (quest.status() == QuestStatus.ACTIVE && quest.type() != QuestType.RECOVERY && quest.targetPos() != null && !quest.dimensionId().isBlank()) {
-                String title = quest.type() == QuestType.INVESTIGATION
-                        ? net.minecraft.network.chat.Component.translatable(quest.investigation() != null && quest.investigation().located()
-                                ? "quest.cyberneticenhancements.marker.investigation.source" : "quest.cyberneticenhancements.marker.investigation.survey", quest.title()).getString()
-                        : quest.hudTitle(de.artemis.cyberneticenhancements.common.dialogue.NpcIncomingCalls.playTicks(player)).getString();
-                if (quest.type() == QuestType.CYBERPSYCHO) title = net.minecraft.network.chat.Component.translatable(quest.destinationReached()
-                        ? "quest.cyberneticenhancements.marker.cyberpsycho.shard" : "quest.cyberneticenhancements.marker.cyberpsycho.area", quest.psychoName()).getString();
-                targets.add(new Target(quest.id(), title, quest.dimensionId(), quest.targetPos(), false));
+                long playTicks = de.artemis.cyberneticenhancements.common.dialogue.NpcIncomingCalls.playTicks(player);
+                // Urgent contracts show their time left in every marker, whatever the marker says otherwise.
+                var title = quest.type() == QuestType.INVESTIGATION
+                        ? quest.timedLabel(net.minecraft.network.chat.Component.translatable(quest.investigation() != null && quest.investigation().located()
+                                ? "quest.cyberneticenhancements.marker.investigation.source" : "quest.cyberneticenhancements.marker.investigation.survey", quest.title()), playTicks)
+                        : quest.hudTitle(playTicks);
+                if (quest.type() == QuestType.CYBERPSYCHO) title = quest.timedLabel(net.minecraft.network.chat.Component.translatable(quest.destinationReached()
+                        ? "quest.cyberneticenhancements.marker.cyberpsycho.shard" : "quest.cyberneticenhancements.marker.cyberpsycho.area", quest.psychoName()), playTicks);
+                targets.add(new Target(quest.id(), title.getString(), quest.dimensionId(), quest.targetPos(), false));
             } else if (quest.status() == QuestStatus.READY && quest.type() == QuestType.LOCATE) {
                 // A world encounter's people keep no contact record, so the hand-in point is stored on the quest itself.
                 turnIns.add(new TurnIn(quest.id(), quest.issuerId()));

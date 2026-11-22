@@ -266,6 +266,8 @@ public final class RelicCacheBlockEntity extends BlockEntity {
         }
 
         List<ItemStack> rewards = RelicCacheBlock.rollLoot(level, worldPosition, player, cacheBlock.lootTableKey(), 1L);
+        rewards = de.artemis.cyberneticenhancements.common.skills.SkillEffects.betterLoot(player, rewards,
+                () -> RelicCacheBlock.rollLoot(level, worldPosition, player, cacheBlock.lootTableKey(), 2L), level.random);
         List<ItemStack> previews = new ArrayList<>();
         for (int index = 0; index < 14; index++) {
             previews.addAll(RelicCacheBlock.rollLoot(level, worldPosition, player, cacheBlock.displayLootTableKey(), 71L + index));
@@ -281,7 +283,11 @@ public final class RelicCacheBlockEntity extends BlockEntity {
         boolean firstClear = !RelicCacheBlock.hasPlayerOpened(player, level, worldPosition);
         de.artemis.cyberneticenhancements.common.journal.PlayerJournal.recordAt(player, worldPosition, "world", "cache_cleared", cacheBlock.tier());
         RelicCacheBlock.markPlayerOpened(player, level, worldPosition);
-        if (firstClear) player.giveExperiencePoints(de.artemis.cyberneticenhancements.common.progression.ExperienceRewards.relicCache(cacheBlock.tier()));
+        if (firstClear) {
+            player.giveExperiencePoints(de.artemis.cyberneticenhancements.common.progression.ExperienceRewards.relicCache(cacheBlock.tier()));
+            de.artemis.cyberneticenhancements.common.streetcred.StreetCred.gain(player,
+                    de.artemis.cyberneticenhancements.common.streetcred.StreetCredRewards.relicCache(cacheBlock.tier()));
+        }
         removeAfterAnimation = questOwner != null;
         boolean questFeedback = PlayerQuestManager.onRelicCacheBreached(player, worldPosition);
         de.artemis.cyberneticenhancements.common.world.WorldEncounterOffenses.alarm(player, level, worldPosition);

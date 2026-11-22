@@ -27,6 +27,9 @@ public final class ModEntityTypes {
                             .clientTrackingRange(8)
                             .build("fixer")
             );
+    public static final DeferredHolder<EntityType<?>, EntityType<de.artemis.cyberneticenhancements.common.entity.HangingWireEntity>> HANGING_WIRE =
+            ENTITY_TYPES.register("hanging_wire", () -> EntityType.Builder.<de.artemis.cyberneticenhancements.common.entity.HangingWireEntity>of(de.artemis.cyberneticenhancements.common.entity.HangingWireEntity::new, MobCategory.MISC)
+                    .sized(0.25F, 0.25F).clientTrackingRange(16).updateInterval(20).noSummon().fireImmune().build("hanging_wire"));
     public static final DeferredHolder<EntityType<?>, EntityType<RipperdocEntity>> RIPPERDOC =
             registerNpc("ripperdoc", RipperdocEntity::new);
     public static final DeferredHolder<EntityType<?>, EntityType<TechieEntity>> TECHIE =

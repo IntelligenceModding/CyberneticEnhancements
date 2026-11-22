@@ -1,8 +1,12 @@
 package de.artemis.cyberneticenhancements.common.entity;
 
+import de.artemis.cyberneticenhancements.common.economy.PlayerEurodollarManager;
+import de.artemis.cyberneticenhancements.common.feedback.GameplayMessages;
 import de.artemis.cyberneticenhancements.common.world.StreetEncounters;
+import net.minecraft.ChatFormatting;
 import net.minecraft.core.BlockPos;
 import net.minecraft.nbt.CompoundTag;
+import net.minecraft.network.chat.Component;
 import net.minecraft.network.syncher.EntityDataAccessor;
 import net.minecraft.network.syncher.EntityDataSerializers;
 import net.minecraft.network.syncher.SynchedEntityData;
@@ -26,18 +30,20 @@ public final class GangMemberEntity extends CyberpsychoEntity implements Hologra
     private static final int MAX_AGE = 20 * 60 * 8;
     private UUID victim;
     private boolean hostile;
+    private int demand;
 
     public GangMemberEntity(EntityType<? extends GangMemberEntity> type, Level level) {
         super(type, level);
     }
 
-    public void deploy(ServerPlayer player, int slot, BlockPos pos) {
+    /** {@code power} scales how much they take and deal: a gang that comes for a name is better armed than one that comes for a nobody. */
+    public void deploy(ServerPlayer player, int slot, BlockPos pos, float power) {
         victim = player.getUUID();
         boolean leader = slot == 0;
         configureCombat(1, leader ? CyberpsychoLoadout.GORILLA : CyberpsychoLoadout.MANTIS, leader ? "Gang Boss" : "Gang Member", pos);
-        getAttribute(Attributes.MAX_HEALTH).setBaseValue(leader ? 60 : 40);
-        getAttribute(Attributes.ARMOR).setBaseValue(leader ? 6 : 3);
-        getAttribute(Attributes.ATTACK_DAMAGE).setBaseValue(leader ? 7 : 5);
+        getAttribute(Attributes.MAX_HEALTH).setBaseValue((leader ? 60 : 40) * power);
+        getAttribute(Attributes.ARMOR).setBaseValue((leader ? 6 : 3) * power);
+        getAttribute(Attributes.ATTACK_DAMAGE).setBaseValue((leader ? 7 : 5) * power);
         getAttribute(Attributes.MOVEMENT_SPEED).setBaseValue(0.29);
         setHealth(getMaxHealth());
     }
@@ -54,6 +60,21 @@ public final class GangMemberEntity extends CyberpsychoEntity implements Hologra
 
     public UUID victim() { return victim; }
     public boolean hostile() { return hostile; }
+    public void demand(int demand) { this.demand = demand; }
+
+    /** Whoever they came to rob and finished off is relieved of the toll they asked for, as if their pockets were turned out. */
+    @Override
+    public boolean killedEntity(ServerLevel level, LivingEntity entity) {
+        if (entity instanceof ServerPlayer player && player.getUUID().equals(victim) && demand > 0) {
+            int taken = Math.min(demand, PlayerEurodollarManager.balance(player));
+            if (taken > 0) {
+                PlayerEurodollarManager.remove(player, taken, "shakedown", "Pockets emptied by a street gang", null, "Street gang");
+                GameplayMessages.chat(player, Component.translatable("message.cyberneticenhancements.encounter.shakedown.looted", taken).withStyle(ChatFormatting.RED));
+            }
+            demand = 0;
+        }
+        return super.killedEntity(level, entity);
+    }
 
     public void provoke() {
         if (hostile || HolographicDeployment.departing(this)) return;
@@ -112,6 +133,7 @@ public final class GangMemberEntity extends CyberpsychoEntity implements Hologra
         super.addAdditionalSaveData(tag);
         if (victim != null) tag.putUUID("GangVictim", victim);
         tag.putBoolean("GangHostile", hostile);
+        tag.putInt("GangDemand", demand);
     }
 
     @Override
@@ -119,5 +141,6 @@ public final class GangMemberEntity extends CyberpsychoEntity implements Hologra
         super.readAdditionalSaveData(tag);
         victim = tag.hasUUID("GangVictim") ? tag.getUUID("GangVictim") : null;
         hostile = tag.getBoolean("GangHostile");
+        demand = tag.getInt("GangDemand");
     }
 }

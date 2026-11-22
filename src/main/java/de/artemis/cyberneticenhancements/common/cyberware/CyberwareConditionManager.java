@@ -41,6 +41,10 @@ public final class CyberwareConditionManager {
             wearAmount += 1;
         }
 
+        if (de.artemis.cyberneticenhancements.common.skills.SkillEffects.skipsWear(player)) {
+            return;
+        }
+
         boolean changed = false;
         for (int slot = 0; slot < inventory.getSlots(); slot++) {
             ItemStack stack = inventory.getStackInSlot(slot);

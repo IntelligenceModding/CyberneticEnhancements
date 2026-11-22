@@ -46,6 +46,20 @@ public final class ModKeyMappings {
                 @Override public boolean isActive() { return QuestProgressOverlay.canCall(index); }
                 @Override public boolean conflicts(IKeyConflictContext other) { return other == this; }
             }, KeyModifier.ALT, InputConstants.Type.KEYSYM, GLFW.GLFW_KEY_1 + index, CATEGORY)).toList();
+    public static final KeyMapping DIALOGUE_UP = new KeyMapping("key.cyberneticenhancements.dialogue_up",
+            net.neoforged.neoforge.client.settings.KeyConflictContext.IN_GAME, InputConstants.Type.KEYSYM, GLFW.GLFW_KEY_UP, CATEGORY);
+    public static final KeyMapping DIALOGUE_DOWN = new KeyMapping("key.cyberneticenhancements.dialogue_down",
+            net.neoforged.neoforge.client.settings.KeyConflictContext.IN_GAME, InputConstants.Type.KEYSYM, GLFW.GLFW_KEY_DOWN, CATEGORY);
+    public static final KeyMapping DIALOGUE_SELECT = new KeyMapping("key.cyberneticenhancements.dialogue_select",
+            net.neoforged.neoforge.client.settings.KeyConflictContext.IN_GAME, InputConstants.Type.KEYSYM, GLFW.GLFW_KEY_ENTER, CATEGORY);
+    private static KeyMapping dialogueWindow(String name, int key) {
+        return new KeyMapping("key.cyberneticenhancements.dialogue_" + name,
+                net.neoforged.neoforge.client.settings.KeyConflictContext.IN_GAME, InputConstants.Type.KEYSYM, key, CATEGORY);
+    }
+
+    public static final List<KeyMapping> DIALOGUE_WINDOWS = List.of(
+            dialogueWindow("shop", GLFW.GLFW_KEY_Z), dialogueWindow("services", GLFW.GLFW_KEY_X),
+            dialogueWindow("contracts", GLFW.GLFW_KEY_R), dialogueWindow("customize", GLFW.GLFW_KEY_N));
     public static final KeyMapping OPEN_CONTACTS = new KeyMapping("key.cyberneticenhancements.open_contacts",
             net.neoforged.neoforge.client.settings.KeyConflictContext.IN_GAME,
             InputConstants.Type.KEYSYM, GLFW.GLFW_KEY_K, CATEGORY);
@@ -79,10 +93,25 @@ public final class ModKeyMappings {
             GLFW.GLFW_KEY_H,
             CATEGORY
     );
+    public static final KeyMapping TOGGLE_MINIMAP = new KeyMapping(
+            "key.cyberneticenhancements.toggle_minimap",
+            net.neoforged.neoforge.client.settings.KeyConflictContext.IN_GAME,
+            KeyModifier.SHIFT,
+            InputConstants.Type.KEYSYM,
+            GLFW.GLFW_KEY_M,
+            CATEGORY
+    );
     public static final KeyMapping OPEN_ARCHIVE = new KeyMapping(
             "key.cyberneticenhancements.open_archive",
             InputConstants.Type.KEYSYM,
             GLFW.GLFW_KEY_J,
+            CATEGORY
+    );
+
+    public static final KeyMapping OPEN_MAP = new KeyMapping(
+            "key.cyberneticenhancements.open_map",
+            InputConstants.Type.KEYSYM,
+            GLFW.GLFW_KEY_M,
             CATEGORY
     );
 
@@ -101,9 +130,15 @@ public final class ModKeyMappings {
         event.register(ACTIVATE_ARM_CYBERWARE);
         event.register(ACTIVATE_FACE_CYBERWARE);
         event.register(TOGGLE_HUD);
+        event.register(TOGGLE_MINIMAP);
         event.register(OPEN_ARCHIVE);
+        event.register(OPEN_MAP);
         event.register(SCAN_TAROT);
         event.register(OPEN_CONTACTS);
+        event.register(DIALOGUE_UP);
+        event.register(DIALOGUE_DOWN);
+        event.register(DIALOGUE_SELECT);
+        DIALOGUE_WINDOWS.forEach(event::register);
         event.register(NEXT_QUEST_PAGE);
         CALL_QUEST_ISSUERS.forEach(event::register);
         CALL_ANSWERS.forEach(event::register);

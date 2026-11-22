@@ -19,7 +19,7 @@ public final class TitleMusic {
         var mc = Minecraft.getInstance();
         var manager = mc.getSoundManager();
         // Independent of the slideshow, so the music also plays when the slideshow background is disabled.
-        SESSION.update(mc.level != null, mc.screen instanceof TitleScreen && mc.getOverlay() == null && !LaunchIntro.isPlaying());
+        SESSION.update(mc.level != null, ChangelogPopup.isTitle(mc.screen) && mc.getOverlay() == null && !LaunchIntro.isPlaying());
         boolean wanted = mc.level == null && SESSION.active() && !LaunchIntro.isPlaying() && audible();
         // Resource reloads stop every sound; start again rather than holding a dead instance.
         if (current != null && !manager.isActive(current)) current = null;
